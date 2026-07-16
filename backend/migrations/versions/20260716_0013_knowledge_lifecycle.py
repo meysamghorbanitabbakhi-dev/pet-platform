@@ -18,7 +18,9 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.drop_constraint(
-        "ck_pet_knowledge_releases_valid_status", "pet_knowledge_releases", type_="check"
+        op.f("ck_pet_knowledge_releases_valid_status"),
+        "pet_knowledge_releases",
+        type_="check",
     )
     op.create_check_constraint(
         "valid_status",
@@ -71,7 +73,9 @@ def downgrade() -> None:
     op.drop_table("pet_knowledge_review_tasks")
     op.drop_column("pet_knowledge_reviews", "expired_at")
     op.drop_constraint(
-        "ck_pet_knowledge_releases_valid_status", "pet_knowledge_releases", type_="check"
+        op.f("ck_pet_knowledge_releases_valid_status"),
+        "pet_knowledge_releases",
+        type_="check",
     )
     op.create_check_constraint(
         "valid_status",

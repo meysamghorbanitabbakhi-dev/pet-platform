@@ -72,4 +72,10 @@ Journey discovery/detail/check-ins are available under `/api/v1/pet-life/*` only
 
 `GET /api/v1/system/policies` is the frontend feature boundary. K9.0 exposes `currency_code=IRR`, `customer_display_unit=TOMAN`, and `irr_per_customer_display_unit=10`; all API money remains integer `*_irr` and must not be silently rounded into toman. Late-credit execution/customer visibility, reserve-now, cancellation after sourcing, self-service refund/replacement/substitution, and customer-visible delay compensation are off. Availability-subscription and concierge-request metadata is on, but K9.0 supplies no customer workflow for either; a flag never authorizes a new endpoint. See `docs/adr/ADR-004-k9-policy-boundaries.md` for decisions marked **POLICY BLOCKED**.
 
-The deterministic demo scenario is `fixtures/demo/v1.json`. It is sample data, not a claim that its product, price, nutritional content, or operational state exists in production.
+## K9.4 acceptance and demo fixture
+
+K9.4 reconciles the frontend contract with `fixtures/demo/v2-frontend.json`, `docs/api/examples.json`, `BACKEND_FRONTEND_INTEGRATION_CONTRACT.md`, `API_ENDPOINT_CATALOG.md`, and the checked OpenAPI artifacts. The v2 fixture covers K9-T1 through K9-T11 and classifies every approved frontend intent as endpoint-backed, frontend-local, policy-gated, or deferred. There are zero unexplained intents.
+
+Frontend clients must treat policy-gated flows as visible only when `GET /api/v1/system/policies` exposes an enabled capability and the relevant endpoint does not fail closed. Current safe defaults keep reserve/refund/replacement/substitution/compensation, semantic level estimation bounds, reorder safety buffer, and care journey delivery approval blocked.
+
+The deterministic demo scenarios in `fixtures/demo/` are sample data, not a claim that their product, price, nutritional content, or operational state exists in production.

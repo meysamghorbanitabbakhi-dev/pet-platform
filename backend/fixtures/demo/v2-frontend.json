@@ -1,0 +1,245 @@
+{
+  "version": "v2-frontend",
+  "base_revision": "1da656bcd5e08310596a5c77e5cad4f421e74691",
+  "scope": "K9-T1 through K9-T11 deterministic demo fixture",
+  "policy_defaults": {
+    "currency_code": "IRR",
+    "customer_display_unit": "TOMAN",
+    "delivery_commitment_hours": 366,
+    "reserve_now_enabled": false,
+    "refund_self_service_enabled": false,
+    "replacement_self_service_enabled": false,
+    "substitution_self_service_enabled": false,
+    "delay_compensation_customer_visible": false,
+    "care_journey_delivery_enabled": false,
+    "semantic_level_estimation_enabled": false,
+    "reorder_safety_buffer_days": null
+  },
+  "actors": {
+    "identity_id": "00000000-0000-4000-8000-000000000001",
+    "other_identity_id": "00000000-0000-4000-8000-000000000002",
+    "household_id": "00000000-0000-4000-8000-000000000101",
+    "other_household_id": "00000000-0000-4000-8000-000000000102",
+    "pet_ids": [
+      "00000000-0000-4000-8000-000000000201",
+      "00000000-0000-4000-8000-000000000202"
+    ]
+  },
+  "catalog": {
+    "offer_id": "00000000-0000-4000-8000-000000000301",
+    "unavailable_offer_id": "00000000-0000-4000-8000-000000000302",
+    "product_id": "00000000-0000-4000-8000-000000000401",
+    "price_irr": 18500000,
+    "reference_price_irr": 21000000,
+    "supplier_country_code": "DE",
+    "supplier_verified": true,
+    "supplier_identity_exposed": false
+  },
+  "orders": {
+    "order_id": "00000000-0000-4000-8000-000000000501",
+    "order_line_id": "00000000-0000-4000-8000-000000000601",
+    "payment_attempt_id": "00000000-0000-4000-8000-000000000701",
+    "status_after_callback": "paid",
+    "sourcing_jobs_expected": 1
+  },
+  "inventory": {
+    "platform_unit_id": "00000000-0000-4000-8000-000000000801",
+    "external_unit_id": "00000000-0000-4000-8000-000000000802",
+    "unopened_has_estimate": false,
+    "unknown_share_pet_remaining_days_exposed": false
+  },
+  "journey": {
+    "definition_id": "00000000-0000-4000-8000-000000000901",
+    "journey_id": "00000000-0000-4000-8000-000000000902",
+    "diary_entry_id": "00000000-0000-4000-8000-000000000903",
+    "garden_reward_id": "00000000-0000-4000-8000-000000000904",
+    "check_ins": [
+      { "check_in_key": "water", "answer_key": "done" },
+      { "check_in_key": "walk", "answer_key": "short" }
+    ]
+  },
+  "scenarios": {
+    "K9-T1": {
+      "title": "First-time bootstrap",
+      "chain": [
+        "POST /api/v1/auth/otp/verify",
+        "GET /api/v1/me/context",
+        "POST /api/v1/pet-life/households",
+        "POST /api/v1/pet-life/households/{household_id}/pets",
+        "POST /api/v1/pet-life/households/{household_id}/addresses",
+        "GET /api/v1/me/context"
+      ],
+      "assertions": [
+        "context starts with null default_household_id",
+        "context ends with deterministic default_household_id",
+        "onboarding requirements become complete"
+      ]
+    },
+    "K9-T2": {
+      "title": "Returning user",
+      "chain": [
+        "POST /api/v1/auth/otp/verify",
+        "GET /api/v1/me/context",
+        "GET /api/v1/pet-life/households/{household_id}/pets"
+      ],
+      "assertions": [
+        "pet switcher reconstructs household and active pets without client-stored UUIDs"
+      ]
+    },
+    "K9-T3": {
+      "title": "Commerce/payment",
+      "chain": [
+        "GET /api/v1/catalog/offers/{offer_id}",
+        "POST /api/v1/checkout/orders",
+        "POST /api/v1/orders/{order_id}/payments/zarinpal",
+        "GET /api/v1/payments/zarinpal/callback",
+        "GET /api/v1/orders/{order_id}",
+        "POST /api/v1/operator/order-lines/{line_id}/confirm-sourced"
+      ],
+      "assertions": [
+        "IRR price snapshot is server-owned",
+        "payment verification precedes sourcing",
+        "one sourcing job is created"
+      ]
+    },
+    "K9-T4": {
+      "title": "Order pet plan",
+      "chain": [
+        "PUT /api/v1/orders/{order_id}/pet-plan",
+        "GET /api/v1/orders/{order_id}",
+        "POST /api/v1/operator/orders/{order_id}/deliver",
+        "GET /api/v1/pet-life/inventory/{unit_id}"
+      ],
+      "assertions": [
+        "planning creates no estimate",
+        "delivery creates unopened inventory",
+        "planned pets become unknown-share assignments"
+      ]
+    },
+    "K9-T5": {
+      "title": "Opening with known facts",
+      "chain": [
+        "PUT /api/v1/pet-life/inventory/{unit_id}/assignments",
+        "POST /api/v1/pet-life/inventory/{unit_id}/open",
+        "POST /api/v1/pet-life/inventory/{unit_id}/estimate/correct",
+        "GET /api/v1/pet-life/inventory/{unit_id}",
+        "GET /api/v1/pet-life/pets/{pet_id}/today"
+      ],
+      "assertions": [
+        "exact grams are preserved",
+        "semantic level input validates but fails closed until approved bounds exist",
+        "known facts justify a pet range"
+      ]
+    },
+    "K9-T6": {
+      "title": "Unknown shares",
+      "chain": [
+        "PUT /api/v1/pet-life/inventory/{unit_id}/assignments",
+        "POST /api/v1/pet-life/inventory/{unit_id}/open",
+        "GET /api/v1/pet-life/pets/{pet_id}/today"
+      ],
+      "assertions": [
+        "household estimate only",
+        "no pet-level remaining days"
+      ]
+    },
+    "K9-T7": {
+      "title": "External purchase",
+      "chain": [
+        "POST /api/v1/pet-life/households/{household_id}/inventory/external",
+        "PUT /api/v1/pet-life/inventory/{unit_id}/assignments",
+        "POST /api/v1/pet-life/inventory/{unit_id}/open",
+        "POST /api/v1/pet-life/inventory/{unit_id}/exhaust"
+      ],
+      "assertions": [
+        "external units follow the same inventory lifecycle"
+      ]
+    },
+    "K9-T8": {
+      "title": "Reorder snooze",
+      "chain": [
+        "POST /api/v1/pet-life/inventory/{unit_id}/reorder-assessment",
+        "PUT /api/v1/pet-life/inventory/{unit_id}/reorder-snooze",
+        "GET /api/v1/pet-life/pets/{pet_id}/today"
+      ],
+      "assertions": [
+        "snooze maximum is 72 hours",
+        "Today suppresses reorder attention",
+        "no early return occurs because no documented worsening rule is approved"
+      ]
+    },
+    "K9-T9": {
+      "title": "Availability",
+      "chain": [
+        "POST /api/v1/catalog/offers/{offer_id}/availability-subscriptions",
+        "PUT /api/v1/operator/offers/{offer_id}/capacity",
+        "GET /api/v1/pet-life/notifications",
+        "GET /api/v1/me/availability-subscriptions"
+      ],
+      "assertions": [
+        "order_created is false",
+        "no order, payment, sourcing or inventory is created",
+        "availability notification is max once per activation cycle"
+      ]
+    },
+    "K9-T10": {
+      "title": "Delayed order",
+      "chain": [
+        "POST /api/v1/operator/orders/{order_id}/fulfillment",
+        "GET /api/v1/orders/{order_id}/journey",
+        "POST /api/v1/orders/{order_id}/delay-acknowledgements"
+      ],
+      "assertions": [
+        "acknowledgement persists visible delay version",
+        "no compensation/cancellation/waiver implication"
+      ]
+    },
+    "K9-T11": {
+      "title": "Journey/Garden",
+      "chain": [
+        "GET /api/v1/pet-life/pets/{pet_id}/journey-offers",
+        "GET /api/v1/pet-life/journey-definitions/{definition_id}",
+        "POST /api/v1/pet-life/pets/{pet_id}/journeys",
+        "POST /api/v1/pet-life/journeys/{journey_id}/check-ins",
+        "GET /api/v1/pet-life/pets/{pet_id}/diary/{entry_id}",
+        "PUT /api/v1/pet-life/garden/{reward_id}/placement",
+        "DELETE /api/v1/pet-life/garden/{reward_id}/placement",
+        "PUT /api/v1/pet-life/garden/{reward_id}/placement"
+      ],
+      "assertions": [
+        "completion creates one diary memory and one Garden reward",
+        "storage preserves linked memory"
+      ]
+    }
+  },
+  "frontend_intents": [
+    { "intent": "bootstrap-context", "classification": "endpoint-backed", "endpoint": "GET /api/v1/me/context" },
+    { "intent": "pet-switcher", "classification": "endpoint-backed", "endpoint": "GET /api/v1/pet-life/households/{household_id}/pets" },
+    { "intent": "offer-trust-detail", "classification": "endpoint-backed", "endpoint": "GET /api/v1/catalog/offers/{offer_id}" },
+    { "intent": "checkout-full-payment", "classification": "endpoint-backed", "endpoint": "POST /api/v1/checkout/orders" },
+    { "intent": "payment-redirect", "classification": "endpoint-backed", "endpoint": "POST /api/v1/orders/{order_id}/payments/zarinpal" },
+    { "intent": "reload-order", "classification": "endpoint-backed", "endpoint": "GET /api/v1/orders/{order_id}" },
+    { "intent": "plan-pets-for-order-line", "classification": "endpoint-backed", "endpoint": "PUT /api/v1/orders/{order_id}/pet-plan" },
+    { "intent": "inventory-detail", "classification": "endpoint-backed", "endpoint": "GET /api/v1/pet-life/inventory/{unit_id}" },
+    { "intent": "semantic-level-opening", "classification": "policy-gated", "endpoint": "POST /api/v1/pet-life/inventory/{unit_id}/open" },
+    { "intent": "exact-grams-opening", "classification": "endpoint-backed", "endpoint": "POST /api/v1/pet-life/inventory/{unit_id}/open" },
+    { "intent": "reorder-assessment", "classification": "endpoint-backed", "endpoint": "POST /api/v1/pet-life/inventory/{unit_id}/reorder-assessment" },
+    { "intent": "reorder-snooze", "classification": "endpoint-backed", "endpoint": "PUT /api/v1/pet-life/inventory/{unit_id}/reorder-snooze" },
+    { "intent": "today-hub", "classification": "endpoint-backed", "endpoint": "GET /api/v1/pet-life/pets/{pet_id}/today" },
+    { "intent": "availability-subscribe", "classification": "endpoint-backed", "endpoint": "POST /api/v1/catalog/offers/{offer_id}/availability-subscriptions" },
+    { "intent": "availability-cancel", "classification": "endpoint-backed", "endpoint": "DELETE /api/v1/catalog/offers/{offer_id}/availability-subscriptions" },
+    { "intent": "customer-request", "classification": "endpoint-backed", "endpoint": "POST /api/v1/customer-requests" },
+    { "intent": "delay-acknowledgement", "classification": "endpoint-backed", "endpoint": "POST /api/v1/orders/{order_id}/delay-acknowledgements" },
+    { "intent": "journey-discovery", "classification": "policy-gated", "endpoint": "GET /api/v1/pet-life/pets/{pet_id}/journey-offers" },
+    { "intent": "journey-check-in", "classification": "policy-gated", "endpoint": "POST /api/v1/pet-life/journeys/{journey_id}/check-ins" },
+    { "intent": "diary-detail", "classification": "endpoint-backed", "endpoint": "GET /api/v1/pet-life/pets/{pet_id}/diary/{entry_id}" },
+    { "intent": "garden-state", "classification": "endpoint-backed", "endpoint": "GET /api/v1/pet-life/pets/{pet_id}/garden" },
+    { "intent": "garden-storage", "classification": "endpoint-backed", "endpoint": "DELETE /api/v1/pet-life/garden/{reward_id}/placement" },
+    { "intent": "reserve-now", "classification": "policy-gated", "endpoint": null },
+    { "intent": "refund-request-self-service", "classification": "policy-gated", "endpoint": null },
+    { "intent": "replacement-self-service", "classification": "policy-gated", "endpoint": null },
+    { "intent": "substitution-self-service", "classification": "policy-gated", "endpoint": null },
+    { "intent": "push-notifications", "classification": "deferred", "endpoint": null },
+    { "intent": "client-side-route-cache", "classification": "frontend-local", "endpoint": null }
+  ]
+}

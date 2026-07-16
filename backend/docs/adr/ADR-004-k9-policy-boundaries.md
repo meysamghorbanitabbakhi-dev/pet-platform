@@ -19,22 +19,27 @@ Defaults preserve the K8 launch posture:
 
 The scheduler does not create late credits unless `late_credit_enabled` is true. Existing payment verification, sourcing, inventory, supplier privacy, and care-approval controls are unchanged.
 
-## Policy decisions still blocked
+## Policy decision register
 
 The following are configuration boundaries only and require product, finance, operations, and/or care approval before behavior can be enabled:
 
-| Item | Status | Required decision |
-| --- | --- | --- |
-| Delivery commitment and customer display wording | POLICY BLOCKED | Service-level commitment, locale wording, and exception handling |
-| Late-credit enablement/visibility, rate, and expiry | POLICY BLOCKED | Eligibility, funding, disclosure, and expiry policy |
-| Reserve-now and self-service resolutions | POLICY BLOCKED | Commercial workflow, inventory, payment, and support controls |
-| Availability subscription notification templates | POLICY BLOCKED | Final customer wording, SMS consent copy, and operational activation-cycle policy |
-| Concierge/support request operations | POLICY BLOCKED | Staffing model, response-time copy, and escalation workflow; API makes no promises |
-| Care-journey delivery | POLICY BLOCKED | Capability remains disabled by default pending clinical/content approval and eligibility policy |
-| Delay compensation | POLICY BLOCKED | Delay acknowledgement is durable but implies no compensation, cancellation, waiver, or resolution |
-| Semantic remaining-level bounds | POLICY BLOCKED | Approved percentage bands for full/more-than-half/less-than-half/near-empty |
-| Reorder safety buffer | POLICY BLOCKED | Approved pessimistic buffer before reorder recommendation becomes actionable |
-| Early snooze break | POLICY BLOCKED | Material-worsening threshold that may end a snooze before expiry |
+| Unresolved decision | Current safe default | Affected endpoint/UI behavior | Approval would enable |
+|---|---|---|---|
+| Delivery commitment wording and exceptions | `delivery_commitment_hours=366`; factual timestamps only | `/system/policies`, order detail, order journey | Updated commitment copy and exception handling |
+| Late-credit eligibility, rate, visibility and expiry | `late_credit_enabled=false`, `late_credit_customer_visible=false` | `/system/policies`, operator late-credit endpoint hidden from customer UX | Customer-visible credit issuance and wallet disclosure |
+| Reserve-now workflow | `reserve_now_enabled=false`; no customer endpoint | Checkout and offer UI must not render reserve CTA | Approved reserve/payment/inventory flow |
+| Cancellation after sourcing | `cancel_after_sourcing_enabled=false`; no customer self-service endpoint | Order UI must not expose self-service cancellation after sourcing | Approved cancellation workflow and disclosures |
+| Self-service refund | `refund_self_service_enabled=false`; no customer endpoint | Support UI may submit request only; no refund promise | Approved refund request/decision flow |
+| Self-service replacement | `replacement_self_service_enabled=false`; no customer endpoint | Support UI may submit request only; no replacement promise | Approved replacement request/decision flow |
+| Self-service substitution | `substitution_self_service_enabled=false`; no customer endpoint | Catalog/order UI must not offer substitution | Approved substitution workflow |
+| Delay compensation | `delay_compensation_customer_visible=false`; acknowledgement implies nothing | `/orders/{order_id}/delay-acknowledgements`, order delay UI | Explicit compensation policy and customer copy |
+| Semantic remaining-level percentage bounds | `semantic_level_estimation_enabled=false`; level input fails closed | `/pet-life/inventory/{unit_id}/open`, `/estimate/correct` | Server conversion of semantic levels into honest low/high gram bounds |
+| Reorder safety buffer | `reorder_safety_buffer_days=null`; assessment returns `policy_blocked` when otherwise required | `/pet-life/inventory/{unit_id}/reorder-assessment`, Today reorder UX | Actionable reorder recommendation threshold |
+| Early snooze break | No early-break rule; snooze lasts until expiry | `/pet-life/inventory/{unit_id}/reorder-snooze`, Today attention | Material-worsening rule that may re-surface reorder attention |
+| Availability subscription notification copy and activation policy | In-app/SMS side effect only; `order_created=false`; max once per activation cycle | Availability subscription UI and notification inbox | Final customer wording, consent copy and activation-cycle operational rules |
+| Concierge/support operating promises | Explicit promises all false | `/customer-requests`, customer support UI | Staffing/response-time/escalation commitments |
+| Care journey delivery approval | `care_journey_delivery_enabled=false`; endpoints fail closed | Journey discovery, start, detail and check-in UI | Approved active journey content delivery |
+| Push notifications | No push claim | Notification settings UI | Approved push channel and consent model |
 
 ## Consequences
 
