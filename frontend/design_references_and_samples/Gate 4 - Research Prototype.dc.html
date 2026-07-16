@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Estedad:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="gate4-data.v1.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; background: oklch(0.90 0.012 85); }
+  body { font-family: "Vazirmatn", sans-serif; color: oklch(0.28 0.02 265); -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: oklch(0.52 0.10 70); text-decoration: none; }
+  a:hover { color: oklch(0.42 0.11 70); }
+</style>
+</helmet>
+
+<div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 14px 10px 28px 10px;">
+  <div style="width: 100%; max-width: 420px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+    <button onClick="{{ scHappy }}" style="background: {{ bgHappy }}; border: {{ bdHappy }}; border-radius: 999px; padding: 6px 12px; font-family: 'Vazirmatn', sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; min-height: 32px;">خرید تا تخمین</button>
+    <button onClick="{{ scExc }}" style="background: {{ bgExc }}; border: {{ bdExc }}; border-radius: 999px; padding: 6px 12px; font-family: 'Vazirmatn', sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; min-height: 32px;">سفارش مجدد و استثنا</button>
+    <button onClick="{{ scGdn }}" style="background: {{ bgGdn }}; border: {{ bdGdn }}; border-radius: 999px; padding: 6px 12px; font-family: 'Vazirmatn', sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; min-height: 32px;">مسیر و باغ</button>
+    <span style="margin-inline-start: auto; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.45 0.02 265);">{{ stepInfo }}</span>
+    <button onClick="{{ restart }}" style="background: none; border: 1px solid oklch(0.84 0.01 85); border-radius: 999px; padding: 5px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: oklch(0.45 0.02 265); cursor: pointer; min-height: 32px;">RESTART</button>
+  </div>
+  {{ phoneEl }}
+  <div style="width: 100%; max-width: 420px; font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: oklch(0.55 0.02 265); text-align: center; line-height: 1.7;" dir="ltr">GATE 4 · FORMATIVE USABILITY BUILD · {{ rev }} — moderator chrome above; participants interact with the phone only. Guide: <a href="Gate 4 - Research Kit.dc.html">Research Kit</a></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 430, &quot;height&quot;: 900}}">
+class Component extends DCLogic {
+  state = { sc: 'happy', happy: 0, exc: 0, gdn: 0 };
+  componentDidMount() {
+    if (!window.GATE4) { this._t = setInterval(() => { if (window.GATE4) { clearInterval(this._t); this.forceUpdate(); } }, 100); }
+  }
+  componentWillUnmount() { if (this._t) clearInterval(this._t); }
+
+  get T() { return {
+    ink: 'oklch(0.28 0.02 265)', ink2: 'oklch(0.5 0.02 265)', ink3: 'oklch(0.55 0.02 265)',
+    surface: 'oklch(0.965 0.008 85)', line: 'oklch(0.89 0.01 85)', line2: 'oklch(0.90 0.01 85)',
+    inset: 'oklch(0.955 0.006 85)', skel: 'oklch(0.93 0.006 85)',
+    brass: 'oklch(0.72 0.13 70)', brassInk: 'oklch(0.48 0.09 70)', brassBg: 'oklch(0.72 0.13 70 / 0.16)',
+    primary: 'oklch(0.28 0.04 270)',
+    pos: 'oklch(0.40 0.09 155)', posBg: 'oklch(0.95 0.02 155)',
+    info: 'oklch(0.42 0.09 245)', infoBg: 'oklch(0.95 0.03 245)',
+    warn: 'oklch(0.50 0.11 60)', warnBg: 'oklch(0.95 0.03 60)', warnLn: 'oklch(0.86 0.05 60)',
+    err: 'oklch(0.50 0.10 30)',
+    gdeep: 'oklch(0.26 0.045 155)', gmid: 'oklch(0.30 0.05 150)', gcard: 'oklch(0.32 0.05 150)',
+    gline: 'oklch(0.40 0.05 150)', gtxt: 'oklch(0.92 0.02 120)', gdim: 'oklch(0.78 0.03 130)',
+    gold: 'oklch(0.80 0.10 70)',
+    pond1: 'oklch(0.62 0.06 200)', pond2: 'oklch(0.48 0.06 205)',
+    cy1: 'oklch(0.48 0.08 155)', cy2: 'oklch(0.36 0.06 155)'
+  }; }
+
+  svg(vb, kids, size, extra) {
+    return React.createElement('svg', Object.assign({ viewBox: vb, width: size, height: size, style: { display: 'block', flexShrink: 0 } }, extra || {}), kids);
+  }
+  icon(name, size, color) {
+    const h = React.createElement, T = this.T, c = color || T.ink;
+    const st = { fill: 'none', stroke: c, strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' };
+    const P = (d, s) => h('path', Object.assign({ d: d, key: d }, st, s || {}));
+    switch (name) {
+      case 'home': return this.svg('0 0 24 24', [P('M4 11 L12 4 L20 11'), P('M6 10 V19 H18 V10'), P('M10 19 V14 H14 V19')], size);
+      case 'box': return this.svg('0 0 24 24', [P('M4 8 L12 4 L20 8 V17 L12 21 L4 17 Z'), P('M4 8 L12 12 L20 8'), P('M12 12 V21')], size);
+      case 'pen': return this.svg('0 0 24 24', [P('M5 19 L6 15 L16 5 L19 8 L9 18 Z'), P('M14 7 L17 10')], size);
+      case 'shop': return this.svg('0 0 24 24', [P('M6 8 H18 L19 20 H5 Z'), P('M9 8 V6 A3 3 0 0 1 15 6 V8')], size);
+      case 'person': return this.svg('0 0 24 24', [h('circle', Object.assign({ cx: 12, cy: 8.5, r: 3.4, key: 'c' }, st)), P('M5 20 A7 7 0 0 1 19 20')], size);
+      case 'cat': return this.svg('0 0 24 24', [h('path', { key: 'p', d: 'M6.2 10.3 L5.6 4.6 L9.5 7.6 C10.3 7.3 11.1 7.1 12 7.1 C12.9 7.1 13.7 7.3 14.5 7.6 L18.4 4.6 L17.8 10.3 C18.4 11.3 18.8 12.4 18.8 13.6 C18.8 17.3 15.7 19.6 12 19.6 C8.3 19.6 5.2 17.3 5.2 13.6 C5.2 12.4 5.6 11.3 6.2 10.3 Z', fill: c }), h('circle', { key: 'e1', cx: 9.4, cy: 13, r: 0.9, fill: 'white' }), h('circle', { key: 'e2', cx: 14.6, cy: 13, r: 0.9, fill: 'white' })], size);
+      case 'dog': return this.svg('0 0 24 24', [h('path', { key: 'p', d: 'M12 5.4 C15.4 5.4 18 8 18 11.6 C18 15.8 15.4 19 12 19 C8.6 19 6 15.8 6 11.6 C6 8 8.6 5.4 12 5.4 Z', fill: c }), h('path', { key: 'l', d: 'M6.6 7.2 C4.8 7.6 3.8 9.4 4.1 11.6 C4.4 13.6 5.5 14.6 6.8 14.4', fill: c }), h('path', { key: 'r', d: 'M17.4 7.2 C19.2 7.6 20.2 9.4 19.9 11.6 C19.6 13.6 18.5 14.6 17.2 14.4', fill: c }), h('circle', { key: 'e1', cx: 9.6, cy: 11.4, r: 0.9, fill: 'white' }), h('circle', { key: 'e2', cx: 14.4, cy: 11.4, r: 0.9, fill: 'white' })], size);
+      case 'plus': return this.svg('0 0 24 24', [P('M12 6 V18'), P('M6 12 H18')], size);
+      case 'check': return this.svg('0 0 24 24', [P('M5 12.5 L10 17.5 L19 7')], size);
+      case 'chev': return this.svg('0 0 24 24', [P('M14 6 L8 12 L14 18')], size);
+      case 'fish': return this.svg('0 0 24 24', [h('path', { key: 'b', d: 'M4 12 C7 8.5 11 7 15 8.5 C17.5 9.5 19 10.8 20 12 C19 13.2 17.5 14.5 15 15.5 C11 17 7 15.5 4 12 Z', fill: c }), h('path', { key: 't', d: 'M4 12 L1.5 9 L2.5 12 L1.5 15 Z', fill: c }), h('circle', { key: 'e', cx: 16.6, cy: 11.2, r: 0.9, fill: 'white' })], size);
+      case 'cypress': return this.svg('0 0 24 24', [h('path', { key: 'p', d: 'M12 2 C15 7 15.2 14 12 19 C8.8 14 9 7 12 2 Z', fill: 'url(#cyg' + size + ')' }), h('defs', { key: 'd' }, h('linearGradient', { id: 'cyg' + size, x1: 0, y1: 0, x2: 0, y2: 1 }, [h('stop', { key: 1, offset: '0%', stopColor: T.cy1 }), h('stop', { key: 2, offset: '100%', stopColor: T.cy2 })])), h('rect', { key: 't', x: 11.2, y: 19, width: 1.6, height: 3, rx: 0.8, fill: T.cy2 })], size);
+      case 'pond': return this.svg('0 0 24 24', [h('circle', { key: 1, cx: 12, cy: 12, r: 8, fill: T.pond2 }), h('circle', { key: 2, cx: 12, cy: 12, r: 8, fill: 'none', stroke: T.gline, strokeWidth: 1.4 }), h('circle', { key: 3, cx: 10.5, cy: 10.5, r: 3.4, fill: T.pond1, opacity: 0.75 })], size);
+      case 'paving': return this.svg('0 0 24 24', [h('rect', { key: 1, x: 4, y: 9.8, width: 4.4, height: 4.4, rx: 0.8, transform: 'rotate(45 6.2 12)', fill: 'oklch(0.60 0.03 85)' }), h('rect', { key: 2, x: 9.8, y: 9.8, width: 4.4, height: 4.4, rx: 0.8, transform: 'rotate(45 12 12)', fill: 'oklch(0.66 0.03 85)' }), h('rect', { key: 3, x: 15.6, y: 9.8, width: 4.4, height: 4.4, rx: 0.8, transform: 'rotate(45 17.8 12)', fill: 'oklch(0.60 0.03 85)' })], size);
+      case 'flower': return this.svg('0 0 24 24', [h('circle', { key: 1, cx: 9, cy: 14, r: 4.6, fill: T.cy2 }), h('circle', { key: 2, cx: 15, cy: 13, r: 4, fill: T.cy1 }), h('circle', { key: 3, cx: 12, cy: 16.6, r: 4, fill: T.cy2 }), h('circle', { key: 4, cx: 10, cy: 12.4, r: 1, fill: T.gold }), h('circle', { key: 5, cx: 15.4, cy: 11.6, r: 1, fill: T.gold }), h('circle', { key: 6, cx: 12.6, cy: 15.6, r: 1, fill: T.gold })], size);
+      case 'bag': return this.svg('0 0 24 24', [P('M6 7 C6 5 7.5 3.5 9 4.5 C10 5.2 10 6.5 10 7'), P('M5 7 H17 L18.5 20 H5.5 Z'), P('M8.5 11 H14', { opacity: 0.55 }), P('M8.8 14 H13', { opacity: 0.55 })], size);
+      case 'slot': return this.svg('0 0 24 24', [h('circle', { cx: 12, cy: 12, r: 8, fill: 'none', stroke: T.brass, strokeWidth: 1.6, strokeDasharray: '3.5 3.5', key: 'c' }), h('path', { d: 'M12 8.5 V15.5 M8.5 12 H15.5', stroke: T.gold, strokeWidth: 1.6, strokeLinecap: 'round', key: 'p', fill: 'none' })], size);
+      default: return null;
+    }
+  }
+  avatar(sp, size, active) {
+    const h = React.createElement, T = this.T, s = size || 26;
+    if (sp === 'add') return h('span', { style: { width: s, height: s, borderRadius: '50%', border: '1.5px dashed ' + T.line, display: 'grid', placeItems: 'center' } }, this.icon('plus', s * 0.6, T.ink3));
+    return h('span', { style: { width: s, height: s, borderRadius: '50%', background: active ? T.brassBg : T.inset, border: '1px solid ' + (active ? T.brass : T.line), display: 'grid', placeItems: 'center' } }, this.icon(sp === 'dog' ? 'dog' : 'cat', s * 0.72, active ? T.brassInk : T.ink2));
+  }
+
+  productArt(hh) {
+    const h = React.createElement, T = this.T;
+    return h('div', { style: { height: hh || 208, margin: '10px 16px 0 16px', borderRadius: 12, background: 'linear-gradient(160deg, oklch(0.93 0.015 85), oklch(0.88 0.02 85))', border: '1px solid ' + T.line, display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden' } }, [
+      h('div', { key: 'sh', style: { position: 'absolute', bottom: 10, width: 128, height: 12, borderRadius: '50%', background: 'oklch(0.3 0.02 265 / 0.14)', filter: 'blur(4px)' } }),
+      h('div', { key: 'bag', dir: 'rtl', style: { position: 'relative', width: 118, height: 176, borderRadius: '10px 10px 14px 14px', background: 'linear-gradient(180deg, oklch(0.42 0.07 200), oklch(0.30 0.06 210))', boxShadow: 'inset 6px 0 14px oklch(1 0 0 / 0.14), inset -8px 0 16px oklch(0 0 0 / 0.22)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 10 } }, [
+        h('div', { key: 'crimp', style: { position: 'absolute', top: 0, left: 6, right: 6, height: 7, borderRadius: 4, background: 'repeating-linear-gradient(90deg, oklch(0.5 0.06 200), oklch(0.5 0.06 200) 3px, oklch(0.34 0.06 210) 3px, oklch(0.34 0.06 210) 6px)' } }),
+        h('div', { key: 'brand', style: { marginTop: 8, fontFamily: 'Estedad, sans-serif', fontWeight: 800, fontSize: 13, color: 'oklch(0.95 0.02 85)', letterSpacing: '0.02em' } }, 'پت‌لایف'),
+        h('div', { key: 'panel', style: { marginTop: 7, width: 88, borderRadius: 10, background: 'oklch(0.96 0.01 85)', padding: '9px 8px 10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 } }, [
+          h('span', { key: 'f' }, this.icon('fish', 30, 'oklch(0.42 0.07 200)')),
+          h('div', { key: 'n', style: { fontSize: 9.5, fontWeight: 800, color: T.ink, textAlign: 'center', lineHeight: 1.5 } }, 'غذای خشک گربهٔ بالغ'),
+          h('div', { key: 'v', style: { fontSize: 8.5, fontWeight: 600, color: T.ink2 } }, 'با سالمون')]),
+        h('div', { key: 'w', style: { marginTop: 8, fontSize: 9, fontWeight: 800, color: 'oklch(0.9 0.06 85)', border: '1px solid oklch(0.65 0.06 200)', borderRadius: 999, padding: '2px 10px' } }, '۲ کیلوگرم')])]);
+  }
+
+  gardenField(v, height) {
+    const h = React.createElement, T = this.T, hh = height || 190;
+    const abs = (o) => Object.assign({ position: 'absolute' }, o);
+    const kids = [
+      h('div', { key: 'vx', style: abs({ top: 0, bottom: 0, right: '50%', width: 1, background: T.gline }) }),
+      h('div', { key: 'hx', style: abs({ right: 0, left: 0, top: '50%', height: 1, background: T.gline }) })
+    ];
+    if (v !== 'bare') kids.push(h('div', { key: 'pond', style: abs({ top: '50%', right: '50%', transform: 'translate(50%,-50%)' }) }, this.icon('pond', hh * 0.3)));
+    if (v === 'est' || v === 'full') {
+      kids.push(h('div', { key: 'cy', style: abs({ top: '12%', right: '13%' }) }, this.icon('cypress', 36)));
+      kids.push(h('div', { key: 'pv', style: abs({ top: '26%', right: '40%' }) }, this.icon('paving', 26)));
+      kids.push(h('div', { key: 'sd', style: abs({ bottom: '10%', left: '10%' }) }, this.icon('flower', 20)));
+      kids.push(h('div', { key: 'slot', style: abs({ top: '16%', left: '12%', textAlign: 'center' }) }, [
+        h('span', { key: 'ic' }, this.icon('slot', 30)), h('div', { key: 't', style: { fontSize: 8.5, color: T.gold, marginTop: 3, fontWeight: 700 } }, 'جای بعدی')]));
+    }
+    kids.push(h('div', { key: 'pet', style: abs({ bottom: '13%', right: '22%' }) }, this.avatar('cat', 30, true)));
+    return h('div', { style: { position: 'relative', height: hh, margin: '10px 16px 0 16px', border: '1px solid ' + T.gline, borderRadius: 14, background: 'linear-gradient(180deg, ' + T.gmid + ', oklch(0.27 0.05 155))', overflow: 'hidden', flexShrink: 0 } }, kids);
+  }
+
+  block(b, i, dark, tap) {
+    const h = React.createElement, T = this.T;
+    const key = 'b' + i;
+    const mx = { margin: '10px 16px 0 16px' };
+    const card = (kids, extra) => h('div', { key: key, style: Object.assign({ background: 'white', border: '1px solid ' + T.line, borderRadius: 14, padding: '13px 15px' }, mx, extra || {}) }, kids);
+    const btnStyle = (kind) => {
+      const base = { display: 'grid', placeItems: 'center', minHeight: 44, borderRadius: 10, padding: '11px 14px', fontFamily: 'Vazirmatn, sans-serif', fontSize: 12.5, fontWeight: 700, cursor: tap ? 'pointer' : 'default', border: 'none', width: '100%' };
+      if (kind === 'primary') return Object.assign(base, { background: T.primary, color: 'white' });
+      if (kind === 'brass') return Object.assign(base, { background: 'white', border: '1.5px solid oklch(0.78 0.06 70)', color: 'oklch(0.42 0.07 70)' });
+      if (kind === 'quiet') return Object.assign(base, { background: 'white', border: '1px solid ' + T.line, color: 'oklch(0.42 0.02 265)', fontWeight: 600 });
+      if (kind === 'text') return Object.assign(base, { background: 'none', color: 'oklch(0.52 0.10 70)', minHeight: 36 });
+      if (kind === 'gold') return Object.assign(base, { background: T.brass, color: 'oklch(0.22 0.04 70)', fontWeight: 800 });
+      if (kind === 'gquiet') return Object.assign(base, { background: 'none', border: '1px solid oklch(0.45 0.05 150)', color: 'oklch(0.85 0.03 120)', fontWeight: 600 });
+      return base;
+    };
+    switch (b.k) {
+      case 'appbar': {
+        const kids = [];
+        if (b.back) kids.push(h('span', { key: 'bk', style: { width: 32, height: 32, display: 'grid', placeItems: 'center' } }, this.icon('chev', 18, T.ink2)));
+        kids.push(h('span', { key: 't', style: { fontFamily: 'Estedad, sans-serif', fontWeight: 700, fontSize: 17 } }, b.t));
+        if (b.sub) kids.push(h('span', { key: 's', dir: 'ltr', style: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 10.5, color: T.ink2, marginInlineStart: 'auto' } }, b.sub));
+        if (b.badge) kids.push(h('span', { key: 'bg', style: { marginInlineStart: 'auto', fontSize: 10, fontWeight: 700, color: T.pos, background: T.posBg, borderRadius: 6, padding: '4px 9px' } }, b.badge.t));
+        return h('div', { key: key, style: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px 0 16px' } }, kids);
+      }
+      case 'gappbar': return h('div', { key: key, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 16px 0 16px' } }, [
+        h('span', { key: 't', style: { fontFamily: 'Estedad, sans-serif', fontWeight: 800, fontSize: 19 } }, b.t),
+        b.right ? h('span', { key: 'r', style: { fontSize: 11, fontWeight: 700, color: T.gold } }, b.right) : null]);
+      case 'photo': return h('div', { key: key }, this.productArt(b.h ? b.h + 88 : 208));
+      case 'badges': return h('div', { key: key, style: Object.assign({ display: 'flex', gap: 6, flexWrap: 'wrap' }, mx) }, b.items.map((it, j) => {
+        const tone = it.tone === 'pos' ? { background: T.posBg, color: T.pos } : it.tone === 'info' ? { background: T.infoBg, color: T.info } : it.tone === 'mute' ? { background: 'oklch(0.94 0.005 265)', color: 'oklch(0.45 0.02 265)' } : it.tone === 'line' ? { background: 'white', border: '1px solid ' + T.line, color: 'oklch(0.45 0.02 265)' } : { background: T.warnBg, color: T.warn };
+        return h('span', { key: j, style: Object.assign({ fontSize: 10.5, fontWeight: 700, borderRadius: 999, padding: '6px 12px' }, tone) }, it.t);
+      }));
+      case 'title': return h('div', { key: key, style: mx }, [h('div', { key: 1, style: { fontFamily: 'Estedad, sans-serif', fontWeight: 800, fontSize: 17, lineHeight: 1.6 } }, b.t), b.sub ? h('div', { key: 2, style: { fontSize: 11.5, color: T.ink3, lineHeight: 1.7 } }, b.sub) : null]);
+      case 'text': return h('div', { key: key, style: Object.assign({ fontSize: 12.5, lineHeight: 1.8, color: b.dim ? (dark ? T.gdim : T.ink2) : (dark ? T.gtxt : T.ink) }, mx) }, b.t);
+      case 'gtext': return h('div', { key: key, style: Object.assign({ fontSize: 11, lineHeight: 1.8, color: T.gdim, textAlign: 'center' }, mx) }, b.t);
+      case 'note': return h('div', { key: key, style: Object.assign({ background: T.inset, borderRadius: 10, padding: '10px 13px', fontSize: 11, lineHeight: 1.75, color: 'oklch(0.48 0.02 265)' }, mx) }, b.t);
+      case 'kv': {
+        const kids = [];
+        if (b.t) kids.push(h('div', { key: 'h', style: { fontWeight: 700, fontSize: 13, marginBottom: 8 } }, b.t));
+        b.rows.forEach((r, j) => kids.push(h('div', { key: j, style: { display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, lineHeight: 1.7, padding: '3px 0' } }, [
+          h('span', { key: 'k', style: { color: b.tone === 'pend' ? T.warn : T.ink2 } }, r[0]),
+          h('span', { key: 'v', style: { fontWeight: 700, textAlign: 'left', color: b.tone === 'pend' ? T.warn : T.ink } }, r[1])])));
+        return card(kids, b.tone === 'pend' ? { background: T.warnBg, border: '1.5px dashed ' + T.warnLn } : null);
+      }
+      case 'btn': return h('div', { key: key, style: mx }, h('button', Object.assign({ style: btnStyle(b.kind) }, tap && b.tap !== undefined ? { onClick: () => tap(b.tap) } : {}), b.t));
+      case 'pills': {
+        const cols = b.cols === 2 ? 'repeat(2, 1fr)' : null;
+        return h('div', { key: key, style: Object.assign(cols ? { display: 'grid', gridTemplateColumns: cols, gap: 8 } : { display: 'flex', gap: 8, flexWrap: 'wrap' }, mx) }, b.opts.map((o, j) => {
+          const on = o.on;
+          const gold = b.gold || dark;
+          const style = on
+            ? (gold ? { background: T.brass, color: 'oklch(0.22 0.04 70)', border: 'none', fontWeight: 800 } : { background: T.brassBg, border: '1.5px solid ' + T.brass, fontWeight: 800, color: T.ink })
+            : (gold ? { background: 'none', border: '1px solid oklch(0.45 0.05 150)', color: T.gtxt, fontWeight: 700 } : { background: 'white', border: '1.5px solid oklch(0.78 0.06 70)', color: T.ink, fontWeight: 700 });
+          return h('button', Object.assign({ key: j, style: Object.assign({ borderRadius: 10, padding: '11px 13px', fontFamily: 'Vazirmatn, sans-serif', fontSize: 12, minHeight: 44, cursor: tap ? 'pointer' : 'default', display: 'grid', placeItems: 'center' }, style) }, tap && o.tap !== undefined ? { onClick: () => tap(o.tap) } : {}), o.t);
+        }));
+      }
+      case 'input': return h('div', { key: key, style: mx }, [
+        h('div', { key: 'l', style: { fontSize: 11, color: T.ink2, marginBottom: 4 } }, b.label),
+        h('div', { key: 'f', style: { border: '1.5px solid ' + T.line, borderRadius: 10, padding: '12px 14px', fontSize: 13, minHeight: 44, background: 'white' } }, b.val || '')]);
+      case 'check': return h('div', { key: key, style: Object.assign({ display: 'flex', gap: 12, alignItems: 'center' }, mx) }, [
+        h('span', { key: 'i', style: { width: 42, height: 42, borderRadius: '50%', background: T.posBg, display: 'grid', placeItems: 'center', flexShrink: 0 } }, this.icon('check', 22, T.pos)),
+        h('div', { key: 't' }, [h('div', { key: 1, style: { fontFamily: 'Estedad, sans-serif', fontWeight: 800, fontSize: 16.5 } }, b.t), b.sub ? h('div', { key: 2, style: { fontSize: 11, color: T.ink3, lineHeight: 1.7 } }, b.sub) : null])]);
+      case 'pets': return h('div', { key: key, style: { display: 'flex', gap: 8, padding: '8px 16px 0 16px' } }, b.list.map((p, j) =>
+        h('span', { key: j, style: { display: 'inline-flex', alignItems: 'center', gap: 7, background: p.on ? T.brassBg : 'white', border: p.on ? '1.5px solid ' + T.brass : '1px solid ' + T.line, borderRadius: 999, padding: '7px 14px 7px 9px', fontSize: 12.5, fontWeight: p.on ? 800 : 600, color: p.on ? T.ink : T.ink2, minHeight: 44 } }, [h('span', { key: 'a' }, this.avatar(p.sp, 26, p.on)), h('span', { key: 'n' }, p.n)])));
+      case 'food': {
+        const toneMap = { info: { c: T.info, bg: T.infoBg }, pos: { c: T.pos, bg: T.posBg }, mute: { c: 'oklch(0.45 0.02 265)', bg: 'oklch(0.94 0.005 265)' } };
+        const tn = toneMap[b.tone] || toneMap.info;
+        const kids = [
+          h('div', { key: 'h', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } }, [
+            h('span', { key: 1, style: { fontWeight: 700, fontSize: 13.5 } }, 'غذای پیشی'),
+            h('span', { key: 2, style: { fontSize: 10.5, fontWeight: 700, color: tn.c, background: tn.bg, borderRadius: 6, padding: '4px 9px' } }, b.badge)]),
+          h('div', { key: 'b', style: { display: 'flex', gap: 10, alignItems: 'center', marginTop: 9 } }, [
+            h('span', { key: 'i', style: { width: 42, height: 42, borderRadius: 10, background: T.inset, display: 'grid', placeItems: 'center', flexShrink: 0 } }, this.icon('bag', 24, T.ink2)),
+            h('div', { key: 't', style: { fontSize: 12, lineHeight: 1.65 } }, [h('div', { key: 1, style: { fontWeight: 700 } }, b.t), h('div', { key: 2, style: { color: T.ink2, fontSize: 11 } }, b.sub)])])];
+        (b.rows || []).forEach((r, j) => kids.push(h('div', { key: 'r' + j, style: { display: 'flex', justifyContent: 'space-between', fontSize: 11.5, marginTop: 7 } }, [h('span', { key: 1, style: { color: T.ink2 } }, r[0]), h('span', { key: 2, style: { fontWeight: 700 } }, r[1])])));
+        if (b.foot) kids.push(h('div', { key: 'f', style: { background: T.inset, borderRadius: 9, padding: '8px 11px', fontSize: 10.5, lineHeight: 1.7, color: 'oklch(0.48 0.02 265)', marginTop: 9 } }, b.foot));
+        if (b.cta) kids.push(h('div', { key: 'c', style: { fontSize: 12, color: 'oklch(0.52 0.10 70)', fontWeight: 700, marginTop: 8, minHeight: 24 } }, b.cta + ' ‹'));
+        return card(kids);
+      }
+      case 'meter': {
+        const kids = [h('div', { key: 'top', style: { display: 'flex', gap: 12, alignItems: 'center' } }, [
+          h('div', { key: 'ring', style: { flexShrink: 0, width: 58, height: 58, borderRadius: '50%', border: '5px solid ' + T.brass, borderLeftColor: 'oklch(0.92 0.008 85)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12, fontFamily: 'Estedad, sans-serif' } }, b.big.replace(' روز', '')),
+          h('div', { key: 'tx', style: { fontSize: 12, lineHeight: 1.7, flex: 1 } }, [
+            h('div', { key: 1, style: { fontWeight: 700, fontSize: 13 } }, [b.band + ' ', h('span', { key: 'q', style: { border: '1px solid ' + T.line2, borderRadius: 5, padding: '1px 6px', fontSize: 9.5, fontWeight: 600, color: T.ink2 } }, 'تخمینی')]),
+            h('div', { key: 2, style: { color: T.ink2, fontSize: 11 } }, b.conf + (b.src ? ' · ' + b.src : ''))])])];
+        if (b.cta) kids.push(h('div', { key: 'c', style: { fontSize: 12, color: 'oklch(0.52 0.10 70)', fontWeight: 700, marginTop: 9, minHeight: 24 } }, b.cta + ' ‹'));
+        return card(kids);
+      }
+      case 'band': {
+        return card([
+          h('div', { key: 'l', style: { display: 'flex', justifyContent: 'space-between', fontSize: 11.5, marginBottom: 7 } }, [h('span', { key: 1, style: { fontWeight: 700 } }, b.label), h('span', { key: 2, style: { color: T.ink2, fontSize: 10.5 } }, b.right)]),
+          h('div', { key: 'b', style: { position: 'relative', height: 12, background: 'oklch(0.94 0.006 85)', borderRadius: 999 } }, [
+            h('div', { key: 1, style: { position: 'absolute', top: 0, bottom: 0, right: b.from + '%', width: b.w + '%', borderRadius: 999, background: b.striped ? 'repeating-linear-gradient(45deg, oklch(0.72 0.13 70 / 0.3), oklch(0.72 0.13 70 / 0.3) 6px, oklch(0.72 0.13 70 / 0.15) 6px, oklch(0.72 0.13 70 / 0.15) 12px)' : 'oklch(0.72 0.13 70 / 0.35)' } }),
+            h('div', { key: 2, style: { position: 'absolute', top: -2, bottom: -2, right: (b.from + b.w / 2) + '%', width: 4, background: T.brassInk, borderRadius: 999 } })])]);
+      }
+      case 'event': return card([h('div', { key: 'r', style: { display: 'flex', gap: 11, alignItems: 'center' } }, [
+        b.g === 'num' ? h('span', { key: 'i', style: { width: 36, height: 36, borderRadius: '50%', background: T.brassBg, color: T.brassInk, display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 800, flexShrink: 0 } }, '۶') : h('span', { key: 'i', style: { width: 36, height: 36, borderRadius: '50%', background: T.inset, display: 'grid', placeItems: 'center', flexShrink: 0 } }, this.icon('pen', 18, T.ink2)),
+        h('div', { key: 't', style: { fontSize: 12, lineHeight: 1.65, flex: 1 } }, [h('div', { key: 1, style: { fontWeight: 700 } }, b.t), h('div', { key: 2, style: { fontSize: 10.5, color: T.ink3 } }, b.sub)]),
+        h('span', { key: 'c' }, this.icon('chev', 14, T.ink3))])]);
+      case 'gstrip': {
+        return h('div', { key: key, style: Object.assign({ height: 72, background: T.gmid, borderRadius: 14, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 11, flexShrink: 0 }, mx) }, [
+          h('div', { key: 'bg', style: { position: 'absolute', inset: 0, background: 'radial-gradient(circle at 85% 120%, oklch(0.40 0.06 160), transparent 60%)' } }),
+          b.water ? h('div', { key: 'pd', style: { position: 'absolute', left: '20%', top: '50%', transform: 'translateY(-50%)' } }, this.icon('pond', 24)) : null,
+          h('div', { key: 'av', style: { position: 'relative' } }, this.avatar('cat', 34, true)),
+          h('div', { key: 'tx', style: { position: 'relative', flex: 1, color: T.gtxt, fontSize: 11.5, lineHeight: 1.6 } }, [h('div', { key: 1, style: { fontWeight: 700, fontSize: 12 } }, b.t), b.sub ? h('div', { key: 2, style: { color: T.gdim, fontSize: 10 } }, b.sub) : null]),
+          h('span', { key: 'ch', style: { position: 'relative' } }, this.icon('chev', 14, T.gold))]);
+      }
+      case 'warn': {
+        const warm = b.tone === 'warm';
+        return h('div', { key: key, style: Object.assign({ background: warm ? T.warnBg : 'oklch(0.94 0.005 265)', border: '1px solid ' + (warm ? T.warnLn : T.line), borderRadius: 14, padding: '13px 15px', fontSize: 12.5, lineHeight: 1.8 }, mx) }, [
+          h('div', { key: 1, style: { fontWeight: 700, color: warm ? T.warn : 'oklch(0.4 0.02 265)' } }, (warm ? '⚠ ' : '') + b.t),
+          b.sub ? h('div', { key: 2, style: { fontSize: 11, color: warm ? 'oklch(0.45 0.08 60)' : T.ink3, marginTop: 3 } }, b.sub) : null]);
+      }
+      case 'toast': return h('div', { key: key, style: Object.assign({ background: T.ink, color: 'white', borderRadius: 10, padding: '10px 14px', fontSize: 11.5, textAlign: 'center' }, mx) }, b.t);
+      case 'timeline': return card(b.items.map((it, j) => {
+        const dot = it.s === 'done' ? { background: T.pos } : it.s === 'now' ? { background: T.info } : { border: '1.5px solid oklch(0.75 0.01 265)' };
+        const last = j === b.items.length - 1;
+        return h('div', { key: j, style: { display: 'flex', gap: 11 } }, [
+          h('div', { key: 'd', style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } }, [
+            h('div', { key: 1, style: Object.assign({ width: 10, height: 10, borderRadius: '50%', marginTop: 4, flexShrink: 0 }, dot) }),
+            !last ? h('div', { key: 2, style: { width: 1.5, flex: 1, background: T.line2, minHeight: 14 } }) : null]),
+          h('div', { key: 't', style: { paddingBottom: last ? 0 : 12, fontSize: 12 } }, [
+            h('div', { key: 1, style: { fontWeight: it.s === 'wait' ? 600 : 700, color: it.s === 'wait' ? T.ink3 : T.ink } }, (it.s === 'done' ? '✓ ' : it.s === 'now' ? '◐ ' : '○ ') + it.t),
+            h('div', { key: 2, style: { color: T.ink3, fontSize: 10.5 } }, it.sub)])]);
+      }));
+      case 'deep': {
+        return h('div', { key: key, style: Object.assign({ background: T.gdeep, color: T.gtxt, borderRadius: 16, padding: 16, position: 'relative', overflow: 'hidden' }, mx) }, [
+          h('div', { key: 'bg', style: { position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 0%, oklch(0.72 0.13 70 / 0.20), transparent 55%)' } }),
+          h('div', { key: 'c', style: { position: 'relative', display: 'flex', flexDirection: 'column', gap: 11 } }, [
+            h('div', { key: 'h', style: { display: 'flex', gap: 12, alignItems: 'center' } }, [
+              h('span', { key: 'cy', style: { filter: 'drop-shadow(0 0 10px oklch(0.72 0.13 70 / 0.5))' } }, this.icon('cypress', 40)),
+              h('div', { key: 't', style: { fontSize: 12, lineHeight: 1.7 } }, [h('div', { key: 1, style: { fontFamily: 'Estedad, sans-serif', fontWeight: 800, fontSize: 15 } }, b.t), b.sub ? h('div', { key: 2, style: { color: T.gdim, fontSize: 10.5 } }, b.sub) : null])]),
+            b.pills ? h('div', { key: 'p', style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7 } }, b.pills.map((o, j) => h('button', Object.assign({ key: j, style: Object.assign({ borderRadius: 10, padding: '10px 4px', fontFamily: 'Vazirmatn, sans-serif', fontSize: 10.5, minHeight: 44, cursor: tap ? 'pointer' : 'default', display: 'grid', placeItems: 'center' }, o.on ? { background: T.brass, color: 'oklch(0.22 0.04 70)', border: 'none', fontWeight: 800 } : { background: 'none', border: '1px solid oklch(0.45 0.05 150)', color: T.gtxt, fontWeight: 700 }) }, tap && o.tap !== undefined ? { onClick: () => tap(o.tap) } : {}), o.t))) : null])]);
+      }
+      case 'garden': return h('div', { key: key }, this.gardenField(b.v));
+      case 'gslot': return h('div', { key: key, style: Object.assign({ background: T.gcard, border: '1px dashed oklch(0.72 0.13 70 / 0.6)', borderRadius: 14, padding: '12px 14px', fontSize: 11.5, lineHeight: 1.75 }, mx) }, [
+        h('div', { key: 1, style: { fontWeight: 700, color: 'oklch(0.85 0.08 70)', fontSize: 12 } }, b.t),
+        h('div', { key: 2, style: { color: 'oklch(0.82 0.03 130)', fontSize: 10.5 } }, b.sub)]);
+      case 'gobj': return h('div', { key: key, style: Object.assign({ background: T.gcard, border: '1px solid oklch(0.42 0.05 150)', borderRadius: 14, padding: '12px 14px', display: 'flex', gap: 11, alignItems: 'center' }, mx) }, [
+        h('span', { key: 'i' }, this.icon('cypress', 34)),
+        h('div', { key: 't', style: { flex: 1, fontSize: 11.5, lineHeight: 1.7, color: T.gtxt } }, [h('div', { key: 1, style: { fontWeight: 700, fontSize: 12 } }, b.t), h('div', { key: 2, style: { color: T.gdim, fontSize: 10.5 } }, b.sub)]),
+        b.cta ? h('span', { key: 'c', style: { fontSize: 10.5, color: T.gold, fontWeight: 700 } }, b.cta + ' ‹') : null]);
+      case 'nav': {
+        const items = [['home', 'امروز'], ['box', 'انبار خانه'], ['pen', 'دفترچه'], ['shop', 'فروشگاه'], ['person', 'حساب']];
+        return h('div', { key: key, style: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', borderTop: '1px solid ' + T.line2, background: 'white', padding: '9px 6px 16px 6px', marginTop: 'auto' } }, items.map((it, j) =>
+          h('div', { key: j, style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, fontSize: 9.5, color: j === b.a ? T.primary : T.ink2, fontWeight: j === b.a ? 700 : 400 } }, [h('span', { key: 'i' }, this.icon(it[0], 19, j === b.a ? T.primary : T.ink2)), h('span', { key: 't' }, it[1])])));
+      }
+      default: return null;
+    }
+  }
+
+  phone(screen, tap) {
+    const h = React.createElement, T = this.T;
+    const dark = !!screen.dark;
+    const kids = [];
+    if (screen.dawn) kids.push(h('div', { key: 'dawn', style: { position: 'absolute', top: 0, left: 0, right: 0, height: 74, background: 'linear-gradient(180deg, oklch(0.90 0.035 65), transparent)', pointerEvents: 'none' } }));
+    kids.push(h('div', { key: 'sb', style: { height: 30, display: 'grid', placeItems: 'center', fontSize: 11.5, fontWeight: 600, flexShrink: 0, position: 'relative' } }, '۹:۴۱'));
+    screen.blocks.forEach((b, i) => kids.push(this.block(b, i, dark, tap)));
+    kids.push(h('div', { key: 'pad', style: { height: 16, flexShrink: 0 } }));
+    const frame = {
+      width: '100%', maxWidth: 420, background: dark ? T.gdeep : T.surface, color: dark ? T.gtxt : T.ink,
+      border: '1px solid ' + (dark ? 'oklch(0.34 0.05 150)' : 'oklch(0.87 0.01 85)'), borderRadius: 28, overflow: 'hidden', position: 'relative',
+      boxShadow: '0 10px 30px oklch(0.3 0.02 265 / 0.10)', display: 'flex', flexDirection: 'column', minHeight: 640
+    };
+    if (screen.sheet) {
+      return h('div', { dir: 'rtl', lang: 'fa', style: Object.assign({}, frame, { background: 'oklch(0.6 0.01 265 / 0.25)', justifyContent: 'flex-end' }) }, [
+        h('div', { key: 'sh', style: { background: T.surface, borderRadius: '20px 20px 28px 28px', boxShadow: '0 -8px 30px oklch(0.3 0.02 265 / 0.15)', paddingBottom: 16 } }, [
+          h('div', { key: 'grab', style: { width: 36, height: 4, background: T.line, borderRadius: 999, margin: '10px auto 2px auto' } })].concat(screen.blocks.map((b, i) => this.block(b, i, false, tap))))]);
+    }
+    return h('div', { dir: 'rtl', lang: 'fa', style: frame }, kids);
+  }
+
+  renderVals() {
+    const D = window.GATE4, T = this.T;
+    const sc = this.state.sc;
+    const map = { happy: 'happy', exc: 'exception', gdn: 'garden' };
+    const list = D ? D.proto[map[sc]] : [];
+    const idx = Math.min(this.state[sc], Math.max(0, list.length - 1));
+    const cur = list[idx] || { blocks: [] };
+    const tap = (n) => this.setState((s) => { const o = {}; o[sc] = Math.min(n, list.length - 1); return o; });
+    const pick = (k) => () => this.setState({ sc: k });
+    const tabOn = (k) => sc === k;
+    const bg = (k) => tabOn(k) ? T.brassBg : 'white';
+    const bd = (k) => tabOn(k) ? '1.5px solid ' + T.brass : '1px solid ' + T.line;
+    return {
+      rev: D ? D.rev : '…',
+      phoneEl: this.phone(cur, tap),
+      stepInfo: 'STEP ' + (idx + 1) + '/' + (list.length || 0),
+      restart: () => { const o = {}; o[sc] = 0; this.setState(o); },
+      scHappy: pick('happy'), scExc: pick('exc'), scGdn: pick('gdn'),
+      bgHappy: bg('happy'), bdHappy: bd('happy'), bgExc: bg('exc'), bdExc: bd('exc'), bgGdn: bg('gdn'), bdGdn: bd('gdn')
+    };
+  }
+}
+</script>
+</body>
+</html>

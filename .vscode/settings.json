@@ -1,0 +1,10 @@
+{
+  "python.defaultInterpreterPath": "D:/bpython/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.useEnvFile": true,
+  "python.terminal.useEnvFile": true,
+  "python.envFile": "${workspaceFolder}/.env",
+  "terminal.integrated.env.windows": {
+    "PATH": "D:\\bpython;D:\\bpython\\Scripts;${env:PATH}"
+  }
+}

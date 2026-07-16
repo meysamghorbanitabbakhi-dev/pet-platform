@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Estedad:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: oklch(0.93 0.01 85); }
+  body { font-family: "Vazirmatn", sans-serif; color: oklch(0.28 0.02 265); -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: oklch(0.52 0.10 70); text-decoration: none; }
+  a:hover { color: oklch(0.42 0.11 70); }
+</style>
+</helmet>
+
+<div style="padding: 64px 64px 96px 64px; display: flex; flex-direction: column; gap: 72px; min-width: 2200px; max-width: 2500px;">
+
+  <!-- MASTHEAD -->
+  <div data-screen-label="G4 Masthead" style="display: flex; flex-direction: column; gap: 10px; max-width: 1060px;">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.14em; color: oklch(0.55 0.09 70);">GATE 4 · FORMATIVE USABILITY VALIDATION — RESEARCH KIT</div>
+    <div style="font-family: 'Estedad', sans-serif; font-size: 40px; font-weight: 700; line-height: 1.35;">Test the promises, not the pixels</div>
+    <div style="font-size: 15px; line-height: 1.8; color: oklch(0.4 0.02 265); max-width: 980px;">Moderated formative study on the <a href="Gate 4 - Research Prototype.dc.html" style="font-weight: 700;">Gate 4 research prototype</a> — version-locked build <strong>G4-R1</strong> on frozen data <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">gate4-data.v1.js</span> (base 3B.1; neutral care content, no internal placeholders). No new features, rewards or navigation concepts enter during Gate 4; every post-test change must cite observed evidence. Recommended: 6–8 participants (mix: current online pet-food buyers / offline-only buyers; single- and multi-pet households), 45–60 minutes, think-aloud, Persian sessions.</div>
+    <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 18px 22px; font-size: 13px; line-height: 1.9;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.52 0.05 70); margin-bottom: 6px;">PRIMARY RESEARCH QUESTIONS</div>
+      <div>Q1 · Do users understand the trust promises — supplier-verified authenticity (identity private, country shown), dated reference-price saving, guaranteed shelf life?</div>
+      <div>Q2 · Do they understand household inventory vs pet consumption (a bag belongs to the home; eating belongs to a pet)?</div>
+      <div>Q3 · Do they understand estimates and uncertainty — bands, confidence words, «تخمینی», wider striped bands for «نمی‌دانم»?</div>
+      <div>Q4 · Can they complete the key flows without explanation?</div>
+      <div>Q5 · Does the Garden create emotional value WITHOUT being read as a health score or performance grade?</div>
+      <div>Q6 · Does Today remain useful and calm — nothing demanded on an empty day?</div>
+      <div>Q7 · Do delayed and unavailable states feel transparent and controllable?</div>
+    </div>
+  </div>
+
+  <!-- 1 · MODERATOR GUIDE -->
+  <div data-screen-label="G4 Moderator guide" style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">1 · Moderated session guide — neutral by construction</div>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: stretch;">
+      <div style="width: 520px; background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; font-size: 12.5px; line-height: 1.9; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.52 0.05 70);">SESSION STRUCTURE — 45–60 MIN</div>
+        <div><strong>0–5 · Welcome + consent.</strong> «هیچ پاسخ درست یا غلطی وجود ندارد؛ ما طرح را آزمایش می‌کنیم، نه شما.» Recording consent; think-aloud demo on a neutral app.</div>
+        <div><strong>5–12 · Context interview.</strong> Pets, current food buying (where/how often/price feel), any tracking habits. No product exposure yet.</div>
+        <div><strong>12–45 · Tasks 1–7</strong> on the prototype, in order (scenario tabs are moderator-only). Prompt is read aloud verbatim; then silence. Probe only after the participant acts or stalls &gt; 20s.</div>
+        <div><strong>45–55 · Debrief.</strong> Trust/uncertainty/Garden interpretation questions (bank ↙), preference ranking last.</div>
+        <div><strong>55–60 · Close.</strong> Incentive, thanks, data label (P1…P8).</div>
+      </div>
+      <div style="width: 520px; background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; font-size: 12.5px; line-height: 1.9; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.52 0.05 70);">NEUTRAL QUESTION BANK — USE VERBATIM</div>
+        <div dir="rtl" lang="fa" style="display: flex; flex-direction: column; gap: 7px;">
+          <div>«این صفحه به شما چه می‌گوید؟»</div>
+          <div>«الان انتظار دارید چه اتفاقی بیفتد؟»</div>
+          <div>«این عدد از کجا آمده؟ چقدر به آن اعتماد می‌کنید؟»</div>
+          <div>«اگر بخواهید [هدف]، از کجا شروع می‌کنید؟»</div>
+          <div>«این کیسه الان مالِ کیست؟ چه کسی از آن می‌خورد؟»</div>
+          <div>«این باغ دربارهٔ حیوانتان چه می‌گوید؟ اگر یک هفته سر نزنید چه می‌شود؟»</div>
+          <div>«این تأخیر را چطور توضیح می‌دهید؟ چه انتخاب‌هایی دارید؟»</div>
+        </div>
+        <div style="border-top: 1px dashed oklch(0.92 0.008 85); padding-top: 8px;"><strong>Never say:</strong> «آسان بود؟» / «دوست داشتید؟» / feature names before the participant uses them / any explanation of bands, inventory or the Garden before the debrief.</div>
+      </div>
+      <div style="width: 520px; background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; font-size: 12.5px; line-height: 1.9; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.52 0.05 70);">SCREENER · CONSENT · DATA</div>
+        <div><strong>Screener (5 items):</strong> owns ≥ 1 cat/dog they feed personally · has bought pet food in the last 3 months · mix of online + offline-only buyers · at least 3 multi-pet households · excludes UX/market-research professionals and anyone who saw earlier gates.</div>
+        <div><strong>Consent &amp; recording:</strong> written consent before recording; screen + audio only (no face required); participant may pause or withdraw at any moment with no effect on the incentive — stated aloud at the start.</div>
+        <div><strong>Data retention:</strong> recordings anonymized to P-codes within 48h; raw files deleted after analysis sign-off (≤ 30 days); quotes used only with the P-code; contact details stored separately and deleted after the incentive is paid.</div>
+      </div>
+      <div style="width: 520px; background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; font-size: 12.5px; line-height: 1.9; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.52 0.05 70);">DRY-RUN CHECKLIST + PILOT CHECKPOINT</div>
+        <div><strong>Internal dry-run (before recruiting):</strong> □ build shows rev G4-R1 in the footer · □ T1–T7 walked end-to-end on the session device · □ every task start step reachable from the moderator tabs · □ «نمی‌دانم» and «سهم را می‌گویم» land on different screens · □ «به من خبر بده» creates no order · □ no internal placeholder or approval-pending text visible anywhere · □ recording + timer tested.</div>
+        <div><strong>Pilot (P0, one participant):</strong> run the full protocol; afterwards review prompt comprehension, task order, session length and sheet usability. Only wording/logistics fixes allowed before freeze; any prototype change re-runs the dry-run checklist and bumps the rev (G4-R2). P0 data is excluded from findings.</div>
+      </div>
+      <div style="width: 520px; background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; font-size: 12.5px; line-height: 1.9; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.52 0.05 70);">RULES OF EVIDENCE</div>
+        <div>✓ A finding requires an observed behavior or verbatim quote — «felt like» notes are tagged impression, not finding.</div>
+        <div>✓ Severity is judged against task goal, not aesthetics.</div>
+        <div>✓ Prototype limits (static fields, simulated buttons) are logged as N/A, never as failures.</div>
+        <div>✓ Garden misreadings (health score, ranking, obligation) are always logged verbatim — they answer Q5.</div>
+        <div>✓ Policy questions participants raise (compensation, cancellation, refunds) are recorded for the Product/Ops register — the moderator answers verbatim: «سؤال را یادداشت کردم؛ در این نمونه اطلاعات بیشتری وجود ندارد. لطفاً با آنچه می‌بینید ادامه دهید.» — never that the policy is still being designed.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 · TASK SCENARIOS -->
+  <div data-screen-label="G4 Tasks" style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">2 · Task scenarios — prompts read verbatim</div>
+    <div style="max-width: 2100px; border: 1px solid oklch(0.87 0.01 85); border-radius: 16px; overflow: hidden; background: white;">
+      <div style="display: grid; grid-template-columns: 56px 200px 1.5fr 1fr 1fr 190px; gap: 1px; background: oklch(0.90 0.01 85); font-size: 12px;">
+        <div style="background: oklch(0.955 0.008 85); padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.5 0.02 265);">#</div>
+        <div style="background: oklch(0.955 0.008 85); padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: oklch(0.5 0.02 265);">COVERS</div>
+        <div style="background: oklch(0.955 0.008 85); padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: oklch(0.5 0.02 265);">PROMPT (FA, VERBATIM)</div>
+        <div style="background: oklch(0.955 0.008 85); padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: oklch(0.5 0.02 265);">SUCCESS CRITERIA</div>
+        <div style="background: oklch(0.955 0.008 85); padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: oklch(0.5 0.02 265);">WATCH FOR</div>
+        <div style="background: oklch(0.955 0.008 85); padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: oklch(0.5 0.02 265);">START · RQ</div>
+
+        <div style="background: white; padding: 12px 14px; font-weight: 800;">T1</div>
+        <div style="background: white; padding: 12px 14px;">Purchase + trust promises</div>
+        <div style="background: white; padding: 12px 14px;" dir="rtl" lang="fa">«غذای گربه‌تان رو به اتمام است و تصمیم گرفته‌اید از همین‌جا بخرید. این محصول را بررسی کنید و خرید را تا پرداخت کامل کنید. بلند فکر کنید: چه چیزهایی برایتان مهم است؟»</div>
+        <div style="background: white; padding: 12px 14px;">Purchase is instructed (not optional), so completion is measurable. Success: completes purchase AND can restate in own words «اصالت: تأییدشده توسط تأمین‌کننده», the supplier country (identity private), «۳۶٪ صرفه‌جویی نسبت به قیمت مرجع» + review date, and the shelf-life guarantee.</div>
+        <div style="background: white; padding: 12px 14px;">Reading vs skipping the trust rows; whether hidden supplier identity raises or lowers trust; reaction to the 14-day promise.</div>
+        <div style="background: white; padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px;">happy · s1<br>Q1 Q4</div>
+
+        <div style="background: white; padding: 12px 14px; font-weight: 800;">T2</div>
+        <div style="background: white; padding: 12px 14px;">Incoming order ≠ consumption</div>
+        <div style="background: white; padding: 12px 14px;" dir="rtl" lang="fa">«سفارش ثبت شد. حالا به خانهٔ پیشی نگاه کنید. وضعیت غذای پیشی الان چیست؟ چند روز غذا دارد؟»</div>
+        <div style="background: white; padding: 12px 14px;">States the bag is on the way; correctly says NO days-estimate exists yet and explains why (not delivered / not opened).</div>
+        <div style="background: white; padding: 12px 14px;">Anyone hunting for a days number pre-delivery; interpretation of «در راه» and the order-journey link.</div>
+        <div style="background: white; padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px;">happy · s3<br>Q2 Q3</div>
+
+        <div style="background: white; padding: 12px 14px; font-weight: 800;">T3</div>
+        <div style="background: white; padding: 12px 14px;">Confirmed opening + «نمی‌دانم»</div>
+        <div style="background: white; padding: 12px 14px;" dir="rtl" lang="fa">«کیسه رسید و امروز بازش کردید. آن را در برنامه ثبت کنید. اگر نمی‌دانید روزی چقدر می‌خورد، همان را بگویید.»</div>
+        <div style="background: white; padding: 12px 14px;">Confirms opening; understands «نمی‌دانم» is acceptable; correctly reads the wider striped household band as less certain — not broken.</div>
+        <div style="background: white; padding: 12px 14px;">Guilt or hesitation at «نمی‌دانم»; whether band width + stripes communicate uncertainty without words.</div>
+        <div style="background: white; padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px;">happy · s5<br>Q3 Q4</div>
+
+        <div style="background: white; padding: 12px 14px; font-weight: 800;">T4</div>
+        <div style="background: white; padding: 12px 14px;">Estimate correction</div>
+        <div style="background: white; padding: 12px 14px;" dir="rtl" lang="fa">«چند هفته گذشته. برنامه می‌گوید حدود ۲۸ روز غذا مانده، ولی شما به کیسه نگاه کرده‌اید و کمتر از نصف است. این را درست کنید.»</div>
+        <div style="background: white; padding: 12px 14px;">Finds meter detail; uses the quarter scale; understands the estimate re-learns for future bags.</div>
+        <div style="background: white; padding: 12px 14px;">Whether «تخمینی» + band already set expectations; trust reaction to being wrong; ease of the one-tap correction.</div>
+        <div style="background: white; padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px;">happy · s6<br>Q3 Q4</div>
+
+        <div style="background: white; padding: 12px 14px; font-weight: 800;">T5</div>
+        <div style="background: white; padding: 12px 14px;">Shared household inventory</div>
+        <div style="background: white; padding: 12px 14px;" dir="rtl" lang="fa">«شما یک گربه و یک سگ دارید و هر دو از یک کیسه می‌خورند. این کیسه مالِ کیست؟ اگر سهم هر کدام را ندانید چه می‌شود؟»</div>
+        <div style="background: white; padding: 12px 14px;">Articulates bag = household, eating = per pet (the inventory screen states «مالکیت: خانه · مصرف: پیشی + رکس»); predicts unknown shares → one household estimate with a wider striped band, no fake per-pet number.</div>
+        <div style="background: white; padding: 12px 14px;">The core mental model of Q2 — listen for «مال خانه است» vs «مال پیشی است»; confusion between assignment and consumption.</div>
+        <div style="background: white; padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px;">happy · s9–s10<br>Q2 Q3</div>
+
+        <div style="background: white; padding: 12px 14px; font-weight: 800;">T6a</div>
+        <div style="background: white; padding: 12px 14px;">Reorder + unavailable product</div>
+        <div style="background: white; padding: 12px 14px;" dir="rtl" lang="fa">«برنامه پیشنهاد می‌کند زودتر سفارش دهید. گزینه‌ها را ببینید — غذای همیشگی موجود نیست. کاری را که ترجیح می‌دهید انجام دهید.»</div>
+        <div style="background: white; padding: 12px 14px;">Understands why-now reasoning (outcome first); chooses notify / alternative / bought-elsewhere deliberately; after «به من خبر بده» correctly states that NO order was created.</div>
+        <div style="background: white; padding: 12px 14px;">Whether «به من خبر بده» is trusted not to order; urgency vs pressure perception; reason given for the alternative.</div>
+        <div style="background: white; padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px;">exception · s1<br>Q1 Q4 Q7</div>
+
+        <div style="background: white; padding: 12px 14px; font-weight: 800;">T6b</div>
+        <div style="background: white; padding: 12px 14px;">Delayed existing order</div>
+        <div style="background: white; padding: 12px 14px;" dir="rtl" lang="fa">«سفارشی در راه دارید. وضعیتش را ببینید — یک به‌روزرسانی جدید آمده است. چه شده و چه می‌کنید؟»</div>
+        <div style="background: white; padding: 12px 14px;">Starts from the separately-established existing order (in-transit timeline); reads the delay sheet as honest facts with old/new dates; can name their options without help.</div>
+        <div style="background: white; padding: 12px 14px;">Transparency vs controllability perception; whether missing compensation info is noticed and what is expected (log verbatim for the Product/Ops register).</div>
+        <div style="background: white; padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px;">exception · s6<br>Q7 Q1</div>
+
+        <div style="background: white; padding: 12px 14px; font-weight: 800;">T7</div>
+        <div style="background: white; padding: 12px 14px;">Garden memory + calm Today</div>
+        <div style="background: white; padding: 12px 14px;" dir="rtl" lang="fa">«مسیر مراقبتیِ پیشی امشب تمام می‌شود. آخرین چک‌این را انجام دهید و ببینید بعدش چه اتفاقی می‌افتد. در پایان: این باغ دربارهٔ پیشی چه می‌گوید؟»</div>
+        <div style="background: white; padding: 12px 14px;">Completes check-in; places the cypress; can trace object → memory; describes the Garden as memories/keepsake — NOT a health score, level or chore; recognizes the final Today asks nothing.</div>
+        <div style="background: white; padding: 12px 14px;">Verbatim Garden interpretations (Q5 evidence); emotional response at reveal; whether the calm end reads as done or as broken/empty.</div>
+        <div style="background: white; padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px;">garden · s1<br>Q5 Q6 Q4</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 · OBSERVATION SHEET -->
+  <div data-screen-label="G4 Observation sheet" style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">3 · Observation sheet — one per participant</div>
+    <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+      <div style="width: 1080px; border: 1px solid oklch(0.87 0.01 85); border-radius: 16px; overflow: hidden; background: white;">
+        <div style="display: grid; grid-template-columns: 64px 150px 150px 1fr 1fr 130px; gap: 1px; background: oklch(0.90 0.01 85); font-size: 11.5px;">
+          <div style="background: oklch(0.955 0.008 85); padding: 10px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: oklch(0.5 0.02 265);">TASK</div>
+          <div style="background: oklch(0.955 0.008 85); padding: 10px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: oklch(0.5 0.02 265);">COMPLETION<br>✓ / assisted / ✗ / N-A</div>
+          <div style="background: oklch(0.955 0.008 85); padding: 10px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: oklch(0.5 0.02 265);">HESITATION<br>none / &gt;5s / &gt;20s + where</div>
+          <div style="background: oklch(0.955 0.008 85); padding: 10px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: oklch(0.5 0.02 265);">MISUNDERSTANDING — what they thought it meant (verbatim)</div>
+          <div style="background: oklch(0.955 0.008 85); padding: 10px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: oklch(0.5 0.02 265);">TRUST INTERPRETATION — believed / doubted / why</div>
+          <div style="background: oklch(0.955 0.008 85); padding: 10px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: oklch(0.5 0.02 265);">EMOTION<br>calm / pleased / anxious / indifferent / annoyed / other + verbatim</div>
+          <div style="background: white; padding: 16px 12px; font-weight: 800;">T1</div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div>
+          <div style="background: white; padding: 16px 12px; font-weight: 800;">T2</div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div>
+          <div style="background: white; padding: 16px 12px; font-weight: 800;">T3</div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div>
+          <div style="background: white; padding: 16px 12px; font-weight: 800;">T4</div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div>
+          <div style="background: white; padding: 16px 12px; font-weight: 800;">T5</div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div>
+          <div style="background: white; padding: 16px 12px; font-weight: 800;">T6a</div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div>
+          <div style="background: white; padding: 16px 12px; font-weight: 800;">T6b</div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div>
+          <div style="background: white; padding: 16px 12px; font-weight: 800;">T7</div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div><div style="background: white;"></div>
+        </div>
+      </div>
+      <div style="width: 460px; background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 20px; font-size: 12px; line-height: 1.9; display: flex; flex-direction: column; gap: 8px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.52 0.05 70);">DEBRIEF CAPTURE — VERBATIM ONLY</div>
+        <div>· Own-words definition of the three trust promises (Q1)</div>
+        <div>· «کیسه مالِ کیست؟» answer (Q2)</div>
+        <div>· What «~۱۱ روز · تخمینی · اطمینان متوسط» means (Q3)</div>
+        <div>· What the Garden «is» + what happens after a week away (Q5)</div>
+        <div>· One thing they'd remove from Today (Q6)</div>
+        <div>· How the delay made them feel about the platform (Q7)</div>
+        <div style="border-top: 1px dashed oklch(0.92 0.008 85); padding-top: 8px; color: oklch(0.45 0.02 265);">Header per sheet: participant code, date, pets owned, buying channel, session length, prototype rev (G4-R1).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 · FINDINGS + REVISION TEMPLATES -->
+  <div data-screen-label="G4 Findings templates" style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">4 · Findings template + evidence-based revision list</div>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: stretch;">
+      <div style="width: 460px; background: white; border-top: 4px solid oklch(0.50 0.10 30); border-inline: 1px solid oklch(0.89 0.01 85); border-bottom: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 20px; font-size: 12px; line-height: 1.85; display: flex; flex-direction: column; gap: 7px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.50 0.10 30);">A · USABILITY DEFECTS</div>
+        <div>Interaction or comprehension failures against a task goal.</div>
+        <div style="color: oklch(0.45 0.02 265);">Entry: ID · task · evidence (Pn + quote/behavior) · frequency /8 · severity (blocker / major / minor) · affected screen(s).</div>
+        <div style="color: oklch(0.45 0.02 265);">Fix path: design revision in Gate 4.1, retest if blocker.</div>
+      </div>
+      <div style="width: 460px; background: white; border-top: 4px solid oklch(0.50 0.11 60); border-inline: 1px solid oklch(0.89 0.01 85); border-bottom: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 20px; font-size: 12px; line-height: 1.85; display: flex; flex-direction: column; gap: 7px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.50 0.11 60);">B · CONTENT PROBLEMS</div>
+        <div>Wording misread, tone missteps, terms not understood («انبار خانه», «تخمینی», «اصالت»…).</div>
+        <div style="color: oklch(0.45 0.02 265);">Entry: term/copy · misreading (verbatim) · frequency · proposed rewording · approval owner (content / vet where applicable).</div>
+        <div style="color: oklch(0.45 0.02 265);">Fix path: copy revision; expert-gated wording goes to the approval pipeline, never straight to screens.</div>
+      </div>
+      <div style="width: 460px; background: white; border-top: 4px solid oklch(0.42 0.09 245); border-inline: 1px solid oklch(0.89 0.01 85); border-bottom: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 20px; font-size: 12px; line-height: 1.85; display: flex; flex-direction: column; gap: 7px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.42 0.09 245);">C · PRODUCT-POLICY GAPS</div>
+        <div>Questions design cannot answer: compensation, cancellation after sourcing, refunds, replacement, sourcing failure.</div>
+        <div style="color: oklch(0.45 0.02 265);">Entry: question asked (verbatim) · trigger moment · participant expectation · frequency.</div>
+        <div style="color: oklch(0.45 0.02 265);">Fix path: routed to the Product/Ops register (Gate 3B §6) — no design invention.</div>
+      </div>
+      <div style="width: 460px; background: white; border-top: 4px solid oklch(0.40 0.09 155); border-inline: 1px solid oklch(0.89 0.01 85); border-bottom: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 20px; font-size: 12px; line-height: 1.85; display: flex; flex-direction: column; gap: 7px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.40 0.09 155);">D · OPTIONAL PREFERENCES</div>
+        <div>Likes/dislikes with no task impact (colors, avatar style, wanting more Garden objects…).</div>
+        <div style="color: oklch(0.45 0.02 265);">Entry: preference · who · context. Explicitly non-binding — acted on only if it also appears as A or B evidence.</div>
+      </div>
+    </div>
+    <div style="max-width: 1400px; background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px 26px; font-size: 12.5px; line-height: 1.9; display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.52 0.05 70);">EVIDENCE-BASED REVISION LIST — FILLED ONLY AFTER TESTING</div>
+      <div style="display: grid; grid-template-columns: 70px 1.2fr 1.4fr 120px 130px 140px; gap: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.5 0.02 265); border-bottom: 1px solid oklch(0.92 0.008 85); padding-bottom: 6px;">
+        <span>REV-ID</span><span>PROPOSED CHANGE</span><span>EVIDENCE (FINDING IDS + Pn COUNT)</span><span>CATEGORY A–D</span><span>GUARDRAIL CHECK</span><span>DECISION / OWNER</span>
+      </div>
+      <div style="color: oklch(0.55 0.02 265); font-size: 12px; padding: 10px 0;">— empty by design; every row must cite at least one A/B/C finding with ≥ 2 participants (or 1 blocker). «Guardrail check» confirms the change keeps: Garden never leads Today · no estimate before confirmed opening · unapproved content absent · uncertainty visible · logistics/money never metaphors.</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="max-width: 1060px; background: oklch(0.955 0.005 85); border: 1px dashed oklch(0.82 0.01 85); border-radius: 14px; padding: 20px 24px; font-size: 12.5px; line-height: 1.9; color: oklch(0.4 0.02 265);">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.52 0.05 70); margin-bottom: 8px;">BUILD MANIFEST — TEST PACKAGE G4-R1</div>
+    <div style="display: grid; grid-template-columns: 340px 1fr; gap: 4px 16px; font-size: 12px; margin-bottom: 12px;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px;">Gate 4 - Research Prototype.dc.html</span><span>participant-facing build · footer shows the live rev</span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px;">gate4-data.v1.js</span><span>frozen research data · rev G4-R1 · base 3B.1 · customer-visible content only</span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px;">support.js</span><span>runtime dependency (auto-managed, do not edit)</span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px;">Gate 4 - Research Kit.dc.html</span><span>this kit · guide, tasks T1–T7 (T6a/T6b), sheets, templates</span>
+    </div>
+    <span style="font-weight: 700; color: oklch(0.28 0.02 265);">Process:</span> Gate 1 ✓ · 1.1 ✓ · 2 ✓ · 2.1 ✓ · 3A ✓ · 3B ✓ (+3B.1) · <strong>Gate 4.0 integrity patch — this package</strong> · next: pilot P0 → freeze → 6–8 participant study → Gate 4.1 evidence-based revisions. If real product photography arrives before sessions, it replaces the rendered pack mock 1:1 (rev bump required).
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

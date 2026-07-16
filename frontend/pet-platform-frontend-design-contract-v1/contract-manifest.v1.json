@@ -1,0 +1,46 @@
+{
+  "package": "pet-platform-frontend-design-contract-v1",
+  "contractId": "PET-FE-DESIGN-v1",
+  "version": "1.0.0",
+  "createdAt": "2026-07-16",
+  "status": "approved-implementation-baseline-research-pending",
+  "files": [
+    {
+      "name": "frontend-design-contract-v1.md",
+      "bytes": 26470,
+      "sha256": "2a2fffddf9befdcae5906daf0cfe77e9df8b66ec3b41e179db13353af5aa8812",
+      "purpose": "Normative human-readable frontend design and behavior contract"
+    },
+    {
+      "name": "frontend-design-tokens.v1.json",
+      "bytes": 5246,
+      "sha256": "c9774d6989b4d1d42906ea984aea93ed391d036166bb5d88bcbc710fecbd4bdc",
+      "purpose": "Machine-readable visual, responsive, motion and accessibility tokens"
+    },
+    {
+      "name": "frontend-screen-contract.v1.json",
+      "bytes": 14072,
+      "sha256": "4c6e522228616724eb42c5c545c1aa57614d3f1598240352dfa602eaa12fd01a",
+      "purpose": "Machine-readable 41-state screen, view-model, intent and Gate 4 override matrix"
+    }
+  ],
+  "authoritativeSources": [
+    "uploads/pet_platform_product_decision_record.md",
+    "Gate 4 - Research Prototype.dc.html",
+    "gate4-data.v1.js",
+    "Gate 3B - Hi-Fi System.dc.html",
+    "gate3b-data.js",
+    "Gate 3A - Visual Calibration.dc.html",
+    "Gate 2.1 - Consistency Patch.dc.html",
+    "Gate 2 - UX System.dc.html",
+    "Gate 2 - Prototype (Lo-fi).dc.html"
+  ],
+  "validation": {
+    "jsonParsed": true,
+    "flowCount": 8,
+    "screenStateCount": 41,
+    "duplicateScreenIds": 0,
+    "careStatesContentGated": true,
+    "gate4OverrideSections": 5
+  }
+}

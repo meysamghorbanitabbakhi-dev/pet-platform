@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "contractId": "PET-FE-DESIGN-v1",
+  "version": "1.0.0",
+  "status": "approved-implementation-baseline-research-pending",
+  "locale": {
+    "language": "fa-IR",
+    "direction": "rtl",
+    "customerDigits": "persian",
+    "latinIsolation": "dir=ltr",
+    "requireZwnj": true
+  },
+  "font": {
+    "families": {
+      "display": "Estedad, sans-serif",
+      "ui": "Vazirmatn, sans-serif",
+      "ltrData": "IBM Plex Mono, monospace"
+    },
+    "styles": {
+      "display": { "family": "display", "weight": 800, "sizePx": 27, "lineHeight": 1.5 },
+      "title": { "family": "display", "weight": 700, "sizePx": 17, "lineHeight": 1.6 },
+      "body": { "family": "ui", "weight": 400, "sizePx": 13.5, "lineHeight": 1.9 },
+      "bodyStrong": { "family": "ui", "weight": 700, "sizePx": 13.5, "lineHeight": 1.8 },
+      "caption": { "family": "ui", "weight": 400, "sizePx": 11.5, "lineHeight": 1.7 },
+      "qualifier": { "family": "ui", "weight": 600, "sizePx": 10, "lineHeight": 1.5 },
+      "money": { "family": "ui", "weight": 800, "sizePx": 21, "lineHeight": 1.5, "tabularNumerals": true },
+      "moneyUnit": { "family": "ui", "weight": 500, "sizePx": 12, "lineHeight": 1.5 },
+      "ltrData": { "family": "ltrData", "weight": 400, "sizePx": 10.5, "lineHeight": 1.5 }
+    },
+    "minimumCustomerFacingPx": 11,
+    "minimumBodyPx": 13.5,
+    "minimumPersianLineHeight": 1.5
+  },
+  "color": {
+    "surface": "oklch(0.965 0.008 85)",
+    "surfaceRaised": "#ffffff",
+    "surfaceInset": "oklch(0.955 0.006 85)",
+    "skeleton": "oklch(0.93 0.006 85)",
+    "line": "oklch(0.89 0.01 85)",
+    "lineSecondary": "oklch(0.90 0.01 85)",
+    "ink": "oklch(0.28 0.02 265)",
+    "inkSecondary": "oklch(0.50 0.02 265)",
+    "inkTertiary": "oklch(0.55 0.02 265)",
+    "primary": "oklch(0.28 0.04 270)",
+    "primaryPressed": "oklch(0.22 0.04 270)",
+    "brass": "oklch(0.72 0.13 70)",
+    "brassInk": "oklch(0.48 0.09 70)",
+    "brassBackground": "oklch(0.72 0.13 70 / 0.16)",
+    "positive": "oklch(0.40 0.09 155)",
+    "positiveBackground": "oklch(0.95 0.02 155)",
+    "info": "oklch(0.42 0.09 245)",
+    "infoBackground": "oklch(0.95 0.03 245)",
+    "warning": "oklch(0.50 0.11 60)",
+    "warningBackground": "oklch(0.95 0.03 60)",
+    "warningLine": "oklch(0.86 0.05 60)",
+    "error": "oklch(0.50 0.10 30)",
+    "mutedBackground": "oklch(0.94 0.005 265)",
+    "gardenDeep": "oklch(0.26 0.045 155)",
+    "gardenMid": "oklch(0.30 0.05 150)",
+    "gardenCard": "oklch(0.32 0.05 150)",
+    "gardenLine": "oklch(0.40 0.05 150)",
+    "gardenText": "oklch(0.92 0.02 120)",
+    "gardenTextDim": "oklch(0.78 0.03 130)",
+    "gardenStrip": "oklch(0.95 0.025 120)",
+    "gardenGold": "oklch(0.80 0.10 70)",
+    "pond": "oklch(0.55 0.06 200)",
+    "pondHighlight": "oklch(0.62 0.06 200)",
+    "pondShadow": "oklch(0.48 0.06 205)",
+    "cypressHighlight": "oklch(0.48 0.08 155)",
+    "cypressShadow": "oklch(0.36 0.06 155)"
+  },
+  "spacingPx": [4, 8, 12, 16, 20, 24, 32],
+  "layout": {
+    "screenPaddingReferencePx": 20,
+    "screenPaddingNarrowPx": 16,
+    "cardPaddingMinPx": 14,
+    "cardPaddingMaxPx": 16,
+    "moduleGapPx": 12,
+    "sectionGapPx": 24,
+    "interactiveGapMinPx": 8,
+    "touchTargetMinPx": 44,
+    "gardenStripHeightPx": 76,
+    "contentMaxMobilePx": 430,
+    "sheetMaxTabletPx": 480,
+    "gardenStageMaxTabletPx": 560,
+    "sheetMaxLandscapeVh": 70
+  },
+  "radiusPx": {
+    "field": 8,
+    "button": 10,
+    "card": 14,
+    "sheet": 20,
+    "phoneShell": 30,
+    "pill": 999
+  },
+  "elevation": {
+    "e0": "0 0 0 1px oklch(0.89 0.01 85)",
+    "e1": "0 10px 30px oklch(0.3 0.02 265 / 0.08)",
+    "gardenRevealGlow": "0 0 20px oklch(0.72 0.13 70 / 0.35)"
+  },
+  "breakpointsPx": {
+    "narrowMin": 320,
+    "narrowMax": 359,
+    "referenceMin": 360,
+    "referenceMax": 430,
+    "wideMobileMin": 431,
+    "wideMobileMax": 599,
+    "tabletMin": 600
+  },
+  "motion": {
+    "gardenRipple": { "durationMs": 8000, "easing": "ease-in-out", "iteration": "infinite" },
+    "gardenSway": { "durationMs": 12000, "easing": "ease-in-out", "iteration": "infinite", "maxDegrees": 2 },
+    "gardenDisplacementMaxPercent": 2,
+    "objectReveal": { "glowMs": 400, "scaleMs": 500, "settleMs": 300, "totalMaxMs": 1200, "easing": "ease-out" },
+    "placement": { "liftMs": 150, "snapMs": 250, "snapRadiusPx": 24, "toastMs": 2000, "easing": "ease-in" },
+    "meterUpdate": { "durationMs": 300, "easing": "ease-out" },
+    "sheet": { "durationMs": 260, "easing": "standard-decelerate" },
+    "toast": { "durationMs": 180, "easing": "standard-decelerate" },
+    "todayModule": { "durationMs": 160, "easing": "ease-out" },
+    "reducedMotion": {
+      "removeIdleLoops": true,
+      "objectRevealCrossfadeMaxMs": 200,
+      "meterCrossfadeMaxMs": 120,
+      "placement": "tap-only-instant-snap",
+      "informationMotionGated": false
+    }
+  },
+  "accessibility": {
+    "statusColorOnly": false,
+    "focusVisibleRequired": true,
+    "prefersReducedMotionRequired": true,
+    "contrastTargets": {
+      "inkOnSurface": 12.5,
+      "inkSecondaryOnSurface": 6.9,
+      "whiteOnPrimary": 13,
+      "brassInkOnSurface": 4.7,
+      "gardenTextOnGardenDeep": 9
+    },
+    "reverifyContrastInProduction": true
+  }
+}

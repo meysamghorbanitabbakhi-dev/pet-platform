@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Estedad:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: oklch(0.93 0.01 85); }
+  body { font-family: "Vazirmatn", sans-serif; color: oklch(0.28 0.02 265); -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: oklch(0.52 0.10 70); text-decoration: none; }
+  a:hover { color: oklch(0.45 0.10 70); }
+</style>
+</helmet>
+
+<div style="padding: 64px; display: flex; flex-direction: column; gap: 40px; min-width: 1720px; max-width: 1880px;">
+
+  <div style="display: flex; flex-direction: column; gap: 10px; max-width: 1000px;">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.14em; color: oklch(0.55 0.09 70);">GATE 2.1 · CONSISTENCY PATCH — GATE 2 APPROVED IN DIRECTION &amp; STRUCTURE</div>
+    <div style="font-family: 'Estedad', sans-serif; font-size: 38px; font-weight: 700; line-height: 1.35;">Seven contradictions corrected — no redesign, no new concepts</div>
+    <div style="font-size: 14.5px; line-height: 1.8; color: oklch(0.4 0.02 265);">Each card: the review rule → what changed → where it lives. Applied to <a href="Gate 2 - UX System.dc.html" style="font-weight: 700;">Gate 2 — UX System</a> and the <a href="Gate 2 - Prototype (Lo-fi).dc.html" style="font-weight: 700;">clickable prototype</a> (now Flows A · B · D · E · F · S).</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+
+    <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; border-bottom: 1.5px solid oklch(0.72 0.13 70); padding-bottom: 8px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: oklch(0.55 0.09 70);">01</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 800; font-size: 16px;">Today hierarchy</div>
+      </div>
+      <div style="font-size: 12px; line-height: 1.8; color: oklch(0.45 0.02 265);"><strong style="color: oklch(0.28 0.02 265);">Rule.</strong> First viewport: pet identity &amp; switching → food status / most important need → next relevant event → compact Garden preview. Garden present, never leading. No «ثبت غذای امروز» by default; an empty day is read-only and calm.</div>
+      <div style="font-size: 12px; line-height: 1.8;"><strong>Applied.</strong> B1 reordered (garden strip moved last); default feeding log removed — registration appears only via active journey, meaningful correction, or explicit opt-in; new read-only empty-day screen.</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.52 0.05 70);">FLOW B (B1–B3) · PROTOTYPE TAB B</div>
+    </div>
+
+    <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; border-bottom: 1.5px solid oklch(0.72 0.13 70); padding-bottom: 8px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: oklch(0.55 0.09 70);">02</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 800; font-size: 16px;">Commerce → activation timing</div>
+      </div>
+      <div style="font-size: 12px; line-height: 1.8; color: oklch(0.45 0.02 265);"><strong style="color: oklch(0.28 0.02 265);">Rule.</strong> A paid order is not current food. Before delivery: «در راه», optional planned assignment, سفر سفارش status — no remaining-days, no consumption. After delivery: inventory → unopened → assign → confirm opening → remaining/portion → estimate.</div>
+      <div style="font-size: 12px; line-height: 1.8;"><strong>Applied.</strong> Flow A rebuilt: activation shows an incoming/setup food module; prototype tap-through now runs the full delivery → opening → estimate chain (11 screens); «غذای فعلی از سفارش» became «غذای در راه».</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.52 0.05 70);">FLOW A (A2–A7) · FLOW C · PROTOTYPE TAB A</div>
+    </div>
+
+    <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; border-bottom: 1.5px solid oklch(0.72 0.13 70); padding-bottom: 8px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: oklch(0.55 0.09 70);">03</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 800; font-size: 16px;">No unapproved customer copy</div>
+      </div>
+      <div style="font-size: 12px; line-height: 1.8; color: oklch(0.45 0.02 265);"><strong style="color: oklch(0.28 0.02 265);">Rule.</strong> «در انتظار تأیید دامپزشک» is an internal annotation, never a customer state. Unapproved content → journey hidden/disabled: no ratios, no Start, no symptom response, no «هم‌ردهٔ تغذیه‌ای» claims.</div>
+      <div style="font-size: 12px; line-height: 1.8;"><strong>Applied.</strong> Pending badges removed from all phone frames; new internal state E2b (journey simply absent); guide card renders only if approved (C4); alternative-product reason downgraded to speed/availability; draft copy now marked ⚠ INTERNAL outside the frames.</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.52 0.05 70);">E2 · E2b · E4 · C4 · D3 · CONTRACTS</div>
+    </div>
+
+    <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; border-bottom: 1.5px solid oklch(0.72 0.13 70); padding-bottom: 8px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: oklch(0.55 0.09 70);">04</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 800; font-size: 16px;">Shared &amp; mixed estimation</div>
+      </div>
+      <div style="font-size: 12px; line-height: 1.8; color: oklch(0.45 0.02 265);"><strong style="color: oklch(0.28 0.02 265);">Rule.</strong> No automatic weight split; no two-thirds dry assumption. Support owner portions, approximate shares, «نمی‌دانم», household-level estimates, wider bands. Reorders are not proof of consumption.</div>
+      <div style="font-size: 12px; line-height: 1.8;"><strong>Applied.</strong> C5/C6 rebuilt around owner-stated shares and mix with «نمی‌دانم» → household fallback + wider band; recalibration sources fixed to openings, corrections, remaining confirmations, journey data; meter contract now bans dressed-up heuristics.</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.52 0.05 70);">C5–C8 · FOOD-METER + REORDER CONTRACTS · §8</div>
+    </div>
+
+    <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; border-bottom: 1.5px solid oklch(0.72 0.13 70); padding-bottom: 8px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: oklch(0.55 0.09 70);">05</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 800; font-size: 16px;">Garden V1 progression</div>
+      </div>
+      <div style="font-size: 12px; line-height: 1.8; color: oklch(0.45 0.02 265);"><strong style="color: oklch(0.28 0.02 265);">Rule.</strong> Recap reads unlock nothing — a diary memory card only. Replace the fixed Day 0–90 schedule with one illustrative example + an eligibility-based milestone catalogue + alternative paths + explicit quadrant-opening rules. No hidden XP.</div>
+      <div style="font-size: 12px; line-height: 1.8;"><strong>Applied.</strong> Recap-sourced unlocks (water, hedge) re-sourced to durable memories / owner-confirmed milestones; activity-aggregate reward → completed enrichment program; timeline relabeled illustrative; new rules: recap → memory only, alternative paths, visible «X از Y جای‌گاه» quadrant rule.</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.52 0.05 70);">§5 TIMELINE + RULES (×10) · FLOW F · RECAP CONTRACT</div>
+    </div>
+
+    <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; border-bottom: 1.5px solid oklch(0.72 0.13 70); padding-bottom: 8px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: oklch(0.55 0.09 70);">06</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 800; font-size: 16px;">Reorder explanation</div>
+      </div>
+      <div style="font-size: 12px; line-height: 1.8; color: oklch(0.45 0.02 265);"><strong style="color: oklch(0.28 0.02 265);">Rule.</strong> Outcome first: «در سناریوی کندتر، غذا ممکن است پیش از رسیدن کیسهٔ جدید تمام شود.» Then ranges, buffer, recommended action — the arithmetic behind an optional «چطور محاسبه شد؟».</div>
+      <div style="font-size: 12px; line-height: 1.8;"><strong>Applied.</strong> D2 rewritten outcome-first; the formula moved to a new optional disclosure screen (D2b / prototype «چطور محاسبه شد؟»); reorder contract guardrail updated.</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.52 0.05 70);">D2 · D2b · PROTOTYPE TAB D</div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; gap: 20px; align-items: stretch;">
+    <div style="flex: 2; background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; border-bottom: 1.5px solid oklch(0.72 0.13 70); padding-bottom: 8px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: oklch(0.55 0.09 70);">07</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 800; font-size: 16px;">Journey Caravan retired → سفر سفارش (Flow S)</div>
+      </div>
+      <div style="font-size: 12px; line-height: 1.8; color: oklch(0.45 0.02 265);"><strong style="color: oklch(0.28 0.02 265);">Rule.</strong> Mark Journey Caravan «Deprecated — superseded by Gate 1.1 and Gate 2»; replace with a plain lo-fi سفر سفارش flow.</div>
+      <div style="font-size: 12px; line-height: 1.8;"><strong>Applied.</strong> <a href="Journey Caravan.dc.html" style="font-weight: 700;">Journey Caravan</a> carries a deprecation banner. New Flow S: پرداخت تأیید شد → در حال تأمین → در مسیر (+ honest delay) → تحویل شد → انبار خانه — facts with dates, no gamification, handoff to Flow C. Wireframed in the UX System and tappable in the prototype (tab S).</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.52 0.05 70);">FLOW S (S1–S5) · PROTOTYPE TAB S · JOURNEY CARAVAN BANNER</div>
+    </div>
+    <div style="flex: 1; background: oklch(0.96 0.02 60); border: 1px solid oklch(0.85 0.05 60); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: oklch(0.5 0.06 60);">OPEN ITEM</div>
+      <div style="font-size: 12.5px; line-height: 1.9;">The review's item 7 status list arrived cut off after «Payment confirmed. Sourcing…». Flow S uses a minimal set (payment → sourcing → in transit → delivered → inventory). Please confirm the intended statuses; logged in the assumption log (§8).</div>
+    </div>
+  </div>
+
+  <div style="max-width: 1000px; background: oklch(0.955 0.005 85); border: 1px dashed oklch(0.82 0.01 85); border-radius: 14px; padding: 18px 24px; font-size: 12.5px; line-height: 1.9; color: oklch(0.4 0.02 265);">
+    <span style="font-weight: 700; color: oklch(0.28 0.02 265);">Process:</span> Gate 1 ✓ · Gate 1.1 ✓ · Gate 2 ✓ approved in direction &amp; structure · <strong>Gate 2.1 — this patch</strong> · next: Gate 3 — hi-fi + end-to-end prototype. Updated artifacts: <a href="Gate 2 - UX System.dc.html" style="font-weight: 700;">UX System</a> · <a href="Gate 2 - Prototype (Lo-fi).dc.html" style="font-weight: 700;">Prototype (A–F + S)</a>.
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

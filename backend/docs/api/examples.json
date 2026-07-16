@@ -1,0 +1,33 @@
+{
+  "error": {
+    "error": {
+      "code": "invalid_cursor",
+      "message": "invalid cursor",
+      "details": null,
+      "request_id": "01J-example-request"
+    }
+  },
+  "offset_page": {
+    "items": [],
+    "page": {
+      "limit": 25,
+      "offset": 0,
+      "total": 0,
+      "has_more": false
+    }
+  },
+  "cursor_page": {
+    "items": [],
+    "page": {
+      "next_cursor": null,
+      "has_more": false
+    }
+  },
+  "today_incoming_food": {
+    "food": {
+      "state": "incoming",
+      "remaining_days": null
+    },
+    "rule": "Consumption estimate begins only after confirmed opening."
+  }
+}

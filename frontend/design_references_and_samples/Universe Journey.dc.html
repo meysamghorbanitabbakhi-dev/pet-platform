@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&amp;family=Estedad:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: oklch(0.965 0.008 85); }
+  body { font-family: "Vazirmatn", sans-serif; color: oklch(0.28 0.02 265); -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: oklch(0.52 0.10 70); text-decoration: none; }
+  a:hover { color: oklch(0.42 0.10 70); }
+  @keyframes twinkle { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.35; } }
+  @keyframes glowpulse { 0%, 100% { box-shadow: 0 0 14px oklch(0.72 0.13 70 / 0.9); } 50% { box-shadow: 0 0 26px oklch(0.72 0.13 70 / 0.5); } }
+</style>
+</helmet>
+
+<div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 48px 24px;">
+
+  <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.12em; color: oklch(0.5 0.02 265);">20 · UNIVERSE JOURNEY — PLAYABLE PROTOTYPE</div>
+    <div dir="rtl" lang="fa" style="font-size: 13.5px; color: oklch(0.45 0.02 265);">روی منزلِ روشن بزنید؛ مأموریت را انجام دهید؛ کاروان را جلو ببرید. حرکتِ کاروان اینجا شبیه‌سازی است — در محصول واقعی با وضعیت سفارش جلو می‌رود.</div>
+  </div>
+
+  <div dir="rtl" lang="fa" style="width: 390px; height: 806px; background: oklch(0.19 0.035 270); color: oklch(0.92 0.01 85); border: 1px solid oklch(0.30 0.04 270); border-radius: 30px; overflow: hidden; box-shadow: 0 10px 30px oklch(0.3 0.02 265 / 0.18); position: relative; display: flex; flex-direction: column;">
+
+    <div style="position: absolute; inset: 0; pointer-events: none; background-image: radial-gradient(1.4px 1.4px at 14% 12%, rgba(255,241,214,0.9), transparent 60%), radial-gradient(1px 1px at 32% 30%, rgba(220,228,255,0.5), transparent 60%), radial-gradient(1.6px 1.6px at 55% 8%, rgba(255,228,180,0.8), transparent 60%), radial-gradient(1px 1px at 72% 22%, rgba(220,228,255,0.45), transparent 60%), radial-gradient(1.4px 1.4px at 88% 14%, rgba(255,241,214,0.8), transparent 60%), radial-gradient(1px 1px at 20% 58%, rgba(220,228,255,0.4), transparent 60%), radial-gradient(1.4px 1.4px at 80% 52%, rgba(255,241,214,0.55), transparent 60%), radial-gradient(1px 1px at 45% 78%, rgba(220,228,255,0.35), transparent 60%); animation: twinkle 6s ease-in-out infinite;"></div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 22px 20px 12px 20px; position: relative;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 42px; height: 42px; border-radius: 50%; background: oklch(0.30 0.05 270); border: 1.5px solid oklch(0.72 0.13 70); display: flex; align-items: center; justify-content: center; font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 18px; color: oklch(0.85 0.09 70);">ر</div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 15.5px;">{{ petLine }}</div>
+          <div style="font-size: 12px; color: oklch(0.72 0.06 70);">{{ levelLine }}</div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: oklch(0.24 0.04 270); border: 1px solid oklch(0.34 0.04 270); border-radius: 12px; padding: 8px 12px;">
+        <div style="font-size: 10.5px; color: oklch(0.65 0.03 265);">کیف پول خانوار</div>
+        <div style="font-weight: 700; font-size: 13.5px; color: oklch(0.88 0.02 85);">{{ walletLine }}</div>
+      </div>
+    </div>
+
+    <div style="padding: 0 20px 6px 20px; position: relative; display: flex; flex-direction: column; gap: 5px;">
+      <div style="display: flex; justify-content: space-between; font-size: 11px; color: oklch(0.62 0.03 265);">
+        <span>امتیاز پروفایل</span>
+        <span>{{ xpLine }}</span>
+      </div>
+      <div style="height: 5px; border-radius: 999px; background: oklch(0.28 0.04 270); overflow: hidden;">
+        <div style="height: 100%; border-radius: 999px; background: linear-gradient(90deg, oklch(0.72 0.13 70), oklch(0.82 0.10 70)); width: {{ xpWidth }}; transition: width 0.6s ease;"></div>
+      </div>
+    </div>
+
+    <div style="padding: 14px 20px 4px 20px; position: relative; display: flex; justify-content: space-between; align-items: baseline;">
+      <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 20px;">سفرِ سفارش شما</div>
+      <div style="font-size: 12px; color: oklch(0.68 0.05 70);">{{ dayLine }}</div>
+    </div>
+
+    <div style="flex: 1; overflow-y: auto; position: relative; padding: 12px 20px 20px 20px;">
+      <div style="position: absolute; top: 40px; bottom: 36px; right: 39px; width: 1px; background: repeating-linear-gradient(to bottom, oklch(0.42 0.05 70) 0 5px, transparent 5px 11px);"></div>
+      <sc-for list="{{ stations }}" as="st" hint-placeholder-count="7">
+        <div onClick="{{ st.tap }}" style="display: flex; align-items: flex-start; gap: 16px; min-height: 82px; cursor: pointer; position: relative;">
+          <div style="width: 40px; display: flex; justify-content: center; padding-top: 4px;">
+            <div style="{{ st.nodeStyle }}"></div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 3px; padding-bottom: 10px;">
+            <div style="{{ st.nameStyle }}">{{ st.name }}</div>
+            <div style="{{ st.subStyle }}">{{ st.sub }}</div>
+            <sc-if value="{{ st.hint }}" hint-placeholder-val="{{ false }}">
+              <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: oklch(0.80 0.09 70); margin-top: 2px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: oklch(0.72 0.13 70); display: inline-block;"></span>{{ st.hint }}</div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="position: relative; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px 18px 20px; border-top: 1px solid oklch(0.27 0.04 270); background: oklch(0.17 0.035 270);">
+      <a href="Hi-Fi Screens.dc.html" style="font-size: 12.5px; color: oklch(0.68 0.06 70);">نمای سادهٔ پیگیری ←</a>
+      <div style="font-size: 12px; color: oklch(0.62 0.03 265);">تحویل تا ۱۴ روز — تعهد قطعی</div>
+    </div>
+
+    <div style="position: absolute; top: 88px; right: 20px; left: 20px; z-index: 30; pointer-events: none; display: flex; justify-content: center; opacity: {{ toastOpacity }}; transition: opacity 0.4s ease;">
+      <div style="background: oklch(0.28 0.05 70 / 0.95); border: 1px solid oklch(0.55 0.09 70); color: oklch(0.94 0.03 85); border-radius: 999px; padding: 8px 18px; font-size: 13px; font-weight: 600; box-shadow: 0 6px 20px oklch(0.1 0.02 270 / 0.5);">{{ toastText }}</div>
+    </div>
+
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; background: oklch(0.23 0.04 270); border-top: 1px solid oklch(0.36 0.05 70 / 0.5); border-radius: 22px 22px 0 0; padding: 20px 22px 24px 22px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 -12px 40px oklch(0.08 0.02 270 / 0.6); transform: {{ sheetTransform }}; transition: transform 0.35s cubic-bezier(0.32, 0.72, 0.25, 1);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 19px;">{{ sheetName }}</div>
+          <div style="font-size: 13px; line-height: 1.8; color: oklch(0.75 0.02 85);">{{ sheetSub }}</div>
+        </div>
+        <div onClick="{{ closeSheet }}" style="cursor: pointer; width: 30px; height: 30px; border-radius: 50%; background: oklch(0.30 0.04 270); display: flex; align-items: center; justify-content: center; color: oklch(0.7 0.02 85); font-size: 14px; flex-shrink: 0;">✕</div>
+      </div>
+      <div style="background: oklch(0.19 0.035 270); border: 1px solid oklch(0.34 0.05 70 / 0.6); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 10px;">
+          <div style="font-weight: 700; font-size: 14.5px;">{{ missionTitle }}</div>
+          <div style="font-size: 12px; font-weight: 700; color: oklch(0.80 0.10 70); white-space: nowrap;">{{ missionReward }}</div>
+        </div>
+        <div style="font-size: 12.5px; line-height: 1.8; color: oklch(0.70 0.02 85);">{{ missionWhy }}</div>
+        <div onClick="{{ doMission }}" style="{{ missionBtnStyle }}">{{ missionBtnLabel }}</div>
+      </div>
+      <sc-if value="{{ showAdvance }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div onClick="{{ advance }}" style="cursor: pointer; text-align: center; border: 1.5px solid oklch(0.72 0.13 70); color: oklch(0.85 0.10 70); border-radius: 12px; padding: 12px; font-weight: 700; font-size: 14.5px;">حرکت کاروان به منزل بعد</div>
+          <div dir="ltr" style="text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.1em; color: oklch(0.55 0.03 265);">SIMULATED — FOLLOWS REAL ORDER STATUS IN PRODUCT</div>
+        </div>
+      </sc-if>
+    </div>
+
+  </div>
+
+  <div style="display: flex; gap: 20px; align-items: center;">
+    <div onClick="{{ reset }}" style="cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: oklch(0.5 0.02 265); border: 1px solid oklch(0.85 0.01 85); border-radius: 999px; padding: 6px 14px;">RESET JOURNEY</div>
+    <a href="Journey Caravan.dc.html" style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em;">CONCEPT MAP →</a>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 900, &quot;height&quot;: 980}, &quot;unlockAll&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;بازبینی&quot;}}">
+class Component extends DCLogic {
+  state = { cur: 0, xp: 0, wallet: 0, done: {}, open: -1, toast: "", toastOn: false };
+  DATA = [
+    { name: "پیمان بسته شد", sub: "پرداخت کامل شد؛ شمارش ۱۴روزهٔ تحویل آغاز شد.", m: "این سفارش را به رکس گره بزن", why: "تاریخچه و برآورد مصرف روی پروفایل رکس ثبت می‌شود — نه فقط یک شماره سفارش.", xp: 10, day: 1 },
+    { name: "پیوستن به کاروان", sub: "سفارش شما به کاروان هفتگی پیوست؛ موعد حرکت اعلام شده است.", m: "وزن رکس را ثبت کن", why: "برآورد مصرف و اندازهٔ بستهٔ بعدی بلافاصله دقیق‌تر می‌شود.", xp: 15, day: 2 },
+    { name: "آغاز تأمین", sub: "تأمین آغاز شد و در پرونده ثبت شد؛ از این نقطه لغو آزاد بسته است.", m: "حساسیت غذایی رکس را ثبت کن", why: "پیشنهادهای بعدی از همین لحظه ایمن‌تر فیلتر می‌شوند.", xp: 15, day: 4 },
+    { name: "عبور از مرز", sub: "محموله در مسیر بین‌المللی است.", m: "درس کوتاه: نگهداری غذای خشک", why: "دو دقیقه — و غذای رکس بعد از باز شدن بسته هم تازه می‌ماند.", xp: 10, day: 7 },
+    { name: "رسیدن به انبار", sub: "بازرسی انجام شد؛ تاریخ انقضای دقیقِ بستهٔ شما ثبت شد.", m: "تاریخ انقضای بستهٔ خود را ببین", why: "شفافیت انقضا وعدهٔ ماست — حداقل ۶ ماه، با تاریخ دقیق.", xp: 10, day: 10 },
+    { name: "در مسیر تحویل", sub: "پیک شهری بسته را تحویل گرفته است.", m: "آدرس و بازهٔ تحویل را تأیید کن", why: "یک ضربه — و تحویلِ روز آخر بدون غافل‌گیری می‌ماند.", xp: 10, day: 12 },
+    { name: "تحویل شد", sub: "پایان سفر — کاروان به مقصد رسید.", m: "دربارهٔ این سفر نظر بده", why: "۵۰٬۰۰۰ تومان اعتبار کیف پول (اعتبار تا ۳ ماه، با تاریخ انقضای مشخص).", xp: 20, credit: 50000, day: 14 },
+  ];
+  fa(n) { return n.toLocaleString("fa-IR"); }
+  showToast(t) {
+    clearTimeout(this._tt);
+    this.setState({ toast: t, toastOn: true });
+    this._tt = setTimeout(() => this.setState({ toastOn: false }), 2200);
+  }
+  tap(i) {
+    const cur = this.props.unlockAll ? this.DATA.length - 1 : this.state.cur;
+    if (i > cur) { this.showToast("کاروان هنوز به این منزل نرسیده است"); return; }
+    this.setState({ open: i });
+  }
+  doMission() {
+    const i = this.state.open;
+    if (i < 0 || this.state.done[i]) return;
+    const d = this.DATA[i];
+    const done = Object.assign({}, this.state.done); done[i] = true;
+    const credit = d.credit || 0;
+    this.setState({ done, xp: this.state.xp + d.xp, wallet: this.state.wallet + credit });
+    this.showToast(credit ? "+" + this.fa(d.xp) + " امتیاز و " + this.fa(credit) + " تومان اعتبار" : "+" + this.fa(d.xp) + " امتیاز برای پروفایل رکس");
+  }
+  advance() {
+    if (this.state.cur >= this.DATA.length - 1) return;
+    const cur = this.state.cur + 1;
+    this.setState({ cur, open: cur });
+    this.showToast("کاروان حرکت کرد — " + this.DATA[cur].name);
+  }
+  renderVals() {
+    const s = this.state, cur = this.props.unlockAll ? this.DATA.length - 1 : s.cur;
+    const LEVELS = ["رهرو", "کاروان‌دار", "ساربان", "ستاره‌شناس"];
+    const lvl = Math.min(Math.floor(s.xp / 50) + 1, LEVELS.length);
+    const stations = this.DATA.map((d, i) => {
+      const passed = i < cur, current = i === cur, locked = i > cur;
+      const nodeStyle = current
+        ? "width: 15px; height: 15px; transform: rotate(45deg); background: oklch(0.78 0.12 70); animation: glowpulse 2.2s ease-in-out infinite;"
+        : passed
+        ? "width: 12px; height: 12px; transform: rotate(45deg); background: oklch(0.60 0.09 70);"
+        : "width: 12px; height: 12px; transform: rotate(45deg); background: oklch(0.19 0.035 270); border: 1.5px solid oklch(0.38 0.04 270);";
+      return {
+        name: d.name, sub: d.sub,
+        nameStyle: "font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 15.5px; color: " + (locked ? "oklch(0.52 0.03 265)" : current ? "oklch(0.93 0.02 85)" : "oklch(0.78 0.02 85)") + ";",
+        subStyle: "font-size: 12px; line-height: 1.7; color: " + (locked ? "oklch(0.42 0.03 265)" : "oklch(0.66 0.02 85)") + ";",
+        hint: locked ? "" : (s.done[i] ? "" : current ? "مأموریت فعال — " + d.m : "مأموریت باز مانده"),
+        tap: () => this.tap(i),
+      };
+    });
+    const o = s.open, od = o >= 0 ? this.DATA[o] : null, odone = o >= 0 && !!s.done[o];
+    return {
+      petLine: "رکس",
+      levelLine: "سطح " + this.fa(lvl) + " · " + LEVELS[lvl - 1],
+      walletLine: this.fa(s.wallet) + " تومان",
+      xpLine: this.fa(s.xp % 50) + " / " + this.fa(50),
+      xpWidth: ((s.xp % 50) / 50) * 100 + "%",
+      dayLine: "روز " + this.fa(this.DATA[cur].day) + " از " + this.fa(14),
+      stations,
+      sheetTransform: o >= 0 ? "translateY(0)" : "translateY(110%)",
+      sheetName: od ? od.name : "", sheetSub: od ? od.sub : "",
+      missionTitle: od ? od.m : "",
+      missionWhy: od ? od.why : "",
+      missionReward: od ? (od.credit ? "+" + this.fa(od.xp) + " امتیاز · " + this.fa(od.credit) + " تومان" : "+" + this.fa(od.xp) + " امتیاز") : "",
+      missionBtnLabel: odone ? "انجام شد ✓" : "انجام مأموریت",
+      missionBtnStyle: odone
+        ? "text-align: center; border-radius: 10px; padding: 10px; font-weight: 700; font-size: 13.5px; background: oklch(0.28 0.04 270); color: oklch(0.60 0.05 155); cursor: default;"
+        : "cursor: pointer; text-align: center; border-radius: 10px; padding: 10px; font-weight: 700; font-size: 13.5px; background: oklch(0.72 0.13 70); color: oklch(0.20 0.04 70);",
+      doMission: () => this.doMission(),
+      closeSheet: () => this.setState({ open: -1 }),
+      showAdvance: o === s.cur && s.cur < this.DATA.length - 1 && !this.props.unlockAll,
+      advance: () => this.advance(),
+      toastText: s.toast, toastOpacity: s.toastOn ? 1 : 0,
+      reset: () => this.setState({ cur: 0, xp: 0, wallet: 0, done: {}, open: -1, toastOn: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>

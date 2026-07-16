@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Estedad:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="gate2-data.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; background: oklch(0.93 0.01 85); }
+  body { font-family: "Vazirmatn", sans-serif; color: oklch(0.28 0.02 265); -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: oklch(0.52 0.10 70); text-decoration: none; }
+  a:hover { color: oklch(0.45 0.10 70); }
+</style>
+</helmet>
+
+<div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 40px 24px 72px 24px;">
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.14em; color: oklch(0.55 0.09 70);">GATE 2.1 · CLICKABLE LO-FI PROTOTYPE — FLOWS A · B · D · E · F · S</div>
+    <div style="font-family: 'Estedad', sans-serif; font-size: 24px; font-weight: 700;">Tap through the system — hierarchy only, no polish</div>
+    <div style="font-size: 12.5px; color: oklch(0.45 0.02 265);">Companion to <a href="Gate 2 - UX System.dc.html" style="font-weight: 700;">Gate 2 — UX System</a> (contracts, rules, states) · <a href="Gate 2.1 - Consistency Patch.dc.html" style="font-weight: 700;">Gate 2.1 patch notes</a></div>
+  </div>
+
+  <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+    <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="5">
+      <div style="display: flex;">
+        <sc-if value="{{ tab.isActive }}" hint-placeholder-val="{{ false }}"><button onClick="{{ tab.pick }}" style="background: oklch(0.72 0.13 70); color: oklch(0.22 0.03 270); border: 2px solid oklch(0.72 0.13 70); border-radius: 999px; padding: 8px 20px; font-family: 'Vazirmatn', sans-serif; font-size: 13px; font-weight: 800; cursor: pointer;">{{ tab.label }}</button></sc-if>
+        <sc-if value="{{ tab.isInactive }}" hint-placeholder-val="{{ true }}"><button onClick="{{ tab.pick }}" style="background: white; color: oklch(0.4 0.02 265); border: 1px solid oklch(0.86 0.01 85); border-radius: 999px; padding: 8px 20px; font-family: 'Vazirmatn', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;">{{ tab.label }}</button></sc-if>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.08em; color: oklch(0.5 0.02 265);">{{ screenLabel }}</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: oklch(0.55 0.09 70);">{{ stepText }}</div>
+      <button onClick="{{ restart }}" style="background: none; border: 1px solid oklch(0.86 0.01 85); border-radius: 999px; padding: 3px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.45 0.02 265); cursor: pointer;">RESTART</button>
+    </div>
+
+    <div dir="rtl" lang="fa" style="width: 390px; min-height: 640px; background: white; border: 1px solid oklch(0.86 0.01 85); border-radius: 30px; box-shadow: 0 12px 34px oklch(0.3 0.02 265 / 0.10); padding: 18px 20px 26px 20px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="height: 26px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: oklch(0.45 0.02 265);">۹:۴۱</div>
+      <sc-for list="{{ blocks }}" as="b" hint-placeholder-count="5">
+        <div style="display: flex; flex-direction: column;">
+          <sc-if value="{{ b.isPets }}" hint-placeholder-val="{{ false }}"><div style="display: flex; gap: 8px; align-items: center;"><span style="background: oklch(0.72 0.13 70 / 0.22); border: 2px solid oklch(0.72 0.13 70); border-radius: 999px; padding: 5px 16px; font-size: 13px; font-weight: 800;">{{ b.t }}</span><span style="background: oklch(0.93 0.005 265); border-radius: 999px; padding: 5px 16px; font-size: 13px; font-weight: 600; color: oklch(0.5 0.02 265);">{{ b.sub }}</span></div></sc-if>
+          <sc-if value="{{ b.isTitle }}" hint-placeholder-val="{{ false }}"><div style="font-family: 'Estedad', sans-serif; font-weight: 800; font-size: 18px; line-height: 1.6;">{{ b.t }}</div></sc-if>
+          <sc-if value="{{ b.isText }}" hint-placeholder-val="{{ false }}"><div style="font-size: 13px; line-height: 1.9; color: oklch(0.45 0.02 265);">{{ b.t }}</div></sc-if>
+          <sc-if value="{{ b.isCard }}" hint-placeholder-val="{{ false }}"><div style="border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 14px 16px; background: oklch(0.975 0.004 85);"><div style="font-weight: 700; font-size: 14px; line-height: 1.7;">{{ b.t }}</div><div style="font-size: 12px; color: oklch(0.5 0.02 265); line-height: 1.8;">{{ b.sub }}</div></div></sc-if>
+          <sc-if value="{{ b.isBtn }}" hint-placeholder-val="{{ false }}"><button onClick="{{ b.onTap }}" style="background: oklch(0.72 0.13 70); color: oklch(0.22 0.03 270); border: none; border-radius: 999px; padding: 13px 16px; font-family: 'Vazirmatn', sans-serif; font-size: 14px; font-weight: 800; cursor: pointer; width: 100%;">{{ b.t }}</button></sc-if>
+          <sc-if value="{{ b.isGhost }}" hint-placeholder-val="{{ false }}"><button onClick="{{ b.onTap }}" style="background: white; border: 1px solid oklch(0.85 0.01 85); border-radius: 999px; padding: 12px 16px; font-family: 'Vazirmatn', sans-serif; font-size: 13.5px; font-weight: 600; color: oklch(0.42 0.02 265); cursor: pointer; width: 100%;">{{ b.t }}</button></sc-if>
+          <sc-if value="{{ b.isPills }}" hint-placeholder-val="{{ false }}"><div style="display: flex; gap: 8px; flex-wrap: wrap;"><sc-for list="{{ b.opts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.onTap }}" style="border: 1.5px solid oklch(0.78 0.06 70); background: white; border-radius: 999px; padding: 9px 16px; font-family: 'Vazirmatn', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;">{{ o.t }}</button></sc-for></div></sc-if>
+          <sc-if value="{{ b.isMeter }}" hint-placeholder-val="{{ false }}"><div style="display: flex; justify-content: space-between; align-items: center; border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 14px 16px;"><div style="font-size: 13px; line-height: 1.8; color: oklch(0.4 0.02 265); font-weight: 600;">{{ b.sub }}</div><div style="flex-shrink: 0; width: 56px; height: 56px; border-radius: 50%; border: 4px solid oklch(0.72 0.13 70); border-left-color: oklch(0.9 0.01 85); display: grid; place-items: center; font-weight: 800; font-size: 12px;">{{ b.t }}</div></div></sc-if>
+          <sc-if value="{{ b.isWarn }}" hint-placeholder-val="{{ false }}"><div style="background: oklch(0.96 0.02 60); border: 1px solid oklch(0.85 0.05 60); border-radius: 14px; padding: 12px 16px; font-size: 13.5px; font-weight: 700; line-height: 1.8;">{{ b.t }}</div></sc-if>
+          <sc-if value="{{ b.isGarden }}" hint-placeholder-val="{{ false }}"><div style="background: oklch(0.95 0.025 120); border: 1px solid oklch(0.88 0.03 130); border-radius: 14px; padding: 14px 16px; font-size: 13px; font-weight: 600; line-height: 1.8;">{{ b.t }}</div></sc-if>
+          <sc-if value="{{ b.isInput }}" hint-placeholder-val="{{ false }}"><div style="border: 1px solid oklch(0.86 0.01 85); border-radius: 10px; padding: 12px 16px; font-size: 13.5px; color: oklch(0.5 0.01 265); background: white;">{{ b.t }}</div></sc-if>
+          <sc-if value="{{ b.isBadge }}" hint-placeholder-val="{{ false }}"><div style="align-self: flex-start; border: 1px dashed oklch(0.72 0.13 70); color: oklch(0.48 0.09 70); border-radius: 999px; padding: 4px 13px; font-size: 11.5px; font-weight: 700;">{{ b.t }}</div></sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size: 11.5px; color: oklch(0.5 0.02 265); max-width: 390px; text-align: center; line-height: 1.7;">Internal annotation: feeding/health examples are non-production placeholder copy — production shows only professionally approved content. Choices with a border are tappable.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 900, &quot;height&quot;: 900}}">
+class Component extends DCLogic {
+  state = { flow: "A", screen: 0 };
+  componentDidMount() {
+    if (!window.GATE2) {
+      this._iv = setInterval(() => { if (window.GATE2) { clearInterval(this._iv); this.forceUpdate(); } }, 80);
+    }
+  }
+  componentWillUnmount() { if (this._iv) clearInterval(this._iv); }
+  renderVals() {
+    const G = window.GATE2 || {}; const proto = G.proto || {};
+    const titles = { A: "A · خرید تا فعال‌سازی", B: "B · بازگشت روزانه", D: "D · سفارش مجدد", E: "E · تغییر غذا", F: "F · باغ ایرانی", S: "S · سفر سفارش" };
+    const ids = ["A", "B", "D", "E", "F", "S"];
+    const seq = proto[this.state.flow] || [];
+    const scr = seq[this.state.screen] || { label: "LOADING…", blocks: [] };
+    const dec = b => ({ ...b,
+      isPets: b.k === "pets", isTitle: b.k === "title", isText: b.k === "text", isCard: b.k === "card",
+      isBtn: b.k === "btn", isGhost: b.k === "ghost", isPills: b.k === "pills", isMeter: b.k === "meter",
+      isWarn: b.k === "warn", isGarden: b.k === "garden", isInput: b.k === "input", isBadge: b.k === "badge",
+      onTap: b.tap != null ? () => this.setState({ screen: b.tap }) : undefined,
+      opts: (b.opts || []).map(o => ({ t: o.t, onTap: () => this.setState({ screen: o.tap }) })) });
+    return {
+      tabs: ids.map(id => ({ label: titles[id], isActive: id === this.state.flow, isInactive: id !== this.state.flow, pick: () => this.setState({ flow: id, screen: 0 }) })),
+      screenLabel: scr.label,
+      stepText: (this.state.screen + 1) + " / " + seq.length,
+      blocks: (scr.blocks || []).map(dec),
+      restart: () => this.setState({ screen: 0 }),
+    };
+  }
+}
+</script>
+</body>
+</html>

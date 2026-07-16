@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Estedad:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: oklch(0.93 0.01 85); }
+  body { font-family: "Vazirmatn", sans-serif; color: oklch(0.28 0.02 265); -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: oklch(0.52 0.10 70); text-decoration: none; }
+  a:hover { color: oklch(0.45 0.10 70); }
+</style>
+</helmet>
+
+<div style="padding: 64px 64px 96px 64px; display: flex; flex-direction: column; gap: 80px; min-width: 2400px;">
+
+  <!-- MASTHEAD -->
+  <div style="display: flex; flex-direction: column; gap: 10px; max-width: 980px;">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.14em; color: oklch(0.55 0.09 70);">GATE 1.1 · CONCEPT REVISION — FOR APPROVAL · DIRECTION APPROVED: PET LIFE SYSTEM + PERSIAN GARDEN</div>
+    <div style="font-family: 'Estedad', sans-serif; font-size: 44px; font-weight: 700; line-height: 1.3;">Gate 1.1 — seven corrections before Gate 2</div>
+    <div style="font-size: 15px; line-height: 1.7; color: oklch(0.4 0.02 265); max-width: 880px;">Household/pet data boundaries · conditional entry · Today-as-hub IA · log-free food estimation · realistic scenario timing · Launch Core vs Experiments vs Next · the Persian Garden in depth. Night Caravan stays reserved for seasonal expeditions and سفر سفارش. No Gate 2 work, no hi-fi.</div>
+  </div>
+
+  <!-- ======== 1 · TWO-LAYER MODEL ======== -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">1 · Two layers — Household owns the account, the Pet owns its story</div>
+    <div style="display: flex; gap: 44px; align-items: flex-start;">
+      <div dir="rtl" lang="fa" style="width: 1080px; flex-shrink: 0; background: oklch(0.965 0.008 85); border: 1px solid oklch(0.87 0.01 85); border-radius: 20px; padding: 30px; display: flex; flex-direction: column; gap: 20px;">
+        <div style="border: 2px solid oklch(0.55 0.09 70); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; background: white;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-family: 'Estedad', sans-serif; font-weight: 800; font-size: 17px;">لایهٔ خانوار — حساب مشترک</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: oklch(0.55 0.09 70);" dir="ltr">HOUSEHOLD LAYER</div>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 12.5px;">
+            <span style="background: oklch(0.955 0.02 85); border-radius: 999px; padding: 6px 14px; font-weight: 600;">اعضا و نقش‌ها</span>
+            <span style="background: oklch(0.955 0.02 85); border-radius: 999px; padding: 6px 14px; font-weight: 600;">کیف پول و پرداخت</span>
+            <span style="background: oklch(0.955 0.02 85); border-radius: 999px; padding: 6px 14px; font-weight: 600;">نشانی‌ها</span>
+            <span style="background: oklch(0.955 0.02 85); border-radius: 999px; padding: 6px 14px; font-weight: 600;">سفارش‌ها و سفر سفارش</span>
+            <span style="background: oklch(0.955 0.02 85); border-radius: 999px; padding: 6px 14px; font-weight: 600;">اعلان‌ها و ترجیح‌های حساب</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div style="border: 1.5px solid oklch(0.72 0.13 70); border-radius: 14px; padding: 16px; background: oklch(0.97 0.012 85); display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-weight: 800; font-size: 15px; font-family: 'Estedad', sans-serif;">🐈 {{ petName }}</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.55 0.09 70);" dir="ltr">PET LAYER</div>
+              </div>
+              <div style="display: flex; gap: 7px; flex-wrap: wrap; font-size: 11.5px;">
+                <span style="background: white; border: 1px solid oklch(0.88 0.01 85); border-radius: 999px; padding: 4px 11px;">پروفایل و مشخصات</span>
+                <span style="background: white; border: 1px solid oklch(0.88 0.01 85); border-radius: 999px; padding: 4px 11px;">غذای فعلی و تخمین</span>
+                <span style="background: white; border: 1px solid oklch(0.88 0.01 85); border-radius: 999px; padding: 4px 11px;">مسیرها</span>
+                <span style="background: white; border: 1px solid oklch(0.88 0.01 85); border-radius: 999px; padding: 4px 11px;">دفترچه</span>
+                <span style="background: white; border: 1px solid oklch(0.88 0.01 85); border-radius: 999px; padding: 4px 11px;">باغ</span>
+              </div>
+            </div>
+            <div style="border: 1.5px dashed oklch(0.82 0.01 85); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; color: oklch(0.5 0.02 265);">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-weight: 700; font-size: 15px; font-family: 'Estedad', sans-serif;">+ حیوان دوم</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px;" dir="ltr">SAME SHAPE</div>
+              </div>
+              <div style="font-size: 11.5px; line-height: 1.8;">هر حیوان، رکورد و باغِ مستقل خودش را دارد؛ خدمات خانوار (پرداخت، نشانی، سفارش) بین همه مشترک است.</div>
+            </div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; font-size: 12px; line-height: 1.9;">
+          <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 12px; padding: 14px;"><span style="font-weight: 700;">مالکیت داده:</span> رکورد حیوان به خودِ حیوان تعلق دارد، نه به عضوی که آن را ثبت کرده. اگر حیوان روزی منتقل شود، تاریخچه‌اش با او می‌ماند (آینده).</div>
+          <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 12px; padding: 14px;"><span style="font-weight: 700;">انتساب اقدام:</span> هر رویدادِ ثبت‌شده نام عضو را دارد — «سینا غذا داد» — پایهٔ همکاری خانگی در Next؛ در MVP یک عضو کافی است.</div>
+          <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 12px; padding: 14px;"><span style="font-weight: 700;">مرز حریم:</span> دادهٔ حیوان بین اعضای خانوار دیده می‌شود؛ دادهٔ پرداخت فقط برای مالک حساب. یادداشت خصوصی عضو: خارج از محدودهٔ فعلی.</div>
+        </div>
+      </div>
+      <div style="width: 460px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.12em; color: oklch(0.5 0.02 265);">WHY TWO LAYERS</div>
+        <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 20px; font-size: 13px; line-height: 1.9; display: flex; flex-direction: column; gap: 10px;">
+          <div>Commerce facts (wallet, orders, addresses) never fragment per pet — one household checkout regardless of pet count.</div>
+          <div>Pet emotional assets (record, garden) never mix across pets — switching pets swaps the entire pet layer, nothing else.</div>
+          <div>The boundary is the contract that lets household collaboration, provider records and pet transfer arrive later without remodeling.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== 2 · CONDITIONAL ENTRY ======== -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">2 · Conditional entry — the home earns its place</div>
+    <div dir="rtl" lang="fa" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; max-width: 2000px;">
+      <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: oklch(0.5 0.02 265);" dir="ltr">STATE A · VISITOR</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 17px;">بازدیدکننده — بدون حساب</div>
+        <div style="font-size: 12.5px; line-height: 2; color: oklch(0.4 0.02 265);">ورود به فروشگاه با پیشنهاد ارزش تجاری: قیمت شفاف، تأمین مطمئن. «زندگیِ حیوان» فقط یک اشارهٔ آرام است — یک کارت کوچک: «برای گربه‌ات خانه‌ای بساز» — نه دری هم‌وزن فروشگاه.</div>
+        <div style="border-top: 1px dashed oklch(0.88 0.01 85); padding-top: 10px; font-size: 11.5px; color: oklch(0.5 0.02 265);">خانهٔ پیش‌فرض: فروشگاه</div>
+      </div>
+      <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: oklch(0.5 0.02 265);" dir="ltr">STATE B · NEW SHOPPER</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 17px;">خریدار — بدون پروفایل حیوان</div>
+        <div style="font-size: 12.5px; line-height: 2; color: oklch(0.4 0.02 265);">بعد از اولین سفارشِ غذا، دعوتِ درجا با دادهٔ واقعی: «این غذای سالمون برای کیست؟» — ساخت پروفایل از دل سفارش، سه قدم، بدون فرم بلند. رد کردن همیشه ممکن است و دوباره مزاحم نمی‌شود؛ یادآوریِ بعدی فقط با رویداد بعدی (تحویل سفارش).</div>
+        <div style="border-top: 1px dashed oklch(0.88 0.01 85); padding-top: 10px; font-size: 11.5px; color: oklch(0.5 0.02 265);">خانهٔ پیش‌فرض: فروشگاه + کارت دعوت</div>
+      </div>
+      <div style="background: white; border: 2px solid oklch(0.72 0.13 70); border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: oklch(0.55 0.09 70);" dir="ltr">STATE C · ACTIVATED OWNER</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 17px;">صاحبِ فعال — دست‌کم یک پروفایل</div>
+        <div style="font-size: 12.5px; line-height: 2; color: oklch(0.4 0.02 265);">از این لحظه «امروزِ {{ petName }}» خانهٔ پیش‌فرض اپ می‌شود. فروشگاه و سفارش‌ها هم‌سطح و همیشه یک ضربه دورند. اگر چند حیوان: آخرین حیوانِ فعال باز می‌شود.</div>
+        <div style="border-top: 1px dashed oklch(0.88 0.01 85); padding-top: 10px; font-size: 11.5px; color: oklch(0.5 0.02 265);">خانهٔ پیش‌فرض: امروزِ {{ petName }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== 3 · SIMPLIFIED IA ======== -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">3 · Simplified IA — Today is the hub</div>
+    <div style="display: flex; gap: 44px; align-items: flex-start;">
+      <div dir="rtl" lang="fa" style="width: 1080px; flex-shrink: 0; background: oklch(0.965 0.008 85); border: 1px solid oklch(0.87 0.01 85); border-radius: 20px; padding: 30px; display: flex; gap: 22px; align-items: stretch;">
+        <div style="flex: 1.4; border: 2px solid oklch(0.72 0.13 70); border-radius: 16px; background: white; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-family: 'Estedad', sans-serif; font-weight: 800; font-size: 17px;">امروزِ {{ petName }} — هاب</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: oklch(0.55 0.09 70);" dir="ltr">THE ONLY HOME</div>
+          </div>
+          <div style="background: oklch(0.95 0.025 120); border: 1px solid oklch(0.88 0.03 130); border-radius: 10px; padding: 10px 12px; font-size: 12px; display: flex; justify-content: space-between;"><span style="font-weight: 700;">نوار باغ 🌿</span><span style="color: oklch(0.45 0.02 265);">ماژول — بازشونده، نه صفحهٔ ناوبری</span></div>
+          <div style="background: oklch(0.965 0.008 85); border: 1px solid oklch(0.89 0.01 85); border-radius: 10px; padding: 10px 12px; font-size: 12px;"><span style="font-weight: 700;">غذاسنج</span> · تخمین باقی‌مانده + آماده‌سازی سفارش مجدد</div>
+          <div style="background: oklch(0.965 0.008 85); border: 1px solid oklch(0.89 0.01 85); border-radius: 10px; padding: 10px 12px; font-size: 12px;"><span style="font-weight: 700;">اقدام بعدی</span> · یک کار کوچک و مفید + ثبت یک‌ضربه‌ای</div>
+          <div style="background: oklch(0.965 0.008 85); border: 1px solid oklch(0.89 0.01 85); border-radius: 10px; padding: 10px 12px; font-size: 12px;"><span style="font-weight: 700;">کارت مسیر فعال</span> · خلاصهٔ وضعیت، ضربه ← صفحهٔ مسیر</div>
+          <div style="background: oklch(0.965 0.008 85); border: 1px dashed oklch(0.85 0.01 85); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: oklch(0.45 0.02 265);"><span style="font-weight: 700;">کارت مرور هفتگی</span> · فقط آخر هفته ظاهر می‌شود — ماژول، نه مقصد دائمی</div>
+        </div>
+        <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; color: oklch(0.55 0.09 70); font-size: 20px;"><span>←</span><span>←</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 14px;">
+          <div style="border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; background: white; padding: 16px; flex: 1;">
+            <div style="display: flex; justify-content: space-between; align-items: center;"><div style="font-weight: 700; font-size: 14.5px; font-family: 'Estedad', sans-serif;">مسیرها</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: oklch(0.5 0.02 265);" dir="ltr">SECONDARY</div></div>
+            <div style="font-size: 11.5px; color: oklch(0.45 0.02 265); line-height: 1.8; margin-top: 6px;">صفحهٔ مسیر فعال + فهرست مسیرهای پیشنهادی. فقط وقتی مسیری هست معنا دارد؛ از کارتِ هاب باز می‌شود.</div>
+          </div>
+          <div style="border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; background: white; padding: 16px; flex: 1;">
+            <div style="display: flex; justify-content: space-between; align-items: center;"><div style="font-weight: 700; font-size: 14.5px; font-family: 'Estedad', sans-serif;">دفترچهٔ {{ petName }}</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: oklch(0.5 0.02 265);" dir="ltr">SECONDARY</div></div>
+            <div style="font-size: 11.5px; color: oklch(0.45 0.02 265); line-height: 1.8; margin-top: 6px;">خط زمانی رکورد حیوان: رویدادها، نقاط عطف، مرورهای گذشته، و جای رکوردهای تأییدشدهٔ آینده.</div>
+          </div>
+        </div>
+      </div>
+      <div style="width: 460px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.12em; color: oklch(0.5 0.02 265);">WHAT CHANGED FROM GATE 1</div>
+        <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 20px; font-size: 13px; line-height: 1.9; display: flex; flex-direction: column; gap: 10px;">
+          <div>Five equal sections collapse into <strong>one hub + two destinations</strong>. Garden and Weekly Review are demoted to modules inside Today.</div>
+          <div>The garden strip is the hub's emotional header — tappable to expand full-screen, never a nav tab.</div>
+          <div>Weekly Review appears as a card when ready (and via a notification); archived recaps live inside دفترچه.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== 4 · FOOD ESTIMATION ======== -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">4 · Food estimation without daily logs</div>
+    <div style="display: flex; gap: 44px; align-items: flex-start;">
+      <div dir="rtl" lang="fa" style="width: 1080px; flex-shrink: 0; background: oklch(0.965 0.008 85); border: 1px solid oklch(0.87 0.01 85); border-radius: 20px; padding: 30px; display: flex; flex-direction: column; gap: 18px;">
+        <div style="display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 12px; align-items: center;">
+          <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 16px;">
+            <div style="font-weight: 700; font-size: 13.5px;">۱ · مدل پایه — بدون هیچ ثبتی</div>
+            <div style="font-size: 12px; color: oklch(0.45 0.02 265); line-height: 1.9; margin-top: 4px;">وزن کیسه (از سفارش) ÷ مصرف روزانهٔ تخمینی (جدول راهنمای همان محصول × نوع، وزن و سن حیوان) = منحنی اتمام از تاریخ تحویل.</div>
+          </div>
+          <div style="color: oklch(0.55 0.09 70); font-size: 20px;">←</div>
+          <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 16px;">
+            <div style="font-weight: 700; font-size: 13.5px;">۲ · اصلاح‌های سبک — اختیاری</div>
+            <div style="font-size: 12px; color: oklch(0.45 0.02 265); line-height: 1.9; margin-top: 4px;">در لحظه‌های طبیعی (مرور هفتگی، بازکردن اپ نزدیک نیمهٔ تخمین) یک سؤال یک‌ضربه‌ای: «کیسه الان حدوداً چقدر است؟» با چهار گزینهٔ تصویری: پر · بیش از نصف · کمتر از نصف · ته کیسه.</div>
+          </div>
+          <div style="color: oklch(0.55 0.09 70); font-size: 20px;">←</div>
+          <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 16px;">
+            <div style="font-weight: 700; font-size: 13.5px;">۳ · بازتنظیم با رویدادها</div>
+            <div style="font-size: 12px; color: oklch(0.45 0.02 265); line-height: 1.9; margin-top: 4px;">هر سفارش مجدد، نرخ مصرف واقعی چرخهٔ قبل را آشکار می‌کند و مدل را برای همین حیوان کالیبره می‌کند. مسیر تغییر غذا نسبت ترکیب را در محاسبه لحاظ می‌کند.</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 18px; align-items: center; background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 16px 20px;">
+          <div style="flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%; border: 3.5px solid oklch(0.72 0.13 70); border-left-color: oklch(0.9 0.01 85); display: grid; place-items: center; font-weight: 800; font-size: 11px;">~۹</div>
+          <div style="font-size: 12.5px; line-height: 1.9; color: oklch(0.4 0.02 265);"><span style="font-weight: 700; color: oklch(0.28 0.02 265);">زبان صادقانه:</span> همیشه «حدوداً ۹ روز» با برچسب «تخمینی — بر اساس وزن کیسه و راهنمای مصرف». هرچه از آخرین نقطهٔ اطمینان دورتر، بازهٔ تخمین پهن‌تر: «۷ تا ۱۱ روز». هیچ عددِ قطعی‌نما، هیچ الزام به ثبت روزانه؛ ثبت غذادادن اگر انجام شود فقط دقت را بالا می‌برد.</div>
+        </div>
+      </div>
+      <div style="width: 460px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.12em; color: oklch(0.5 0.02 265);">DESIGN CONSEQUENCE</div>
+        <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 14px; padding: 20px; font-size: 13px; line-height: 1.9; display: flex; flex-direction: column; gap: 10px;">
+          <div>The daily loop no longer depends on a feeding log — the ~20-second visit is read-mostly, with at most one optional tap.</div>
+          <div>Reorder timing is computed from the estimate band's <strong>pessimistic edge</strong> plus real delivery lead time (§5), so a wide band still reorders safely.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== 5 · CORRECTED SCENARIO ======== -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">5 · Corrected scenario — سارا و {{ petName }}, with real logistics</div>
+      <div style="font-size: 13px; color: oklch(0.45 0.02 265); max-width: 900px; line-height: 1.7;">Assumptions made explicit: batch-based sourcing means delivery takes ~۱۰–۱۴ days, so reorder triggers at ~۲۰ days of food remaining; the ۱۴-day transition starts only when the new bag has arrived and enough old food remains to blend.</div>
+    </div>
+    <div dir="rtl" lang="fa" style="display: flex; gap: 16px; align-items: stretch; max-width: 2280px;">
+      <sc-for list="{{ scenario }}" as="beat" hint-placeholder-count="7">
+        <div style="flex: 1; background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.08em; color: oklch(0.55 0.09 70);" dir="ltr">{{ beat.when }}</div>
+          <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 15px; line-height: 1.6;">{{ beat.title }}</div>
+          <div style="font-size: 12px; line-height: 1.9; color: oklch(0.4 0.02 265); flex: 1;">{{ beat.body }}</div>
+          <div style="font-size: 11px; color: oklch(0.5 0.02 265); border-top: 1px dashed oklch(0.88 0.01 85); padding-top: 8px;"><span style="font-weight: 700; color: oklch(0.40 0.09 155);">ثبت شد:</span> {{ beat.recorded }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ======== 6 · LAUNCH CORE / EXPERIMENTS / NEXT ======== -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">6 · Launch Core / Launch Experiments / Next</div>
+    <div style="display: grid; grid-template-columns: 1.1fr 1.1fr 1fr; gap: 24px; max-width: 2100px;">
+      <div style="background: white; border: 2px solid oklch(0.40 0.09 155); border-radius: 18px; padding: 26px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;"><span style="font-size: 11px; font-weight: 700; color: white; background: oklch(0.40 0.09 155); border-radius: 6px; padding: 4px 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.08em;">LAUNCH CORE</span><span style="font-size: 12.5px; color: oklch(0.45 0.02 265);">must work day one; no flags</span></div>
+        <div dir="rtl" lang="fa" style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12.5px;">
+          <span style="background: oklch(0.95 0.02 155); border-radius: 999px; padding: 6px 14px; font-weight: 600;">پروفایل حیوان + ساخت از سفارش</span>
+          <span style="background: oklch(0.95 0.02 155); border-radius: 999px; padding: 6px 14px; font-weight: 600;">امروز — هاب</span>
+          <span style="background: oklch(0.95 0.02 155); border-radius: 999px; padding: 6px 14px; font-weight: 600;">غذاسنج بدون ثبت روزانه</span>
+          <span style="background: oklch(0.95 0.02 155); border-radius: 999px; padding: 6px 14px; font-weight: 600;">آماده‌سازی سفارش مجدد</span>
+          <span style="background: oklch(0.95 0.02 155); border-radius: 999px; padding: 6px 14px; font-weight: 600;">ثبت سادهٔ رویداد + دفترچه</span>
+          <span style="background: oklch(0.95 0.02 155); border-radius: 999px; padding: 6px 14px; font-weight: 600;">چند حیوان و جابه‌جایی</span>
+          <span style="background: oklch(0.95 0.02 155); border-radius: 999px; padding: 6px 14px; font-weight: 600;">تکمیل تدریجی پروفایل</span>
+        </div>
+      </div>
+      <div style="background: white; border: 2px dashed oklch(0.55 0.09 70); border-radius: 18px; padding: 26px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;"><span style="font-size: 11px; font-weight: 700; color: oklch(0.35 0.08 70); background: oklch(0.90 0.06 85); border-radius: 6px; padding: 4px 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.08em;">LAUNCH EXPERIMENTS</span><span style="font-size: 12.5px; color: oklch(0.45 0.02 265);">shipped behind flags, measured, revisable</span></div>
+        <div dir="rtl" lang="fa" style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px;">
+          <div style="background: oklch(0.955 0.02 85); border-radius: 12px; padding: 10px 14px;"><span style="font-weight: 700;">مسیر تغییر غذای ۱۴روزه</span> — سنجه: نرخ تکمیل، رضایت از راهنما</div>
+          <div style="background: oklch(0.955 0.02 85); border-radius: 12px; padding: 10px 14px;"><span style="font-weight: 700;">باغ ایرانی — نسخهٔ ۱</span> — سنجه: بازگشت هفتگی، تعامل با نوار باغ</div>
+          <div style="background: oklch(0.955 0.02 85); border-radius: 12px; padding: 10px 14px;"><span style="font-weight: 700;">مرور هفتگی</span> — سنجه: نرخ بازشدن، اقدام روی «تمرکز هفته»</div>
+          <div style="background: oklch(0.955 0.02 85); border-radius: 12px; padding: 10px 14px;"><span style="font-weight: 700;">پیشنهاد کوچک روز</span> — سنجه: نرخ انجام؛ اگر مزاحم بود حذف می‌شود</div>
+        </div>
+      </div>
+      <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 18px; padding: 26px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;"><span style="font-size: 11px; font-weight: 700; color: oklch(0.45 0.02 265); background: oklch(0.93 0.005 265); border-radius: 6px; padding: 4px 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.08em;">NEXT</span><span style="font-size: 12.5px; color: oklch(0.45 0.02 265);">after launch learning</span></div>
+        <div dir="rtl" lang="fa" style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12.5px; color: oklch(0.45 0.02 265);">
+          <span style="border: 1px solid oklch(0.87 0.01 85); border-radius: 999px; padding: 6px 14px;">یادآورها و نوبت‌ها</span>
+          <span style="border: 1px solid oklch(0.87 0.01 85); border-radius: 999px; padding: 6px 14px;">همکاری اعضای خانه</span>
+          <span style="border: 1px solid oklch(0.87 0.01 85); border-radius: 999px; padding: 6px 14px;">اولین اکسپدیشن فصلی کاروان شب</span>
+          <span style="border: 1px solid oklch(0.87 0.01 85); border-radius: 999px; padding: 6px 14px;">سابقهٔ خدمات و آرایش</span>
+          <span style="border: 1px solid oklch(0.87 0.01 85); border-radius: 999px; padding: 6px 14px;">خاطره‌های غنی‌تر (عکس)</span>
+        </div>
+        <div style="font-size: 11.5px; color: oklch(0.5 0.02 265); line-height: 1.8; border-top: 1px dashed oklch(0.88 0.01 85); padding-top: 10px;">Future (unchanged from Gate 1): health &amp; vaccination records, verified provider records, training programs, evolved habitat, wide seasonal campaigns.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== 7 · PERSIAN GARDEN DEEP DIVE ======== -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="font-family: 'Estedad', sans-serif; font-size: 26px; font-weight: 700; border-bottom: 1px solid oklch(0.85 0.01 85); padding-bottom: 12px;">7 · باغِ {{ petName }} — the Persian Garden, in depth</div>
+
+    <!-- four states -->
+    <div dir="rtl" lang="fa" style="display: flex; gap: 20px; max-width: 2280px;">
+      <sc-for list="{{ gardenStates }}" as="g" hint-placeholder-count="4">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+          <div style="border-radius: 16px; overflow: hidden; border: 1px solid oklch(0.86 0.02 140); height: 170px; position: relative; background: linear-gradient(to top, {{ g.ground }}, {{ g.sky }});">
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: {{ g.soil }};"></div>
+            <sc-if value="{{ g.paths }}" hint-placeholder-val="{{ true }}">
+              <div style="position: absolute; bottom: 0; left: 50%; width: 18px; height: 40px; transform: translateX(-50%); background: oklch(0.82 0.03 75);"></div>
+              <div style="position: absolute; bottom: 18px; left: 0; right: 0; height: 8px; background: oklch(0.82 0.03 75);"></div>
+            </sc-if>
+            <sc-if value="{{ g.pool }}" hint-placeholder-val="{{ false }}"><div style="position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); width: 56px; height: 18px; background: oklch(0.75 0.06 230); border-radius: 5px; border: 1.5px solid oklch(0.62 0.06 230);"></div></sc-if>
+            <sc-if value="{{ g.cypress }}" hint-placeholder-val="{{ false }}">
+              <div style="position: absolute; bottom: 30px; right: 26px; width: 26px; height: 62px; background: oklch(0.50 0.09 150); border-radius: 50% 50% 42% 42%;"></div>
+              <div style="position: absolute; bottom: 34px; left: 30px; width: 20px; height: 30px; background: oklch(0.60 0.10 140); border-radius: 50% 50% 45% 45%;"></div>
+            </sc-if>
+            <sc-if value="{{ g.flowers }}" hint-placeholder-val="{{ false }}">
+              <div style="position: absolute; bottom: 30px; right: 72px; width: 12px; height: 12px; border-radius: 50%; background: oklch(0.70 0.15 20);"></div>
+              <div style="position: absolute; bottom: 34px; left: 66px; width: 10px; height: 10px; border-radius: 50%; background: oklch(0.78 0.12 70);"></div>
+            </sc-if>
+            <sc-if value="{{ g.pavilion }}" hint-placeholder-val="{{ false }}"><div style="position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); width: 46px; height: 34px; border: 2px solid oklch(0.55 0.09 70); border-radius: 22px 22px 0 0; background: oklch(0.95 0.02 85 / 0.7);"></div></sc-if>
+            <sc-if value="{{ g.pet }}" hint-placeholder-val="{{ false }}"><div style="position: absolute; bottom: 30px; left: 50%; transform: translateX(calc(-50% + 44px)); width: 20px; height: 13px; background: oklch(0.45 0.03 60); border-radius: 8px 10px 4px 4px;"></div><div style="position: absolute; bottom: 39px; left: 50%; transform: translateX(calc(-50% + 54px)); width: 9px; height: 9px; background: oklch(0.45 0.03 60); border-radius: 50%;"></div></sc-if>
+            <sc-if value="{{ g.ghost }}" hint-placeholder-val="{{ false }}"><div style="position: absolute; bottom: 32px; right: 26px; width: 26px; height: 56px; border: 1.5px dashed oklch(0.55 0.05 150 / 0.6); border-radius: 50% 50% 42% 42%;"></div></sc-if>
+            <sc-if value="{{ g.ghostPavilion }}" hint-placeholder-val="{{ false }}"><div style="position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); width: 46px; height: 34px; border: 1.5px dashed oklch(0.55 0.07 70 / 0.65); border-radius: 22px 22px 0 0;"></div></sc-if>
+            <div style="position: absolute; top: 10px; right: 12px; font-size: 10.5px; font-weight: 700; background: white; border-radius: 999px; padding: 4px 10px; border: 1px solid oklch(0.86 0.02 140);">{{ g.badge }}</div>
+          </div>
+          <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 15px;">{{ g.title }}</div>
+          <div style="font-size: 12px; line-height: 1.9; color: oklch(0.4 0.02 265);">{{ g.desc }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- mechanics grid -->
+    <div dir="rtl" lang="fa" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 2280px;">
+      <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: oklch(0.55 0.09 70);" dir="ltr">PET PRESENCE</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 16px;">حضور {{ petName }} در باغ</div>
+        <div style="font-size: 12.5px; line-height: 2; color: oklch(0.4 0.02 265);">نگارهٔ کوچکی از خود حیوان (به سبک مینیاتور، از روی گونه و رنگ پروفایل) همیشه در باغ است — کنار حوض می‌نشیند، زیر سرو لم می‌دهد، شب‌ها می‌خوابد. حضورش <strong>هرگز</strong> نشانهٔ سلامت نیست؛ فقط «این باغ مال اوست» را می‌گوید. ساعت روز و فصلِ واقعی، نور باغ را تعیین می‌کند.</div>
+      </div>
+      <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: oklch(0.55 0.09 70);" dir="ltr">INTERACTION</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 16px;">سازوکار تعامل</div>
+        <div style="font-size: 12.5px; line-height: 2; color: oklch(0.4 0.02 265);">نوار باغ در «امروز» ← ضربه: باغ تمام‌صفحه. ضربه روی هر عنصر: خاطرهٔ پیدایشش — «این سرو، پایان مسیر تغییر غذا · آبان ۱۴۰۵». عناصر تازه اول در «گوشهٔ نهال‌ها» می‌نشینند و صاحب، خودش جای آن‌ها را انتخاب می‌کند — حس چیدنِ باغ، بدون بازی‌سازی سنگین. هیچ تایمر و برداشت روزانه‌ای وجود ندارد.</div>
+      </div>
+      <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: oklch(0.55 0.09 70);" dir="ltr">REWARD MAPPING</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 16px;">نگاشت پاداش — فقط از اقدام واقعی</div>
+        <div style="font-size: 12.5px; line-height: 2.1; color: oklch(0.4 0.02 265);">
+          تکمیل مسیر تغییر غذا ← <strong>سرو</strong> · تکمیل پروفایل ← <strong>حوض و روان‌شدن آب</strong> · هفتهٔ سرگرمی ← <strong>بوته‌های گل</strong> · اولین سال با هم ← <strong>کوشک</strong> · اکسپدیشن فصلی کاروان شب ← <strong>فانوس شب</strong> (تنها شیء شب‌رنگ باغ) · مرور هفتگی خوانده‌شده ← <strong>کارت خاطره</strong> در دفترچه، نه شیء باغ. خرید، مستقیماً شیء نمی‌سازد.
+        </div>
+      </div>
+      <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: oklch(0.55 0.09 70);" dir="ltr">INACTIVITY RECOVERY</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 16px;">بازگشت پس از غیبت</div>
+        <div style="font-size: 12.5px; line-height: 2; color: oklch(0.4 0.02 265);">باغ <strong>هرگز نمی‌پژمرد</strong> و چیزی از دست نمی‌رود — فقط آرام می‌شود: آبِ حوض ساکن، نور مه‌آلودِ صبح. با اولین اقدامِ بازگشت (هرچند کوچک) آب دوباره روان می‌شود و {{ petName }} به پیشواز می‌آید. پیام: «باغ منتظرت بود» — نه «۱۰ روز غیبت کردی».</div>
+      </div>
+      <div style="background: white; border: 1px solid oklch(0.89 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: oklch(0.55 0.09 70);" dir="ltr">NEXT REASON TO RETURN</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 16px;">دلیل بعدیِ بازگشت — همیشه دیدنی</div>
+        <div style="font-size: 12.5px; line-height: 2; color: oklch(0.4 0.02 265);">همیشه دقیقاً <strong>یک</strong> «جای خالیِ بعدی» در باغ با خطوط کم‌رنگ دیده می‌شود — طرحِ سروی که با پایان مسیرِ فعلی سبز می‌شود. ضربه روی آن: «این سرو با تکمیل مسیر تغییر غذا کاشته می‌شود». نه نقشهٔ کامل جوایز، نه فشار — فقط قدم بعدی، همیشه معنادار.</div>
+      </div>
+      <div style="background: oklch(0.955 0.005 85); border: 1px dashed oklch(0.82 0.01 85); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: oklch(0.5 0.02 265);" dir="ltr">GUARDRAILS</div>
+        <div style="font-family: 'Estedad', sans-serif; font-weight: 700; font-size: 16px;">خط قرمزها</div>
+        <div style="font-size: 12.5px; line-height: 2; color: oklch(0.4 0.02 265);">بدون XP و سطح · بدون زنجیرهٔ روزانه و جریمه · باغ هیچ ادعایی دربارهٔ سلامت ندارد · اشیای باغ خریدنی نیستند · حذف کامل باغ، محصول را از کار نمی‌اندازد (ماژول است، نه ستون).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="max-width: 980px; background: oklch(0.955 0.005 85); border: 1px dashed oklch(0.82 0.01 85); border-radius: 14px; padding: 20px 24px; font-size: 12.5px; line-height: 1.9; color: oklch(0.4 0.02 265);">
+    <span style="font-weight: 700; color: oklch(0.28 0.02 265);">Process:</span> Gate 1 ✓ direction approved · <strong>Gate 1.1 — this board, awaiting approval</strong> · Gate 2 — lo-fi flows, gamification rules, module contracts, empty/exception states · Gate 3 — hi-fi + clickable prototype. Reference boards: <a href="Gate 1 — Pet Life Concept.dc.html">Gate 1</a>, <a href="Hi-Fi Screens.dc.html">approved visual system</a>.
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;petName&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;پیشی&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Pet&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const petName = this.props.petName ?? "پیشی";
+    return {
+      petName,
+      scenario: [
+        { when: "DAY 0", title: "پروفایل از دل سفارش", body: "سارا کیسهٔ ۲کیلویی سالمون را سفارش داده. بعد از پرداخت: «این غذا برای کیست؟» — پروفایل پیشی در سه قدم. غذاسنج از همین حالا آماده است: ۲ کیلو ÷ ~۵۵ گرم در روز ≈ ۳۶ روز از تاریخ تحویل.", recorded: "هویت پایه + غذای فعلی + مدل مصرف" },
+        { when: "DAY 12 · DAILY", title: "بیست ثانیهٔ صبح", body: "امروزِ پیشی: «حدوداً ۲۴ روز غذا مانده». یک پیشنهاد بازی کوتاه. سارا نگاه می‌کند و می‌بندد — هیچ ثبتی لازم نیست.", recorded: "هیچ — بازدیدِ خواندنی" },
+        { when: "DAY 16 · CHECK", title: "اصلاح یک‌ضربه‌ای", body: "نزدیک نیمهٔ تخمین، سؤال سبک: «کیسه حدوداً چقدر است؟» سارا «بیش از نصف» را می‌زند. بازهٔ تخمین باریک‌تر می‌شود.", recorded: "نقطهٔ اطمینان ← کالیبراسیون" },
+        { when: "DAY 17 · EVENT", title: "آماده‌سازی سفارش مجدد — زود، به‌دلیل", body: "«حدود ۲۰ روز غذا مانده و تأمین این محصول ۱۰ تا ۱۴ روز طول می‌کشد. اگر این هفته سفارش دهید، قبل از تمام‌شدن می‌رسد.» قیمت و تاریخ صریح. سارا غذای جدیدی (بوقلمون) انتخاب می‌کند؛ پیگیری ← سفر سفارش.", recorded: "سفارش + قصد تغییر غذا" },
+        { when: "DAY 29 · DELIVERY", title: "رسیدن کیسهٔ جدید — شروع مسیر", body: "تحویل بعد از ۱۲ روز؛ هنوز ~۸ روز غذای قدیمی مانده — عمداً کافی برای ترکیب. پیشنهاد: «مسیر تغییر غذای ۱۴روزه را شروع کنیم؟» نسبت‌های روزانه از ۷۵/۲۵ تا ۰/۱۰۰؛ چون غذای قدیمی فقط ۸ روز است، برنامه نسبت‌ها را بر همان اساس می‌چیند و شفاف می‌گوید.", recorded: "مسیر فعال + برنامهٔ ترکیب واقعی" },
+        { when: "DAY 35 · EXCEPTION", title: "چک‌این: کمتر خورد", body: "چک‌این کوتاه شبانه (فقط در طول مسیر، نه همیشه): «امروز کمتر خورد.» مسیر یک قدم عقب می‌رود، راهنمای کوتاه می‌دهد، و بدون نتیجه‌گیری پزشکی: «اگر ادامه داشت، با دامپزشک مشورت کنید.»", recorded: "استثنا + تنظیم برنامه" },
+        { when: "DAY 43 + WEEK 8", title: "پایان مسیر، مرور، بازگشت", body: "مسیر کامل شد ← سروِ باغ کاشته می‌شود؛ مرور هفتگی: «فهمیدیم پیشی بوقلمون را دوست دارد». هفتهٔ ۸، بعد از ده روز سکوت: «باغ منتظرت بود» — فقط غذاسنج و یک اقدام سبک. بدون جریمه.", recorded: "دانستهٔ طعم + کارت خاطره + ادامهٔ تاریخچه" },
+      ],
+      gardenStates: [
+        { badge: "وضعیت ۱", title: "خاک و نقشه — روز اول", desc: "زمینِ آماده با طرحِ کم‌رنگ چهارباغ و یک «جای خالی بعدی» خط‌چین. پیام: این باغ با رسیدگیِ واقعی ساخته می‌شود، نه با خرید. حیوان از همان روز اول حاضر است.", ground: "oklch(0.93 0.015 90)", sky: "oklch(0.96 0.01 85)", soil: "oklch(0.87 0.03 75)", paths: false, pool: false, cypress: false, flowers: false, pavilion: false, pet: true, ghost: true },
+        { badge: "وضعیت ۲", title: "جوانه — هفته‌های اول", desc: "مسیرهای چهارباغ سنگ‌فرش شده‌اند (تکمیل پروفایل)؛ حوضِ خالی نشسته و اولین بوته سبز شده. جای خالیِ بعدی: سروِ مسیر تغییر غذا.", ground: "oklch(0.93 0.025 110)", sky: "oklch(0.96 0.012 95)", soil: "oklch(0.87 0.035 85)", paths: true, pool: true, cypress: false, flowers: true, pavilion: false, pet: true, ghost: true },
+        { badge: "وضعیت ۳", title: "باغچهٔ زنده — ماه‌های اول", desc: "آبِ حوض روان است، سرو و گل‌ها نشسته‌اند؛ ضربه روی هر عنصر خاطرهٔ پیدایشش را می‌گوید. باغ اکنون آینهٔ تاریخچهٔ دفترچه است.", ground: "oklch(0.90 0.045 140)", sky: "oklch(0.95 0.02 110)", soil: "oklch(0.85 0.05 130)", paths: true, pool: true, cypress: true, flowers: true, pavilion: false, pet: true, ghost: false, ghostPavilion: true },
+        { badge: "وضعیت ۴", title: "باغِ {{name}} — سال با هم", desc: "کوشک برای «یک سال با هم»؛ فانوسِ شبِ اکسپدیشن فصلی تنها ردِ کاروان در باغ است. باغ همچنان یک ماژول است — حذفش محصول را نمی‌شکند.", ground: "oklch(0.88 0.055 145)", sky: "oklch(0.94 0.025 115)", soil: "oklch(0.83 0.055 135)", paths: true, pool: true, cypress: true, flowers: true, pavilion: true, pet: true, ghost: false },
+      ].map(g => ({ ...g, title: g.title.replace("{{name}}", petName) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

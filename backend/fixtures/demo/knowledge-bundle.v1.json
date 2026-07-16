@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "dataset_version": "demo-1.0.0",
+  "language": "fa-IR",
+  "breeds": [
+    {
+      "id": "dog:poodle",
+      "species": "dog",
+      "name_fa": "پودل",
+      "name_en": "Poodle"
+    }
+  ],
+  "varieties": [
+    {
+      "id": "dog:poodle:miniature",
+      "breed_id": "dog:poodle",
+      "name_fa": "پودل مینیاتوری",
+      "name_en": "Miniature Poodle"
+    }
+  ],
+  "sources": [
+    {
+      "id": "source:fci-172",
+      "type": "registry_standard",
+      "title": "FCI Standard 172",
+      "retrieved_at": "2026-07-16"
+    }
+  ],
+  "claims": [
+    {
+      "id": "claim:poodle-miniature-height",
+      "breed_id": "dog:poodle",
+      "variety_id": "dog:poodle:miniature",
+      "claim_type": "height_reference",
+      "text_fa": "این بازه یک مرجع نژادی است و وزن یا اندازه ایده‌آل یک حیوان را تعیین نمی‌کند.",
+      "review_status": "veterinary_review_required",
+      "source_ids": ["source:fci-172"],
+      "app_eligible": false,
+      "range": {"min": 28, "max": 35, "unit": "cm"}
+    }
+  ]
+}

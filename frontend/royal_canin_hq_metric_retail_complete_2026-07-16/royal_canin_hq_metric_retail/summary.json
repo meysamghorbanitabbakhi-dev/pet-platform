@@ -1,0 +1,11 @@
+{
+  "catalog_market": "Royal Canin UK (English, metric)",
+  "scope": "Dog and cat retail products; veterinary products excluded",
+  "source_sitemap": "https://www.royalcanin.com/uk/en-gb/sitemap/sitemap-products.xml",
+  "product_pages_in_scope": 195,
+  "product_pages_parsed": 195,
+  "pack_size_rows": 295,
+  "unique_official_packshots": 192,
+  "errors": 0,
+  "method_note": "Royal Canin frequently publishes one official master packshot for multiple listed weights. See image_scope per row."
+}
