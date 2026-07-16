@@ -28,6 +28,8 @@ class JourneyService:
             definition_id=definition.id,
             status="active",
             started_at=utc_now(),
+            definition_version=definition.version,
+            definition_snapshot=definition.content,
         )
         session.add(journey)
         await session.commit()
@@ -44,6 +46,21 @@ class JourneyService:
             select(PetJourney).where(PetJourney.id == journey_id).with_for_update()
         )
         if journey is None or journey.status not in ("active", "paused"):
+            if journey is not None and journey.status == "completed":
+                diary = await session.scalar(
+                    select(DiaryEntry).where(
+                        DiaryEntry.source_type == "journey",
+                        DiaryEntry.source_id == str(journey.id),
+                    )
+                )
+                reward = await session.scalar(
+                    select(GardenReward).where(
+                        GardenReward.source_type == "journey_completion",
+                        GardenReward.source_id == str(journey.id),
+                    )
+                )
+                if diary is not None and reward is not None:
+                    return diary, reward
             raise JourneyError("journey cannot be completed")
         definition = await session.get(JourneyDefinition, journey.definition_id)
         object_key = definition.content.get("garden_object_key") if definition else None
@@ -52,6 +69,7 @@ class JourneyService:
         now = utc_now()
         journey.status = "completed"
         journey.ended_at = now
+        journey.completion_effects_created_at = journey.completion_effects_created_at or now
         diary = DiaryEntry(
             pet_id=journey.pet_id,
             entry_type="journey_completion",

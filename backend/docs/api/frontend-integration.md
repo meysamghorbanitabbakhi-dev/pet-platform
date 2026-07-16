@@ -58,6 +58,16 @@ Opening or correcting inventory accepts either the legacy `remaining_grams` fiel
 
 `POST /api/v1/pet-life/inventory/{unit_id}/reorder-assessment` is authoritative for reorder UX. It uses server-owned estimate, delivery policy, configured safety buffer, offer availability/capacity, and active snooze. When the safety buffer is not configured, it returns `outcome=policy_blocked`; when facts are insufficient, it returns `outcome=insufficient_facts`. `PUT /api/v1/pet-life/inventory/{unit_id}/reorder-snooze` is durable and idempotent for an active snooze with a maximum of 72 hours.
 
+## K9.3 customer experience
+
+Availability subscriptions are managed with `POST/DELETE /api/v1/catalog/offers/{offer_id}/availability-subscriptions` and listed at `GET /api/v1/me/availability-subscriptions`. Responses always include `order_created=false`; subscribing or cancelling never creates orders, payments, sourcing, or inventory. Availability notifications are in-app/SMS only and replay-safe once per activation cycle; there is no push-channel claim.
+
+`POST /api/v1/customer-requests` requires `Idempotency-Key` and creates either `support` or `concierge_sourcing` requests. It validates household and referenced order/offer ownership, returns explicit false promises for availability, response time, refund, replacement, and sourcing success, and never auto-creates catalog products. Operators can list requests and audit status changes through `/api/v1/operator/customer-requests`.
+
+`POST /api/v1/orders/{order_id}/delay-acknowledgements` requires a visible delay and `Idempotency-Key`. The response records the delay event version and explicitly states no compensation, cancellation, waiver, or resolution implication.
+
+Journey discovery/detail/check-ins are available under `/api/v1/pet-life/*` only when care journey delivery is enabled. Definitions must be approved, active, eligible, and professionally referenced. Check-ins validate server-side allowed answers and completion requirements; completion creates at most one diary memory and one Garden reward. Diary detail is typed at `/api/v1/pet-life/pets/{pet_id}/diary/{entry_id}`. Garden state is server-derived, has no XP/decay/purchase rewards, and `DELETE /api/v1/pet-life/garden/{reward_id}/placement` stores an object while preserving its memory link.
+
 ## Policy posture
 
 `GET /api/v1/system/policies` is the frontend feature boundary. K9.0 exposes `currency_code=IRR`, `customer_display_unit=TOMAN`, and `irr_per_customer_display_unit=10`; all API money remains integer `*_irr` and must not be silently rounded into toman. Late-credit execution/customer visibility, reserve-now, cancellation after sourcing, self-service refund/replacement/substitution, and customer-visible delay compensation are off. Availability-subscription and concierge-request metadata is on, but K9.0 supplies no customer workflow for either; a flag never authorizes a new endpoint. See `docs/adr/ADR-004-k9-policy-boundaries.md` for decisions marked **POLICY BLOCKED**.

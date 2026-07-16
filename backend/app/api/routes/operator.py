@@ -27,6 +27,7 @@ from app.integrations.payment.factory import (
     build_payment_gateway,
 )
 from app.integrations.payment.zarinpal import ZarinpalError
+from app.modules.catalog.availability import notify_available_subscribers
 from app.modules.catalog.models import Offer, Product, Supplier
 from app.modules.households.models import Household, HouseholdMembership
 from app.modules.identity.models import AuthIdentity, AuthSession
@@ -1430,6 +1431,7 @@ async def update_offer_capacity(
             "max_pending_quantity": offer.max_pending_quantity,
         },
     )
+    await notify_available_subscribers(session, offer)
     await session.commit()
 
 

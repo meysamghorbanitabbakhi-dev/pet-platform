@@ -195,6 +195,72 @@
         "title": "AssignmentsBody",
         "type": "object"
       },
+      "AvailabilitySubscriptionResponse": {
+        "properties": {
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "notified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notified At"
+          },
+          "offer_id": {
+            "format": "uuid",
+            "title": "Offer Id",
+            "type": "string"
+          },
+          "order_created": {
+            "const": false,
+            "default": false,
+            "title": "Order Created",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "notified",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "offer_id",
+          "status",
+          "created_at"
+        ],
+        "title": "AvailabilitySubscriptionResponse",
+        "type": "object"
+      },
       "BenchmarkDefinitionBody": {
         "properties": {
           "comparison_allowed": {
@@ -760,6 +826,265 @@
         "title": "CustomerCapabilitiesResponse",
         "type": "object"
       },
+      "CustomerRequestBody": {
+        "properties": {
+          "contact_preference": {
+            "enum": [
+              "in_app",
+              "sms"
+            ],
+            "title": "Contact Preference",
+            "type": "string"
+          },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
+          },
+          "message_fa": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message Fa",
+            "type": "string"
+          },
+          "offer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offer Id"
+          },
+          "order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Id"
+          },
+          "product_query_fa": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Query Fa"
+          },
+          "request_type": {
+            "enum": [
+              "support",
+              "concierge_sourcing"
+            ],
+            "title": "Request Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "household_id",
+          "request_type",
+          "message_fa",
+          "contact_preference"
+        ],
+        "title": "CustomerRequestBody",
+        "type": "object"
+      },
+      "CustomerRequestResponse": {
+        "properties": {
+          "contact_preference": {
+            "enum": [
+              "in_app",
+              "sms"
+            ],
+            "title": "Contact Preference",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message_fa": {
+            "title": "Message Fa",
+            "type": "string"
+          },
+          "offer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offer Id"
+          },
+          "order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Id"
+          },
+          "product_query_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Query Fa"
+          },
+          "promises": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Promises",
+            "type": "object"
+          },
+          "request_type": {
+            "enum": [
+              "support",
+              "concierge_sourcing"
+            ],
+            "title": "Request Type",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "submitted",
+              "in_review",
+              "resolved",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "household_id",
+          "request_type",
+          "message_fa",
+          "contact_preference",
+          "status",
+          "created_at",
+          "updated_at",
+          "promises"
+        ],
+        "title": "CustomerRequestResponse",
+        "type": "object"
+      },
+      "CustomerRequestStatusBody": {
+        "properties": {
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "submitted",
+              "in_review",
+              "resolved",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reason"
+        ],
+        "title": "CustomerRequestStatusBody",
+        "type": "object"
+      },
+      "DelayAcknowledgementResponse": {
+        "properties": {
+          "acknowledged_at": {
+            "format": "date-time",
+            "title": "Acknowledged At",
+            "type": "string"
+          },
+          "cancellation_implied": {
+            "const": false,
+            "default": false,
+            "title": "Cancellation Implied",
+            "type": "boolean"
+          },
+          "compensation_implied": {
+            "const": false,
+            "default": false,
+            "title": "Compensation Implied",
+            "type": "boolean"
+          },
+          "delay_event_version": {
+            "title": "Delay Event Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "waiver_implied": {
+            "const": false,
+            "default": false,
+            "title": "Waiver Implied",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "order_id",
+          "delay_event_version",
+          "acknowledged_at"
+        ],
+        "title": "DelayAcknowledgementResponse",
+        "type": "object"
+      },
       "DeliverOrderBody": {
         "properties": {
           "household_id": {
@@ -796,6 +1121,67 @@
           "inventory_unit_ids"
         ],
         "title": "DeliveryResponse",
+        "type": "object"
+      },
+      "DiaryEntryDetailResponse": {
+        "properties": {
+          "entry_type": {
+            "title": "Entry Type",
+            "type": "string"
+          },
+          "happened_at": {
+            "format": "date-time",
+            "title": "Happened At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "linked_garden_object": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GardenObjectResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Fa"
+          },
+          "source_reference": {
+            "title": "Source Reference",
+            "type": "string"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
+          "title_fa": {
+            "title": "Title Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "entry_type",
+          "title_fa",
+          "happened_at",
+          "source_type",
+          "source_reference"
+        ],
+        "title": "DiaryEntryDetailResponse",
         "type": "object"
       },
       "DiaryListItem": {
@@ -1170,6 +1556,64 @@
           "position_y"
         ],
         "title": "GardenPlacementBody",
+        "type": "object"
+      },
+      "GardenStateResponse": {
+        "properties": {
+          "layout_version": {
+            "default": 1,
+            "title": "Layout Version",
+            "type": "integer"
+          },
+          "next_eligibility": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Eligibility"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/GardenObjectResponse"
+            },
+            "title": "Objects",
+            "type": "array"
+          },
+          "pet_id": {
+            "format": "uuid",
+            "title": "Pet Id",
+            "type": "string"
+          },
+          "slot_rules": {
+            "additionalProperties": true,
+            "title": "Slot Rules",
+            "type": "object"
+          },
+          "unlocked_quadrants": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unlocked Quadrants",
+            "type": "array"
+          },
+          "visible_slot_count": {
+            "title": "Visible Slot Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pet_id",
+          "unlocked_quadrants",
+          "visible_slot_count",
+          "slot_rules",
+          "objects"
+        ],
+        "title": "GardenStateResponse",
         "type": "object"
       },
       "GuidancePreferenceBody": {
@@ -1579,6 +2023,93 @@
         "title": "JourneyApprovalBody",
         "type": "object"
       },
+      "JourneyCheckInBody": {
+        "properties": {
+          "answer_key": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Answer Key",
+            "type": "string"
+          },
+          "check_in_key": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Check In Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "check_in_key",
+          "answer_key"
+        ],
+        "title": "JourneyCheckInBody",
+        "type": "object"
+      },
+      "JourneyCheckInResponse": {
+        "properties": {
+          "answer_key": {
+            "title": "Answer Key",
+            "type": "string"
+          },
+          "check_in_key": {
+            "title": "Check In Key",
+            "type": "string"
+          },
+          "completed": {
+            "default": false,
+            "title": "Completed",
+            "type": "boolean"
+          },
+          "diary_entry_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diary Entry Id"
+          },
+          "garden_reward_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Garden Reward Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "journey_id": {
+            "format": "uuid",
+            "title": "Journey Id",
+            "type": "string"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "journey_id",
+          "check_in_key",
+          "answer_key",
+          "submitted_at"
+        ],
+        "title": "JourneyCheckInResponse",
+        "type": "object"
+      },
       "JourneyCompleteBody": {
         "properties": {
           "memory_title_fa": {
@@ -1653,6 +2184,185 @@
           "reason"
         ],
         "title": "JourneyDefinitionBody",
+        "type": "object"
+      },
+      "JourneyDefinitionResponse": {
+        "properties": {
+          "approved_at": {
+            "format": "date-time",
+            "title": "Approved At",
+            "type": "string"
+          },
+          "content": {
+            "additionalProperties": true,
+            "title": "Content",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "summary_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Fa"
+          },
+          "title_fa": {
+            "title": "Title Fa",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "version",
+          "title_fa",
+          "content",
+          "approved_at"
+        ],
+        "title": "JourneyDefinitionResponse",
+        "type": "object"
+      },
+      "JourneyDetailResponse": {
+        "properties": {
+          "check_ins": {
+            "items": {
+              "$ref": "#/components/schemas/JourneyCheckInResponse"
+            },
+            "title": "Check Ins",
+            "type": "array"
+          },
+          "definition_id": {
+            "format": "uuid",
+            "title": "Definition Id",
+            "type": "string"
+          },
+          "definition_version": {
+            "title": "Definition Version",
+            "type": "integer"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "pet_id": {
+            "format": "uuid",
+            "title": "Pet Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "title_fa": {
+            "title": "Title Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "pet_id",
+          "definition_id",
+          "definition_version",
+          "status",
+          "started_at",
+          "title_fa",
+          "steps",
+          "check_ins"
+        ],
+        "title": "JourneyDetailResponse",
+        "type": "object"
+      },
+      "JourneyOfferResponse": {
+        "properties": {
+          "definition_id": {
+            "format": "uuid",
+            "title": "Definition Id",
+            "type": "string"
+          },
+          "duration_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Days"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "summary_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Fa"
+          },
+          "title_fa": {
+            "title": "Title Fa",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "definition_id",
+          "key",
+          "version",
+          "title_fa"
+        ],
+        "title": "JourneyOfferResponse",
         "type": "object"
       },
       "JourneyStartBody": {
@@ -2820,6 +3530,46 @@
           "has_more"
         ],
         "title": "OffsetPageMetadata",
+        "type": "object"
+      },
+      "OffsetPage_AvailabilitySubscriptionResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AvailabilitySubscriptionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/OffsetPageMetadata"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "OffsetPage[AvailabilitySubscriptionResponse]",
+        "type": "object"
+      },
+      "OffsetPage_CustomerRequestResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerRequestResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/OffsetPageMetadata"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "OffsetPage[CustomerRequestResponse]",
         "type": "object"
       },
       "OffsetPage_NotificationListItem_": {
@@ -5405,6 +6155,100 @@
         ]
       }
     },
+    "/api/v1/catalog/offers/{offer_id}/availability-subscriptions": {
+      "delete": {
+        "operationId": "cancel_offer_availability_subscription_api_v1_catalog_offers__offer_id__availability_subscriptions_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilitySubscriptionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Offer Availability Subscription",
+        "tags": [
+          "commerce"
+        ]
+      },
+      "post": {
+        "operationId": "subscribe_offer_availability_api_v1_catalog_offers__offer_id__availability_subscriptions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilitySubscriptionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Subscribe Offer Availability",
+        "tags": [
+          "commerce"
+        ]
+      }
+    },
     "/api/v1/checkout/orders": {
       "post": {
         "operationId": "create_order_api_v1_checkout_orders_post",
@@ -5461,6 +6305,173 @@
         "summary": "Create Order",
         "tags": [
           "commerce"
+        ]
+      }
+    },
+    "/api/v1/customer-requests": {
+      "get": {
+        "operationId": "list_customer_requests_api_v1_customer_requests_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsetPage_CustomerRequestResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Customer Requests",
+        "tags": [
+          "customer-requests"
+        ]
+      },
+      "post": {
+        "operationId": "create_customer_request_api_v1_customer_requests_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerRequestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Customer Request",
+        "tags": [
+          "customer-requests"
+        ]
+      }
+    },
+    "/api/v1/customer-requests/{request_id}": {
+      "get": {
+        "operationId": "customer_request_detail_api_v1_customer_requests__request_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerRequestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Customer Request Detail",
+        "tags": [
+          "customer-requests"
         ]
       }
     },
@@ -5685,6 +6696,68 @@
         ]
       }
     },
+    "/api/v1/me/availability-subscriptions": {
+      "get": {
+        "operationId": "list_availability_subscriptions_api_v1_me_availability_subscriptions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsetPage_AvailabilitySubscriptionResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Availability Subscriptions",
+        "tags": [
+          "commerce"
+        ]
+      }
+    },
     "/api/v1/me/context": {
       "get": {
         "operationId": "context_api_v1_me_context_get",
@@ -5805,6 +6878,126 @@
         "summary": "Confirm Body Assessment",
         "tags": [
           "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/customer-requests": {
+      "get": {
+        "operationId": "operator_customer_requests_api_v1_operator_customer_requests_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsetPage_CustomerRequestResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operator Customer Requests",
+        "tags": [
+          "customer-requests"
+        ]
+      }
+    },
+    "/api/v1/operator/customer-requests/{request_id}/status": {
+      "post": {
+        "operationId": "operator_customer_request_status_api_v1_operator_customer_requests__request_id__status_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRequestStatusBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerRequestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operator Customer Request Status",
+        "tags": [
+          "customer-requests"
         ]
       }
     },
@@ -8112,6 +9305,65 @@
         ]
       }
     },
+    "/api/v1/orders/{order_id}/delay-acknowledgements": {
+      "post": {
+        "operationId": "acknowledge_order_delay_api_v1_orders__order_id__delay_acknowledgements_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DelayAcknowledgementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Acknowledge Order Delay",
+        "tags": [
+          "commerce"
+        ]
+      }
+    },
     "/api/v1/orders/{order_id}/journey": {
       "get": {
         "operationId": "customer_order_journey_api_v1_orders__order_id__journey_get",
@@ -8341,6 +9593,45 @@
       }
     },
     "/api/v1/pet-life/garden/{reward_id}/placement": {
+      "delete": {
+        "operationId": "store_garden_reward_api_v1_pet_life_garden__reward_id__placement_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reward_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reward Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Store Garden Reward",
+        "tags": [
+          "pet-life"
+        ]
+      },
       "put": {
         "operationId": "place_garden_reward_api_v1_pet_life_garden__reward_id__placement_put",
         "parameters": [
@@ -9161,6 +10452,171 @@
           }
         ],
         "summary": "Reorder Snooze",
+        "tags": [
+          "pet-life"
+        ]
+      }
+    },
+    "/api/v1/pet-life/journey-definitions/{definition_id}": {
+      "get": {
+        "operationId": "journey_definition_detail_api_v1_pet_life_journey_definitions__definition_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "definition_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Definition Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyDefinitionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Journey Definition Detail",
+        "tags": [
+          "pet-life"
+        ]
+      }
+    },
+    "/api/v1/pet-life/journeys/{journey_id}": {
+      "get": {
+        "operationId": "journey_detail_api_v1_pet_life_journeys__journey_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "journey_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Journey Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Journey Detail",
+        "tags": [
+          "pet-life"
+        ]
+      }
+    },
+    "/api/v1/pet-life/journeys/{journey_id}/check-ins": {
+      "post": {
+        "operationId": "journey_check_in_api_v1_pet_life_journeys__journey_id__check_ins_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "journey_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Journey Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JourneyCheckInBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyCheckInResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Journey Check In",
         "tags": [
           "pet-life"
         ]
@@ -10353,6 +11809,64 @@
         ]
       }
     },
+    "/api/v1/pet-life/pets/{pet_id}/diary/{entry_id}": {
+      "get": {
+        "operationId": "diary_detail_api_v1_pet_life_pets__pet_id__diary__entry_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pet_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pet Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiaryEntryDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Diary Detail",
+        "tags": [
+          "pet-life"
+        ]
+      }
+    },
     "/api/v1/pet-life/pets/{pet_id}/garden": {
       "get": {
         "operationId": "list_garden_api_v1_pet_life_pets__pet_id__garden_get",
@@ -10373,11 +11887,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/GardenObjectResponse"
-                  },
-                  "title": "Response List Garden Api V1 Pet Life Pets  Pet Id  Garden Get",
-                  "type": "array"
+                  "$ref": "#/components/schemas/GardenStateResponse"
                 }
               }
             },
@@ -10400,6 +11910,58 @@
           }
         ],
         "summary": "List Garden",
+        "tags": [
+          "pet-life"
+        ]
+      }
+    },
+    "/api/v1/pet-life/pets/{pet_id}/journey-offers": {
+      "get": {
+        "operationId": "journey_offers_api_v1_pet_life_pets__pet_id__journey_offers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pet_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pet Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JourneyOfferResponse"
+                  },
+                  "title": "Response Journey Offers Api V1 Pet Life Pets  Pet Id  Journey Offers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Journey Offers",
         "tags": [
           "pet-life"
         ]

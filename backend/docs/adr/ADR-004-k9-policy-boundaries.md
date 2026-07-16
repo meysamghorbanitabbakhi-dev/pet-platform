@@ -28,8 +28,10 @@ The following are configuration boundaries only and require product, finance, op
 | Delivery commitment and customer display wording | POLICY BLOCKED | Service-level commitment, locale wording, and exception handling |
 | Late-credit enablement/visibility, rate, and expiry | POLICY BLOCKED | Eligibility, funding, disclosure, and expiry policy |
 | Reserve-now and self-service resolutions | POLICY BLOCKED | Commercial workflow, inventory, payment, and support controls |
-| Availability subscription and concierge | POLICY BLOCKED | Product scope, consent, operations, and support model |
-| Care-journey delivery | POLICY BLOCKED | Clinical/content approval, eligibility, and delivery controls |
+| Availability subscription notification templates | POLICY BLOCKED | Final customer wording, SMS consent copy, and operational activation-cycle policy |
+| Concierge/support request operations | POLICY BLOCKED | Staffing model, response-time copy, and escalation workflow; API makes no promises |
+| Care-journey delivery | POLICY BLOCKED | Capability remains disabled by default pending clinical/content approval and eligibility policy |
+| Delay compensation | POLICY BLOCKED | Delay acknowledgement is durable but implies no compensation, cancellation, waiver, or resolution |
 | Semantic remaining-level bounds | POLICY BLOCKED | Approved percentage bands for full/more-than-half/less-than-half/near-empty |
 | Reorder safety buffer | POLICY BLOCKED | Approved pessimistic buffer before reorder recommendation becomes actionable |
 | Early snooze break | POLICY BLOCKED | Material-worsening threshold that may end a snooze before expiry |

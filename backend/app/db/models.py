@@ -1,6 +1,6 @@
 """Import all mapped classes so Alembic sees one complete metadata graph."""
 
-from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.catalog.models import CatalogAvailabilitySubscription, Offer, Product, Supplier
 from app.modules.diary.models import DiaryEntry
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.garden.models import GardenReward
@@ -8,7 +8,7 @@ from app.modules.households.models import Household, HouseholdAddress, Household
 from app.modules.identity.models import AuthIdentity, AuthSession, OtpChallenge
 from app.modules.identity.privacy import PrivacyRequest
 from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit
-from app.modules.journeys.models import JourneyDefinition, PetJourney
+from app.modules.journeys.models import JourneyCheckIn, JourneyDefinition, PetJourney
 from app.modules.notifications.models import (
     Notification,
     NotificationAttempt,
@@ -16,7 +16,7 @@ from app.modules.notifications.models import (
     NotificationTemplate,
 )
 from app.modules.orders.fulfillment import FulfillmentEvent
-from app.modules.orders.models import Order, OrderLine
+from app.modules.orders.models import Order, OrderDelayAcknowledgement, OrderLine
 from app.modules.orders.resolutions import OrderResolution
 from app.modules.payments.models import PaymentAttempt
 from app.modules.pet_health.models import (
@@ -43,6 +43,7 @@ from app.modules.pet_knowledge.models import (
 )
 from app.modules.pets.models import Pet, PetBreedSelection
 from app.modules.sourcing.models import SourcingJob
+from app.modules.support.models import CustomerRequest, CustomerRequestStatusAudit
 from app.modules.system.models import (
     IdempotencyRecord,
     OperatorAuditLog,
@@ -67,6 +68,7 @@ __all__ = [
     "AuthSession",
     "ConsumptionAssignment",
     "DiaryEntry",
+    "CatalogAvailabilitySubscription",
     "FoodEstimate",
     "FulfillmentEvent",
     "GardenReward",
@@ -79,6 +81,7 @@ __all__ = [
     "NotificationPreference",
     "NotificationTemplate",
     "Order",
+    "OrderDelayAcknowledgement",
     "OrderLine",
     "OrderResolution",
     "PaymentAttempt",
@@ -103,6 +106,7 @@ __all__ = [
     "Pet",
     "PetBreedSelection",
     "PetJourney",
+    "JourneyCheckIn",
     "Product",
     "JourneyDefinition",
     "InventoryUnit",
@@ -118,6 +122,8 @@ __all__ = [
     "PrivacyRequest",
     "OutboxEvent",
     "WebhookInboxEvent",
+    "CustomerRequest",
+    "CustomerRequestStatusAudit",
     "WalletAccount",
     "WalletCredit",
     "WalletDebit",

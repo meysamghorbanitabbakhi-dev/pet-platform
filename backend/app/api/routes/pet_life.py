@@ -2,7 +2,7 @@ from datetime import date, time, timedelta
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,14 +10,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.contracts import (
     AddressResponse,
     CursorPage,
+    DiaryEntryDetailResponse,
     DiaryListItem,
     FoodEstimateProvenanceRow,
     FoodEstimateResponse,
     GardenObjectResponse,
+    GardenStateResponse,
     InventoryAssignmentResponse,
     InventoryDetailResponse,
     InventoryListItem,
+    JourneyCheckInResponse,
     JourneyCompletionResponse,
+    JourneyDefinitionResponse,
+    JourneyDetailResponse,
+    JourneyOfferResponse,
     NotificationListItem,
     OffsetPage,
     PetSummary,
@@ -44,7 +50,7 @@ from app.modules.households.access import (
 from app.modules.households.models import Household, HouseholdAddress, HouseholdMembership
 from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit, ReorderSnooze
 from app.modules.inventory.service import InventoryError, InventoryService
-from app.modules.journeys.models import PetJourney
+from app.modules.journeys.models import JourneyCheckIn, JourneyDefinition, PetJourney
 from app.modules.journeys.service import JourneyError, JourneyService
 from app.modules.notifications.models import Notification, NotificationPreference
 from app.modules.pets.models import Pet
@@ -56,6 +62,7 @@ router = APIRouter(prefix="/pet-life", tags=["pet-life"])
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
 PaginationDependency = Annotated[Pagination, Depends()]
 SettingsDependency = Annotated[Settings, Depends(get_settings)]
+IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=255)]
 
 
 class HouseholdBody(BaseModel):
@@ -134,6 +141,11 @@ class JourneyStartBody(BaseModel):
 
 class JourneyCompleteBody(BaseModel):
     memory_title_fa: str = Field(min_length=1, max_length=300)
+
+
+class JourneyCheckInBody(BaseModel):
+    check_in_key: str = Field(min_length=1, max_length=100)
+    answer_key: str = Field(min_length=1, max_length=100)
 
 
 class JourneyStopBody(BaseModel):
@@ -662,7 +674,10 @@ async def start_journey(
     body: JourneyStartBody,
     identity: CurrentIdentity,
     session: SessionDependency,
+    settings: SettingsDependency,
 ) -> IdResponse:
+    if not settings.care_journey_delivery_enabled:
+        raise HTTPException(status_code=409, detail="care_journey_delivery_disabled")
     await _pet_access(session, identity.id, pet_id)
     try:
         journey = await JourneyService().start(
@@ -671,6 +686,201 @@ async def start_journey(
     except JourneyError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return IdResponse(id=journey.id)
+
+
+@router.get("/pets/{pet_id}/journey-offers", response_model=list[JourneyOfferResponse])
+async def journey_offers(
+    pet_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> list[JourneyOfferResponse]:
+    pet = await _pet_access(session, identity.id, pet_id)
+    if not settings.care_journey_delivery_enabled:
+        raise HTTPException(status_code=409, detail="care_journey_delivery_disabled")
+    now = utc_now()
+    definitions = list(
+        (
+            await session.scalars(
+                select(JourneyDefinition)
+                .where(JourneyDefinition.approval_status == "approved")
+                .order_by(JourneyDefinition.key, JourneyDefinition.version.desc())
+            )
+        ).all()
+    )
+    offers = [
+        definition
+        for definition in definitions
+        if _journey_definition_deliverable(definition, pet.species, now)
+    ]
+    return [
+        JourneyOfferResponse(
+            definition_id=item.id,
+            key=item.key,
+            version=item.version,
+            title_fa=item.title_fa,
+            summary_fa=_content_str(item.content, "summary_fa"),
+            duration_days=_content_int(item.content, "duration_days"),
+        )
+        for item in offers
+    ]
+
+
+@router.get(
+    "/journey-definitions/{definition_id}",
+    response_model=JourneyDefinitionResponse,
+)
+async def journey_definition_detail(
+    definition_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> JourneyDefinitionResponse:
+    _ = identity
+    if not settings.care_journey_delivery_enabled:
+        raise HTTPException(status_code=409, detail="care_journey_delivery_disabled")
+    definition = await session.get(JourneyDefinition, definition_id)
+    if (
+        definition is None
+        or definition.approval_status != "approved"
+        or definition.approved_at is None
+        or not _journey_definition_deliverable(definition, None, utc_now())
+    ):
+        raise HTTPException(status_code=404, detail="journey_definition_not_found")
+    return JourneyDefinitionResponse(
+        id=definition.id,
+        key=definition.key,
+        version=definition.version,
+        title_fa=definition.title_fa,
+        summary_fa=_content_str(definition.content, "summary_fa"),
+        content=_public_journey_content(definition.content),
+        approved_at=definition.approved_at,
+    )
+
+
+@router.get("/journeys/{journey_id}", response_model=JourneyDetailResponse)
+async def journey_detail(
+    journey_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> JourneyDetailResponse:
+    if not settings.care_journey_delivery_enabled:
+        raise HTTPException(status_code=409, detail="care_journey_delivery_disabled")
+    journey = await _owned_journey(session, identity.id, journey_id)
+    check_ins = list(
+        (
+            await session.scalars(
+                select(JourneyCheckIn)
+                .where(JourneyCheckIn.journey_id == journey.id)
+                .order_by(JourneyCheckIn.submitted_at, JourneyCheckIn.id)
+            )
+        ).all()
+    )
+    definition = await session.get(JourneyDefinition, journey.definition_id)
+    content = journey.definition_snapshot or (definition.content if definition else {})
+    return JourneyDetailResponse(
+        id=journey.id,
+        pet_id=journey.pet_id,
+        definition_id=journey.definition_id,
+        definition_version=journey.definition_version or (definition.version if definition else 1),
+        status=journey.status,
+        started_at=journey.started_at,
+        ended_at=journey.ended_at,
+        title_fa=definition.title_fa if definition else "",
+        steps=_content_list(content, "steps"),
+        check_ins=[
+            JourneyCheckInResponse(
+                id=item.id,
+                journey_id=item.journey_id,
+                check_in_key=item.check_in_key,
+                answer_key=item.answer_key,
+                submitted_at=item.submitted_at,
+            )
+            for item in check_ins
+        ],
+    )
+
+
+@router.post("/journeys/{journey_id}/check-ins", response_model=JourneyCheckInResponse)
+async def journey_check_in(
+    journey_id: UUID,
+    body: JourneyCheckInBody,
+    idempotency_key: IdempotencyKey,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> JourneyCheckInResponse:
+    if not settings.care_journey_delivery_enabled:
+        raise HTTPException(status_code=409, detail="care_journey_delivery_disabled")
+    journey = await session.scalar(
+        select(PetJourney).where(PetJourney.id == journey_id).with_for_update()
+    )
+    if journey is None:
+        raise HTTPException(status_code=404, detail="journey_not_found")
+    await _pet_access(session, identity.id, journey.pet_id)
+    if journey.status != "active":
+        raise HTTPException(status_code=409, detail="journey_not_active")
+    existing = await session.scalar(
+        select(JourneyCheckIn).where(
+            JourneyCheckIn.journey_id == journey.id,
+            JourneyCheckIn.idempotency_key == idempotency_key,
+        )
+    )
+    if existing is not None:
+        return JourneyCheckInResponse(
+            id=existing.id,
+            journey_id=existing.journey_id,
+            check_in_key=existing.check_in_key,
+            answer_key=existing.answer_key,
+            submitted_at=existing.submitted_at,
+        )
+    content = journey.definition_snapshot
+    if content is None:
+        definition = await session.get(JourneyDefinition, journey.definition_id)
+        content = definition.content if definition else {}
+    if not _valid_check_in(content, body.check_in_key, body.answer_key):
+        raise HTTPException(status_code=422, detail="invalid_journey_check_in")
+    check_in = JourneyCheckIn(
+        journey_id=journey.id,
+        check_in_key=body.check_in_key,
+        answer_key=body.answer_key,
+        submitted_by_identity_id=identity.id,
+        submitted_at=utc_now(),
+        idempotency_key=idempotency_key,
+    )
+    session.add(check_in)
+    await session.flush()
+    completed = _completion_requirements_met(
+        content,
+        {
+            item.check_in_key
+            for item in (
+                await session.scalars(
+                    select(JourneyCheckIn).where(JourneyCheckIn.journey_id == journey.id)
+                )
+            ).all()
+        },
+    )
+    diary = reward = None
+    if completed:
+        diary, reward = await JourneyService().complete(
+            session,
+            journey_id=journey.id,
+            memory_title_fa=_content_str(content, "completion_memory_title_fa") or "خاطره مسیر",
+        )
+    else:
+        await session.commit()
+    return JourneyCheckInResponse(
+        id=check_in.id,
+        journey_id=check_in.journey_id,
+        check_in_key=check_in.check_in_key,
+        answer_key=check_in.answer_key,
+        submitted_at=check_in.submitted_at,
+        completed=completed,
+        diary_entry_id=diary.id if diary else None,
+        garden_reward_id=reward.id if reward else None,
+    )
 
 
 @router.post("/journeys/{journey_id}/pause", status_code=status.HTTP_204_NO_CONTENT)
@@ -717,7 +927,10 @@ async def complete_journey(
     body: JourneyCompleteBody,
     identity: CurrentIdentity,
     session: SessionDependency,
+    settings: SettingsDependency,
 ) -> JourneyCompletionResponse:
+    if not settings.care_journey_delivery_enabled:
+        raise HTTPException(status_code=409, detail="care_journey_delivery_disabled")
     await _owned_journey(session, identity.id, journey_id)
     try:
         diary, reward = await JourneyService().complete(
@@ -755,10 +968,48 @@ async def list_diary(
     ]
 
 
-@router.get("/pets/{pet_id}/garden", response_model=list[GardenObjectResponse])
+@router.get("/pets/{pet_id}/diary/{entry_id}", response_model=DiaryEntryDetailResponse)
+async def diary_detail(
+    pet_id: UUID,
+    entry_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+) -> DiaryEntryDetailResponse:
+    await _pet_access(session, identity.id, pet_id)
+    entry = await session.get(DiaryEntry, entry_id)
+    if entry is None or entry.pet_id != pet_id:
+        raise HTTPException(status_code=404, detail="diary_entry_not_found")
+    reward = await session.scalar(
+        select(GardenReward).where(GardenReward.diary_entry_id == entry.id).limit(1)
+    )
+    return DiaryEntryDetailResponse(
+        id=entry.id,
+        entry_type=entry.entry_type,
+        title_fa=entry.title_fa,
+        note_fa=entry.note_fa,
+        happened_at=entry.happened_at,
+        source_type=entry.source_type,
+        source_reference=entry.source_id,
+        linked_garden_object=(
+            GardenObjectResponse(
+                id=reward.id,
+                object_key=reward.object_key,
+                state=reward.state,
+                diary_entry_id=reward.diary_entry_id,
+                quadrant=reward.quadrant,
+                position_x=reward.position_x,
+                position_y=reward.position_y,
+            )
+            if reward
+            else None
+        ),
+    )
+
+
+@router.get("/pets/{pet_id}/garden", response_model=GardenStateResponse)
 async def list_garden(
     pet_id: UUID, identity: CurrentIdentity, session: SessionDependency
-) -> list[GardenObjectResponse]:
+) -> GardenStateResponse:
     await _pet_access(session, identity.id, pet_id)
     rewards = list(
         (
@@ -769,7 +1020,7 @@ async def list_garden(
             )
         ).all()
     )
-    return [
+    objects = [
         GardenObjectResponse(
             id=item.id,
             object_key=item.object_key,
@@ -781,6 +1032,18 @@ async def list_garden(
         )
         for item in rewards
     ]
+    return GardenStateResponse(
+        pet_id=pet_id,
+        unlocked_quadrants=[1],
+        visible_slot_count=12,
+        slot_rules={
+            "source": "server_milestone_rules",
+            "xp_enabled": False,
+            "decay_enabled": False,
+        },
+        objects=objects,
+        next_eligibility={"reason_key": "server_derived_milestones_only"},
+    )
 
 
 @router.put("/garden/{reward_id}/placement", status_code=status.HTTP_204_NO_CONTENT)
@@ -799,6 +1062,26 @@ async def place_garden_reward(
     reward.position_x = body.position_x
     reward.position_y = body.position_y
     reward.placed_at = utc_now()
+    await session.commit()
+
+
+@router.delete("/garden/{reward_id}/placement", status_code=status.HTTP_204_NO_CONTENT)
+async def store_garden_reward(
+    reward_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+) -> None:
+    reward = await session.scalar(
+        select(GardenReward).where(GardenReward.id == reward_id).with_for_update()
+    )
+    if reward is None:
+        raise HTTPException(status_code=404, detail="garden_reward_not_found")
+    await _pet_access(session, identity.id, reward.pet_id)
+    reward.state = "stored"
+    reward.quadrant = None
+    reward.position_x = None
+    reward.position_y = None
+    reward.placed_at = None
     await session.commit()
 
 
@@ -1127,3 +1410,82 @@ def _estimate_response(estimate: FoodEstimate) -> FoodEstimateResponse:
             if isinstance(value, (str, int, float)) or value is None
         ],
     )
+
+
+def _content_str(content: dict[str, object], key: str) -> str | None:
+    value = content.get(key)
+    return value if isinstance(value, str) else None
+
+
+def _content_int(content: dict[str, object], key: str) -> int | None:
+    value = content.get(key)
+    return value if isinstance(value, int) else None
+
+
+def _content_list(content: dict[str, object], key: str) -> list[dict[str, Any]]:
+    value = content.get(key)
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _public_journey_content(content: dict[str, object]) -> dict[str, Any]:
+    allowed = {
+        "summary_fa",
+        "eligibility",
+        "duration_days",
+        "active_from",
+        "active_until",
+        "steps",
+        "completion_requires",
+        "exception_behavior",
+        "garden_object_key",
+        "professional_approval_ref",
+    }
+    return {key: value for key, value in content.items() if key in allowed}
+
+
+def _journey_definition_deliverable(
+    definition: JourneyDefinition,
+    species: str | None,
+    now: Any,
+) -> bool:
+    content = definition.content
+    if not isinstance(content.get("professional_approval_ref"), str):
+        return False
+    from_raw = content.get("active_from")
+    until_raw = content.get("active_until")
+    if isinstance(from_raw, str) and from_raw and now.isoformat() < from_raw:
+        return False
+    if isinstance(until_raw, str) and until_raw and now.isoformat() >= until_raw:
+        return False
+    eligible_species = content.get("eligible_species")
+    if (
+        species is not None
+        and isinstance(eligible_species, list)
+        and species not in eligible_species
+    ):
+        return False
+    return bool(_content_list(content, "steps"))
+
+
+def _valid_check_in(content: dict[str, object], check_in_key: str, answer_key: str) -> bool:
+    for step in _content_list(content, "steps"):
+        if step.get("key") != check_in_key:
+            continue
+        answers = step.get("allowed_answers")
+        return isinstance(answers, list) and answer_key in answers
+    return False
+
+
+def _completion_requirements_met(content: dict[str, object], submitted_keys: set[str]) -> bool:
+    required = content.get("completion_requires")
+    if isinstance(required, list):
+        required_keys = {str(item) for item in required if isinstance(item, str)}
+    else:
+        required_keys = {
+            str(step["key"])
+            for step in _content_list(content, "steps")
+            if isinstance(step.get("key"), str)
+        }
+    return bool(required_keys) and required_keys.issubset(submitted_keys)

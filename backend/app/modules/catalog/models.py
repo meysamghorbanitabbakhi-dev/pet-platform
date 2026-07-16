@@ -97,3 +97,28 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     sourcing_capacity_status: Mapped[str] = mapped_column(
         String(20), default="open", nullable=False
     )
+
+
+class CatalogAvailabilitySubscription(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "catalog_availability_subscriptions"
+    __table_args__ = (
+        CheckConstraint("status IN ('active','notified','cancelled')", name="valid_status"),
+        UniqueConstraint(
+            "identity_id",
+            "offer_id",
+            "activation_cycle",
+            name="identity_offer_activation_cycle",
+        ),
+    )
+
+    identity_id: Mapped[UUID] = mapped_column(
+        ForeignKey("identity_auth_identities.id"), index=True, nullable=False
+    )
+    household_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("households_households.id"), index=True
+    )
+    offer_id: Mapped[UUID] = mapped_column(ForeignKey("catalog_offers.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+    activation_cycle: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -48,3 +48,27 @@ class PetJourney(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     stop_reason: Mapped[str | None] = mapped_column(Text)
+    definition_version: Mapped[int | None] = mapped_column(Integer)
+    definition_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSONB)
+    completion_effects_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class JourneyCheckIn(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "journey_check_ins"
+    __table_args__ = (
+        UniqueConstraint("journey_id", "check_in_key", name="journey_check_in_once"),
+        UniqueConstraint("journey_id", "idempotency_key", name="journey_check_in_key_once"),
+    )
+
+    journey_id: Mapped[UUID] = mapped_column(
+        ForeignKey("journeys_pet_journeys.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    check_in_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    answer_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    submitted_by_identity_id: Mapped[UUID] = mapped_column(
+        ForeignKey("identity_auth_identities.id"), index=True, nullable=False
+    )
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)

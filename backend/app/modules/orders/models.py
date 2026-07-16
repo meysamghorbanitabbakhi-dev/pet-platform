@@ -78,3 +78,31 @@ class OrderLinePetPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     pet_id: Mapped[UUID] = mapped_column(
         ForeignKey("pets_pets.id", ondelete="CASCADE"), index=True
     )
+
+
+class OrderDelayAcknowledgement(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "orders_delay_acknowledgements"
+    __table_args__ = (
+        UniqueConstraint(
+            "identity_id",
+            "order_id",
+            "idempotency_key",
+            name="identity_order_ack_key",
+        ),
+        UniqueConstraint(
+            "identity_id",
+            "order_id",
+            "delay_event_version",
+            name="identity_order_delay_version",
+        ),
+    )
+
+    identity_id: Mapped[UUID] = mapped_column(
+        ForeignKey("identity_auth_identities.id"), index=True, nullable=False
+    )
+    order_id: Mapped[UUID] = mapped_column(
+        ForeignKey("orders_orders.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    delay_event_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)

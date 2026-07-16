@@ -7,7 +7,9 @@ from sqlalchemy import and_, delete, func, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.contracts import (
+    AvailabilitySubscriptionResponse,
     CursorPage,
+    DelayAcknowledgementResponse,
     FulfillmentTimelineItem,
     OfferDetailResponse,
     OfferListItem,
@@ -35,11 +37,18 @@ from app.integrations.payment.factory import (
     build_payment_gateway,
 )
 from app.integrations.payment.zarinpal import ZarinpalError, callback_allows_verification
-from app.modules.catalog.models import Offer, Product, ProductMedia, Supplier
+from app.modules.catalog.models import (
+    CatalogAvailabilitySubscription,
+    Offer,
+    Product,
+    ProductMedia,
+    Supplier,
+)
 from app.modules.checkout.service import CheckoutError, CheckoutItem, CheckoutService
 from app.modules.households.access import HouseholdAccessError, require_household_membership
+from app.modules.households.models import HouseholdMembership
 from app.modules.orders.fulfillment import FulfillmentEvent
-from app.modules.orders.models import Order, OrderLine, OrderLinePetPlan
+from app.modules.orders.models import Order, OrderDelayAcknowledgement, OrderLine, OrderLinePetPlan
 from app.modules.payments.models import PaymentAttempt
 from app.modules.payments.service import PaymentService, PaymentWorkflowError
 from app.modules.pets.models import Pet
@@ -200,6 +209,145 @@ async def offer_detail(offer_id: UUID, session: SessionDependency) -> OfferDetai
     )
 
 
+@router.post(
+    "/catalog/offers/{offer_id}/availability-subscriptions",
+    response_model=AvailabilitySubscriptionResponse,
+)
+async def subscribe_offer_availability(
+    offer_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> AvailabilitySubscriptionResponse:
+    if not settings.availability_subscriptions_enabled:
+        raise HTTPException(status_code=409, detail="availability_subscriptions_disabled")
+    offer = await session.get(Offer, offer_id)
+    if offer is None or offer.status == "retired":
+        raise HTTPException(status_code=404, detail="offer_not_found")
+    existing = await session.scalar(
+        select(CatalogAvailabilitySubscription).where(
+            CatalogAvailabilitySubscription.identity_id == identity.id,
+            CatalogAvailabilitySubscription.offer_id == offer.id,
+            CatalogAvailabilitySubscription.status == "active",
+        )
+    )
+    if existing is None:
+        latest = await session.scalar(
+            select(CatalogAvailabilitySubscription)
+            .where(
+                CatalogAvailabilitySubscription.identity_id == identity.id,
+                CatalogAvailabilitySubscription.offer_id == offer.id,
+            )
+            .order_by(CatalogAvailabilitySubscription.activation_cycle.desc())
+            .limit(1)
+        )
+        household_id = await session.scalar(
+            select(HouseholdMembership.household_id)
+            .where(HouseholdMembership.identity_id == identity.id)
+            .order_by(HouseholdMembership.created_at)
+            .limit(1)
+        )
+        existing = CatalogAvailabilitySubscription(
+            identity_id=identity.id,
+            household_id=household_id,
+            offer_id=offer.id,
+            status="active",
+            activation_cycle=(latest.activation_cycle + 1 if latest else 0),
+        )
+        session.add(existing)
+        await session.flush()
+    await session.commit()
+    return _availability_subscription_response(existing)
+
+
+@router.delete(
+    "/catalog/offers/{offer_id}/availability-subscriptions",
+    response_model=AvailabilitySubscriptionResponse,
+)
+async def cancel_offer_availability_subscription(
+    offer_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> AvailabilitySubscriptionResponse:
+    if not settings.availability_subscriptions_enabled:
+        raise HTTPException(status_code=409, detail="availability_subscriptions_disabled")
+    subscription = await session.scalar(
+        select(CatalogAvailabilitySubscription)
+        .where(
+            CatalogAvailabilitySubscription.identity_id == identity.id,
+            CatalogAvailabilitySubscription.offer_id == offer_id,
+            CatalogAvailabilitySubscription.status == "active",
+        )
+        .with_for_update()
+    )
+    now = utc_now()
+    if subscription is None:
+        subscription = await session.scalar(
+            select(CatalogAvailabilitySubscription)
+            .where(
+                CatalogAvailabilitySubscription.identity_id == identity.id,
+                CatalogAvailabilitySubscription.offer_id == offer_id,
+            )
+            .order_by(CatalogAvailabilitySubscription.created_at.desc())
+            .limit(1)
+        )
+        if subscription is None:
+            offer = await session.get(Offer, offer_id)
+            if offer is None or offer.status == "retired":
+                raise HTTPException(status_code=404, detail="offer_not_found")
+            subscription = CatalogAvailabilitySubscription(
+                identity_id=identity.id,
+                offer_id=offer_id,
+                status="cancelled",
+                activation_cycle=0,
+                cancelled_at=now,
+            )
+            session.add(subscription)
+    elif subscription.cancelled_at is None:
+        subscription.status = "cancelled"
+        subscription.cancelled_at = now
+    await session.commit()
+    return _availability_subscription_response(subscription)
+
+
+@router.get(
+    "/me/availability-subscriptions",
+    response_model=OffsetPage[AvailabilitySubscriptionResponse],
+)
+async def list_availability_subscriptions(
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    pagination: PaginationDependency,
+    settings: SettingsDependency,
+) -> OffsetPage[AvailabilitySubscriptionResponse]:
+    if not settings.availability_subscriptions_enabled:
+        raise HTTPException(status_code=409, detail="availability_subscriptions_disabled")
+    filters = (CatalogAvailabilitySubscription.identity_id == identity.id,)
+    total = int(
+        await session.scalar(select(func.count(CatalogAvailabilitySubscription.id)).where(*filters))
+        or 0
+    )
+    rows = list(
+        (
+            await session.scalars(
+                select(CatalogAvailabilitySubscription)
+                .where(*filters)
+                .order_by(CatalogAvailabilitySubscription.created_at.desc())
+                .offset(pagination.offset)
+                .limit(pagination.limit)
+            )
+        ).all()
+    )
+    return OffsetPage[AvailabilitySubscriptionResponse].model_validate(
+        page(
+            [_availability_subscription_response(item) for item in rows],
+            total=total,
+            pagination=pagination,
+        )
+    )
+
+
 @router.post("/checkout/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(
     body: CheckoutBody,
@@ -301,6 +449,20 @@ def _order_response(order: Order) -> OrderResponse:
         status=order.status,
         merchandise_total_irr=order.merchandise_total_irr,
         currency=order.currency,
+    )
+
+
+def _availability_subscription_response(
+    item: CatalogAvailabilitySubscription,
+) -> AvailabilitySubscriptionResponse:
+    return AvailabilitySubscriptionResponse(
+        id=item.id,
+        offer_id=item.offer_id,
+        status=item.status,
+        order_created=False,
+        created_at=item.created_at,
+        notified_at=item.notified_at,
+        cancelled_at=item.cancelled_at,
     )
 
 
@@ -425,6 +587,66 @@ async def customer_order_journey(
             )
             for item in sourced_units
         ],
+    )
+
+
+@router.post(
+    "/orders/{order_id}/delay-acknowledgements",
+    response_model=DelayAcknowledgementResponse,
+)
+async def acknowledge_order_delay(
+    order_id: UUID,
+    idempotency_key: IdempotencyKey,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+) -> DelayAcknowledgementResponse:
+    order = await session.get(Order, order_id)
+    if order is None or order.customer_identity_id != identity.id:
+        raise HTTPException(status_code=404, detail="order_not_found")
+    delayed_events = list(
+        (
+            await session.scalars(
+                select(FulfillmentEvent)
+                .where(
+                    FulfillmentEvent.order_id == order.id,
+                    FulfillmentEvent.event_type == "delayed",
+                )
+                .order_by(FulfillmentEvent.occurred_at, FulfillmentEvent.id)
+            )
+        ).all()
+    )
+    if not delayed_events:
+        raise HTTPException(status_code=409, detail="no_visible_delay")
+    version = len(delayed_events)
+    acknowledgement = await session.scalar(
+        select(OrderDelayAcknowledgement).where(
+            OrderDelayAcknowledgement.identity_id == identity.id,
+            OrderDelayAcknowledgement.order_id == order.id,
+            OrderDelayAcknowledgement.idempotency_key == idempotency_key,
+        )
+    )
+    if acknowledgement is None:
+        existing_version = await session.scalar(
+            select(OrderDelayAcknowledgement).where(
+                OrderDelayAcknowledgement.identity_id == identity.id,
+                OrderDelayAcknowledgement.order_id == order.id,
+                OrderDelayAcknowledgement.delay_event_version == version,
+            )
+        )
+        acknowledgement = existing_version or OrderDelayAcknowledgement(
+            identity_id=identity.id,
+            order_id=order.id,
+            delay_event_version=version,
+            acknowledged_at=utc_now(),
+            idempotency_key=idempotency_key,
+        )
+        session.add(acknowledgement)
+        await session.commit()
+    return DelayAcknowledgementResponse(
+        id=acknowledgement.id,
+        order_id=acknowledgement.order_id,
+        delay_event_version=acknowledgement.delay_event_version,
+        acknowledged_at=acknowledgement.acknowledged_at,
     )
 
 

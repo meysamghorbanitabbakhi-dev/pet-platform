@@ -5,6 +5,7 @@ from app.db.base import Base
 def test_metadata_contains_foundation_and_transactional_commerce_tables() -> None:
     assert set(Base.metadata.tables) == {
         "catalog_offers",
+        "catalog_availability_subscriptions",
         "catalog_product_media",
         "catalog_products",
         "catalog_suppliers",
@@ -23,6 +24,7 @@ def test_metadata_contains_foundation_and_transactional_commerce_tables() -> Non
         "inventory_reorder_snoozes",
         "inventory_units",
         "journeys_definitions",
+        "journey_check_ins",
         "journeys_pet_journeys",
         "notifications_attempts",
         "notifications_notifications",
@@ -30,6 +32,7 @@ def test_metadata_contains_foundation_and_transactional_commerce_tables() -> Non
         "notifications_templates",
         "orders_order_lines",
         "orders_order_line_pet_plans",
+        "orders_delay_acknowledgements",
         "orders_orders",
         "orders_resolutions",
         "payments_attempts",
@@ -58,6 +61,8 @@ def test_metadata_contains_foundation_and_transactional_commerce_tables() -> Non
         "system_operator_audit_log",
         "system_outbox_events",
         "system_webhook_inbox",
+        "support_customer_requests",
+        "support_customer_request_status_audit",
         "trust_reference_price_evidence",
         "trust_sourced_unit_evidence",
         "trust_supplier_assurances",

@@ -214,9 +214,69 @@ class GardenObjectResponse(BaseModel):
     position_y: int | None = None
 
 
+class DiaryEntryDetailResponse(DiaryListItem):
+    note_fa: str | None = None
+    source_type: str
+    source_reference: str
+    linked_garden_object: GardenObjectResponse | None = None
+
+
+class GardenStateResponse(BaseModel):
+    pet_id: UUID
+    layout_version: int = 1
+    unlocked_quadrants: list[int]
+    visible_slot_count: int
+    slot_rules: dict[str, Any]
+    objects: list[GardenObjectResponse]
+    next_eligibility: dict[str, Any] | None = None
+
+
 class JourneyCompletionResponse(BaseModel):
     diary_entry_id: UUID
     garden_reward_id: UUID
+
+
+class JourneyOfferResponse(BaseModel):
+    definition_id: UUID
+    key: str
+    version: int
+    title_fa: str
+    summary_fa: str | None = None
+    duration_days: int | None = None
+
+
+class JourneyDefinitionResponse(BaseModel):
+    id: UUID
+    key: str
+    version: int
+    title_fa: str
+    summary_fa: str | None = None
+    content: dict[str, Any]
+    approved_at: datetime
+
+
+class JourneyCheckInResponse(BaseModel):
+    id: UUID
+    journey_id: UUID
+    check_in_key: str
+    answer_key: str
+    submitted_at: datetime
+    completed: bool = False
+    diary_entry_id: UUID | None = None
+    garden_reward_id: UUID | None = None
+
+
+class JourneyDetailResponse(BaseModel):
+    id: UUID
+    pet_id: UUID
+    definition_id: UUID
+    definition_version: int
+    status: str
+    started_at: datetime
+    ended_at: datetime | None = None
+    title_fa: str
+    steps: list[dict[str, Any]]
+    check_ins: list[JourneyCheckInResponse]
 
 
 class ReorderAssessmentResponse(BaseModel):
@@ -242,6 +302,41 @@ class NotificationListItem(BaseModel):
     payload: dict[str, Any]
     created_at: datetime
     read_at: datetime | None = None
+
+
+class AvailabilitySubscriptionResponse(BaseModel):
+    id: UUID
+    offer_id: UUID
+    status: Literal["active", "notified", "cancelled"]
+    order_created: Literal[False] = False
+    created_at: datetime
+    notified_at: datetime | None = None
+    cancelled_at: datetime | None = None
+
+
+class CustomerRequestResponse(BaseModel):
+    id: UUID
+    household_id: UUID
+    request_type: Literal["support", "concierge_sourcing"]
+    order_id: UUID | None = None
+    offer_id: UUID | None = None
+    product_query_fa: str | None = None
+    message_fa: str
+    contact_preference: Literal["in_app", "sms"]
+    status: Literal["submitted", "in_review", "resolved", "closed"]
+    created_at: datetime
+    updated_at: datetime
+    promises: dict[str, bool]
+
+
+class DelayAcknowledgementResponse(BaseModel):
+    id: UUID
+    order_id: UUID
+    delay_event_version: int
+    acknowledged_at: datetime
+    compensation_implied: Literal[False] = False
+    cancellation_implied: Literal[False] = False
+    waiver_implied: Literal[False] = False
 
 
 class PetSummary(BaseModel):
