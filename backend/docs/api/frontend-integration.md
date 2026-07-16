@@ -40,7 +40,7 @@ The opaque cursor is signed, must never be edited by clients, and is passed back
 
 ## Today state unions
 
-`GET /api/v1/pet-life/pets/{pet_id}/today` has discriminated `food` and `primary_attention` contracts. Switch on `food.state` (`none`, `unopened`, `unknown_estimate`, or `estimated`) and on `primary_attention.type` when attention is present. Do not assume fields belonging to another state are available.
+`GET /api/v1/pet-life/pets/{pet_id}/today` has discriminated `food` and `primary_attention` contracts. Switch on `food.state` (`none`, `incoming`, `unopened`, `unknown_estimate`, `estimated`, or `unavailable`) and on `primary_attention.type` when attention is present. Incoming food appears only for pets named in an order-line plan. Incoming and unopened states intentionally have no remaining-days field. Unknown shares produce no pet-level remaining-days value. Active reorder snoozes suppress reorder attention until their server-owned expiry.
 
 ## K9.1 bootstrap and commerce
 
@@ -49,6 +49,14 @@ The opaque cursor is signed, must never be edited by clients, and is passed back
 `GET /api/v1/catalog/offers/{offer_id}` returns only active or temporarily unavailable curated offers. Its media entries are ordered public references; supplier identity and storage paths are never included. Savings use integer floor percentage: `(reference_price_irr - price_irr) * 100 // reference_price_irr`.
 
 `GET /api/v1/orders/{order_id}` is the reload-safe order projection. `PUT /api/v1/orders/{order_id}/pet-plan` replaces line-to-pet assignments while the order is paid, sourcing, or in transit. It is idempotent, has no inventory-opening or estimation effect, and delivery projects planned pets as unknown-share unopened assignments.
+
+## K9.2 inventory, estimates, and reorder
+
+`GET /api/v1/pet-life/inventory/{unit_id}` is the typed inventory detail. It returns the unit, product/source/state facts, known quantities, timestamps, expiry/assurance snapshot, assignments, `shares_known`, and the active household estimate when one exists.
+
+Opening or correcting inventory accepts either the legacy `remaining_grams` field or the versioned `remaining` union. Exact grams (`{"mode":"grams","grams":2100}`) preserves the input, stores grams bounds with identical low/high values, and records provenance. Level input (`{"mode":"level","level":"more_than_half"}`) is schema-valid but currently fails closed with `semantic_level_policy_disabled`; clients must not convert levels to guessed grams.
+
+`POST /api/v1/pet-life/inventory/{unit_id}/reorder-assessment` is authoritative for reorder UX. It uses server-owned estimate, delivery policy, configured safety buffer, offer availability/capacity, and active snooze. When the safety buffer is not configured, it returns `outcome=policy_blocked`; when facts are insufficient, it returns `outcome=insufficient_facts`. `PUT /api/v1/pet-life/inventory/{unit_id}/reorder-snooze` is durable and idempotent for an active snooze with a maximum of 72 hours.
 
 ## Policy posture
 

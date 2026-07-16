@@ -163,7 +163,7 @@ class FoodEstimateResponse(BaseModel):
     basis: dict[str, Any]
     calculated_at: datetime | None = None
     last_confirmed_at: datetime | None = None
-    provenance: list[FoodEstimateProvenanceRow] = []
+    provenance: list[FoodEstimateProvenanceRow] = Field(default_factory=list)
 
 
 class InventoryListItem(BaseModel):
@@ -221,11 +221,15 @@ class JourneyCompletionResponse(BaseModel):
 
 class ReorderAssessmentResponse(BaseModel):
     recommendation: str
+    outcome: Literal["order_now", "not_yet", "snoozed", "policy_blocked", "insufficient_facts"]
     risk_gap_days: int | None = None
     remaining_low_days: int | None = None
     remaining_high_days: int | None = None
-    latest_delivery_days: int
-    safety_buffer_days: int
+    latest_delivery_days: int | None = None
+    safety_buffer_days: int | None = None
+    snoozed_until: datetime | None = None
+    provenance: list[FoodEstimateProvenanceRow] = Field(default_factory=list)
+    options: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class WalletSummaryResponse(BaseModel):
@@ -373,6 +377,12 @@ class TodayFoodNone(BaseModel):
     state: Literal["none"]
 
 
+class TodayFoodIncoming(BaseModel):
+    state: Literal["incoming"]
+    order_id: UUID
+    label: str
+
+
 class TodayFoodUnopened(BaseModel):
     state: Literal["unopened"]
     inventory_unit_id: UUID
@@ -394,8 +404,18 @@ class TodayFoodEstimated(BaseModel):
     confidence: str
 
 
+class TodayFoodUnavailable(BaseModel):
+    state: Literal["unavailable"]
+    reason_key: str
+
+
 TodayFoodResponse = Annotated[
-    TodayFoodNone | TodayFoodUnopened | TodayFoodUnknownEstimate | TodayFoodEstimated,
+    TodayFoodNone
+    | TodayFoodIncoming
+    | TodayFoodUnopened
+    | TodayFoodUnknownEstimate
+    | TodayFoodEstimated
+    | TodayFoodUnavailable,
     Field(discriminator="state"),
 ]
 
@@ -445,6 +465,8 @@ class TodayGardenResponse(BaseModel):
 
 class TodayResponse(BaseModel):
     pet: PetSummary
+    household_id: UUID
+    generated_at: datetime
     food: TodayFoodResponse
     next_action: Literal["confirm_opening", "improve_food_estimate"] | None = None
     primary_attention: TodayAttentionResponse | None = None

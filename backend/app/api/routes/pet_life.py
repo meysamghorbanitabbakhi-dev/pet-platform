@@ -1,9 +1,9 @@
 from datetime import date, time, timedelta
-from typing import Annotated
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +32,7 @@ from app.common.phone import normalize_iranian_mobile
 from app.common.time import utc_now
 from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
+from app.modules.catalog.models import Offer
 from app.modules.diary.models import DiaryEntry
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.garden.models import GardenReward
@@ -93,9 +94,34 @@ class AssignmentsBody(BaseModel):
     assignments: list[AssignmentItem] = Field(min_length=1, max_length=20)
 
 
+class RemainingGramsInput(BaseModel):
+    mode: Literal["grams"]
+    grams: int = Field(gt=0)
+
+
+class RemainingLevelInput(BaseModel):
+    mode: Literal["level"]
+    level: Literal["full", "more_than_half", "less_than_half", "near_empty"]
+
+
+RemainingInput = Annotated[
+    RemainingGramsInput | RemainingLevelInput, Field(discriminator="mode")
+]
+
+
 class OpenInventoryBody(BaseModel):
-    remaining_grams: int = Field(gt=0)
+    remaining_grams: int | None = Field(default=None, gt=0)
+    remaining: RemainingInput | None = None
     daily_portion_grams: int | None = Field(default=None, gt=0)
+    feeding_context: Literal["exclusive", "mixed", "unknown"] = "exclusive"
+
+    @model_validator(mode="after")
+    def validate_remaining_input(self) -> "OpenInventoryBody":
+        if self.remaining_grams is None and self.remaining is None:
+            raise ValueError("remaining quantity is required")
+        if self.remaining_grams is not None and self.remaining is not None:
+            raise ValueError("send either legacy remaining_grams or remaining, not both")
+        return self
 
 
 class ReorderSnoozeBody(BaseModel):
@@ -335,16 +361,23 @@ async def open_inventory(
     body: OpenInventoryBody,
     identity: CurrentIdentity,
     session: SessionDependency,
+    settings: SettingsDependency,
 ) -> FoodEstimateResponse:
     unit = await session.get(InventoryUnit, unit_id)
     if unit is None:
         raise HTTPException(status_code=404, detail="inventory_not_found")
     await _household_access(session, identity.id, unit.household_id)
+    remaining = _remaining_facts(body, settings)
     try:
         estimate = await InventoryService().open_and_estimate(
             session,
             inventory_unit_id=unit.id,
-            remaining_grams=body.remaining_grams,
+            remaining_grams=remaining["remaining_grams"],
+            remaining_low_grams=remaining["remaining_low_grams"],
+            remaining_high_grams=remaining["remaining_high_grams"],
+            remaining_input_mode=remaining["remaining_input_mode"],
+            remaining_provenance=remaining["remaining_provenance"],
+            feeding_context=body.feeding_context,
             daily_portion_grams=body.daily_portion_grams,
         )
     except InventoryError as exc:
@@ -358,11 +391,13 @@ async def correct_estimate(
     body: OpenInventoryBody,
     identity: CurrentIdentity,
     session: SessionDependency,
+    settings: SettingsDependency,
 ) -> FoodEstimateResponse:
     unit = await session.get(InventoryUnit, unit_id)
     if unit is None:
         raise HTTPException(status_code=404, detail="inventory_not_found")
     await _household_access(session, identity.id, unit.household_id)
+    remaining = _remaining_facts(body, settings)
     active = list(
         (
             await session.scalars(
@@ -379,7 +414,12 @@ async def correct_estimate(
         corrected = await InventoryService().open_and_estimate(
             session,
             inventory_unit_id=unit.id,
-            remaining_grams=body.remaining_grams,
+            remaining_grams=remaining["remaining_grams"],
+            remaining_low_grams=remaining["remaining_low_grams"],
+            remaining_high_grams=remaining["remaining_high_grams"],
+            remaining_input_mode=remaining["remaining_input_mode"],
+            remaining_provenance=remaining["remaining_provenance"],
+            feeding_context=body.feeding_context,
             daily_portion_grams=body.daily_portion_grams,
         )
     except InventoryError as exc:
@@ -494,7 +534,7 @@ async def reorder_snooze(
     snooze = await session.scalar(
         select(ReorderSnooze).where(
             ReorderSnooze.inventory_unit_id == unit.id, ReorderSnooze.identity_id == identity.id
-        )
+        ).with_for_update()
     )
     if snooze is None:
         snooze = ReorderSnooze(
@@ -506,9 +546,114 @@ async def reorder_snooze(
             baseline_low_days=active.low_days if active else None,
         )
         session.add(snooze)
-    elif snooze.snoozed_until < now + timedelta(hours=body.hours):
+    elif snooze.snoozed_until <= now:
+        snooze.snoozed_from = now
         snooze.snoozed_until = now + timedelta(hours=body.hours)
+        snooze.baseline_low_days = active.low_days if active else None
     await session.commit()
+
+
+@router.post("/inventory/{unit_id}/reorder-assessment", response_model=ReorderAssessmentResponse)
+async def inventory_reorder_assessment(
+    unit_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> ReorderAssessmentResponse:
+    unit = await session.get(InventoryUnit, unit_id)
+    if unit is None:
+        raise HTTPException(status_code=404, detail="inventory_not_found")
+    await _household_access(session, identity.id, unit.household_id)
+    active = await session.scalar(
+        select(FoodEstimate)
+        .where(FoodEstimate.inventory_unit_id == unit.id, FoodEstimate.status == "active")
+        .order_by(FoodEstimate.calculated_at.desc())
+        .limit(1)
+    )
+    now = utc_now()
+    snooze = await session.scalar(
+        select(ReorderSnooze)
+        .where(
+            ReorderSnooze.inventory_unit_id == unit.id,
+            ReorderSnooze.identity_id == identity.id,
+            ReorderSnooze.snoozed_until > now,
+        )
+        .order_by(ReorderSnooze.snoozed_until.desc())
+        .limit(1)
+    )
+    latest_delivery_days = (settings.delivery_commitment_hours + 23) // 24
+    options = await _reorder_options(session, unit)
+    provenance = [
+        FoodEstimateProvenanceRow(
+            key="estimate", source="server", value="active" if active else None
+        ),
+        FoodEstimateProvenanceRow(
+            key="delivery_policy_hours",
+            source="policy",
+            value=settings.delivery_commitment_hours,
+        ),
+        FoodEstimateProvenanceRow(key="offer_options", source="catalog", value=len(options)),
+    ]
+    if snooze is not None:
+        return ReorderAssessmentResponse(
+            recommendation="snoozed",
+            outcome="snoozed",
+            risk_gap_days=None,
+            remaining_low_days=active.low_days if active else None,
+            remaining_high_days=active.high_days if active else None,
+            latest_delivery_days=latest_delivery_days,
+            safety_buffer_days=settings.reorder_safety_buffer_days,
+            snoozed_until=snooze.snoozed_until,
+            provenance=provenance,
+            options=options,
+        )
+    if settings.reorder_safety_buffer_days is None:
+        return ReorderAssessmentResponse(
+            recommendation="policy_blocked",
+            outcome="policy_blocked",
+            risk_gap_days=None,
+            remaining_low_days=active.low_days if active else None,
+            remaining_high_days=active.high_days if active else None,
+            latest_delivery_days=latest_delivery_days,
+            safety_buffer_days=None,
+            provenance=[
+                *provenance,
+                FoodEstimateProvenanceRow(key="safety_buffer_days", source="policy", value=None),
+            ],
+            options=options,
+        )
+    if active is None or active.low_days is None or active.high_days is None or not options:
+        return ReorderAssessmentResponse(
+            recommendation="insufficient_facts",
+            outcome="insufficient_facts",
+            risk_gap_days=None,
+            remaining_low_days=active.low_days if active else None,
+            remaining_high_days=active.high_days if active else None,
+            latest_delivery_days=latest_delivery_days,
+            safety_buffer_days=settings.reorder_safety_buffer_days,
+            provenance=provenance,
+            options=options,
+        )
+    try:
+        assessment = assess_reorder(
+            remaining_low_days=active.low_days,
+            remaining_high_days=active.high_days,
+            latest_delivery_days=latest_delivery_days,
+            safety_buffer_days=settings.reorder_safety_buffer_days,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return ReorderAssessmentResponse(
+        recommendation=assessment.recommendation,
+        outcome="order_now" if assessment.recommendation == "order_now" else "not_yet",
+        risk_gap_days=assessment.risk_gap_days,
+        remaining_low_days=assessment.remaining_low_days,
+        remaining_high_days=assessment.remaining_high_days,
+        latest_delivery_days=assessment.latest_delivery_days,
+        safety_buffer_days=assessment.safety_buffer_days,
+        provenance=provenance,
+        options=options,
+    )
 
 
 @router.post("/pets/{pet_id}/journeys", response_model=IdResponse)
@@ -663,6 +808,11 @@ async def reorder_assessment(body: ReorderBody, _: CurrentIdentity) -> ReorderAs
         assessment = assess_reorder(**body.model_dump())
         return ReorderAssessmentResponse(
             recommendation=assessment.recommendation,
+            outcome=(
+                "insufficient_facts"
+                if assessment.recommendation == "insufficient_information"
+                else assessment.recommendation
+            ),
             risk_gap_days=assessment.risk_gap_days,
             remaining_low_days=assessment.remaining_low_days,
             remaining_high_days=assessment.remaining_high_days,
@@ -892,6 +1042,71 @@ async def _owned_journey(session: AsyncSession, identity_id: UUID, journey_id: U
     return journey
 
 
+async def _reorder_options(session: AsyncSession, unit: InventoryUnit) -> list[dict[str, Any]]:
+    if unit.product_id is None:
+        return []
+    offers = list(
+        (
+            await session.scalars(
+                select(Offer)
+                .where(
+                    Offer.product_id == unit.product_id,
+                    Offer.status.in_(("active", "unavailable")),
+                )
+                .order_by(Offer.status, Offer.created_at, Offer.id)
+            )
+        ).all()
+    )
+    return [
+        {
+            "offer_id": offer.id,
+            "sku": offer.sku,
+            "available": (
+                offer.status == "active"
+                and offer.stock_posture == "sourced_after_payment"
+                and offer.sourcing_capacity_status == "open"
+            ),
+            "reason_key": (
+                None
+                if offer.status == "active"
+                and offer.stock_posture == "sourced_after_payment"
+                and offer.sourcing_capacity_status == "open"
+                else "offer_unavailable_or_capacity_paused"
+            ),
+        }
+        for offer in offers
+    ]
+
+
+def _remaining_facts(body: OpenInventoryBody, settings: Settings) -> dict[str, Any]:
+    if body.remaining is None:
+        assert body.remaining_grams is not None
+        return {
+            "remaining_grams": body.remaining_grams,
+            "remaining_low_grams": body.remaining_grams,
+            "remaining_high_grams": body.remaining_grams,
+            "remaining_input_mode": "grams",
+            "remaining_provenance": {
+                "contract_version": 0,
+                "source_field": "remaining_grams",
+            },
+        }
+    if body.remaining.mode == "grams":
+        return {
+            "remaining_grams": body.remaining.grams,
+            "remaining_low_grams": body.remaining.grams,
+            "remaining_high_grams": body.remaining.grams,
+            "remaining_input_mode": "grams",
+            "remaining_provenance": {
+                "contract_version": 1,
+                "source_field": "remaining.grams",
+            },
+        }
+    if not settings.semantic_level_estimation_enabled:
+        raise HTTPException(status_code=409, detail="semantic_level_policy_disabled")
+    raise HTTPException(status_code=409, detail="semantic_level_bounds_unconfigured")
+
+
 def _estimate_response(estimate: FoodEstimate) -> FoodEstimateResponse:
     return FoodEstimateResponse(
         id=estimate.id,
@@ -903,7 +1118,7 @@ def _estimate_response(estimate: FoodEstimate) -> FoodEstimateResponse:
         min_days=estimate.low_days,
         max_days=estimate.high_days,
         confidence={"high": "high", "medium": "mid", "low": "unknown"}[estimate.confidence],
-        basis=estimate.basis,
+        basis={"key": estimate.basis},
         calculated_at=estimate.calculated_at,
         last_confirmed_at=estimate.last_confirmed_at,
         provenance=[

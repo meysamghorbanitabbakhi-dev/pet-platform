@@ -1016,7 +1016,6 @@
             "title": "Pet Id"
           },
           "provenance": {
-            "default": [],
             "items": {
               "$ref": "#/components/schemas/FoodEstimateProvenanceRow"
             },
@@ -2900,15 +2899,54 @@
             ],
             "title": "Daily Portion Grams"
           },
+          "feeding_context": {
+            "default": "exclusive",
+            "enum": [
+              "exclusive",
+              "mixed",
+              "unknown"
+            ],
+            "title": "Feeding Context",
+            "type": "string"
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "grams": "#/components/schemas/RemainingGramsInput",
+                    "level": "#/components/schemas/RemainingLevelInput"
+                  },
+                  "propertyName": "mode"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/RemainingGramsInput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RemainingLevelInput"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining"
+          },
           "remaining_grams": {
-            "exclusiveMinimum": 0.0,
-            "title": "Remaining Grams",
-            "type": "integer"
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Grams"
           }
         },
-        "required": [
-          "remaining_grams"
-        ],
         "title": "OpenInventoryBody",
         "type": "object"
       },
@@ -4170,6 +4208,51 @@
         "title": "RefreshBody",
         "type": "object"
       },
+      "RemainingGramsInput": {
+        "properties": {
+          "grams": {
+            "exclusiveMinimum": 0.0,
+            "title": "Grams",
+            "type": "integer"
+          },
+          "mode": {
+            "const": "grams",
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "grams"
+        ],
+        "title": "RemainingGramsInput",
+        "type": "object"
+      },
+      "RemainingLevelInput": {
+        "properties": {
+          "level": {
+            "enum": [
+              "full",
+              "more_than_half",
+              "less_than_half",
+              "near_empty"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "mode": {
+            "const": "level",
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "level"
+        ],
+        "title": "RemainingLevelInput",
+        "type": "object"
+      },
       "ReminderBody": {
         "properties": {
           "due_at": {
@@ -4193,8 +4276,41 @@
       "ReorderAssessmentResponse": {
         "properties": {
           "latest_delivery_days": {
-            "title": "Latest Delivery Days",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Delivery Days"
+          },
+          "options": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "outcome": {
+            "enum": [
+              "order_now",
+              "not_yet",
+              "snoozed",
+              "policy_blocked",
+              "insufficient_facts"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/FoodEstimateProvenanceRow"
+            },
+            "title": "Provenance",
+            "type": "array"
           },
           "recommendation": {
             "title": "Recommendation",
@@ -4234,14 +4350,32 @@
             "title": "Risk Gap Days"
           },
           "safety_buffer_days": {
-            "title": "Safety Buffer Days",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safety Buffer Days"
+          },
+          "snoozed_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snoozed Until"
           }
         },
         "required": [
           "recommendation",
-          "latest_delivery_days",
-          "safety_buffer_days"
+          "outcome"
         ],
         "title": "ReorderAssessmentResponse",
         "type": "object"
@@ -4662,6 +4796,31 @@
         "title": "TodayFoodEstimated",
         "type": "object"
       },
+      "TodayFoodIncoming": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "state": {
+            "const": "incoming",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "order_id",
+          "label"
+        ],
+        "title": "TodayFoodIncoming",
+        "type": "object"
+      },
       "TodayFoodNone": {
         "properties": {
           "state": {
@@ -4674,6 +4833,25 @@
           "state"
         ],
         "title": "TodayFoodNone",
+        "type": "object"
+      },
+      "TodayFoodUnavailable": {
+        "properties": {
+          "reason_key": {
+            "title": "Reason Key",
+            "type": "string"
+          },
+          "state": {
+            "const": "unavailable",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "reason_key"
+        ],
+        "title": "TodayFoodUnavailable",
         "type": "object"
       },
       "TodayFoodUnknownEstimate": {
@@ -4760,7 +4938,9 @@
             "discriminator": {
               "mapping": {
                 "estimated": "#/components/schemas/TodayFoodEstimated",
+                "incoming": "#/components/schemas/TodayFoodIncoming",
                 "none": "#/components/schemas/TodayFoodNone",
+                "unavailable": "#/components/schemas/TodayFoodUnavailable",
                 "unknown_estimate": "#/components/schemas/TodayFoodUnknownEstimate",
                 "unopened": "#/components/schemas/TodayFoodUnopened"
               },
@@ -4771,6 +4951,9 @@
                 "$ref": "#/components/schemas/TodayFoodNone"
               },
               {
+                "$ref": "#/components/schemas/TodayFoodIncoming"
+              },
+              {
                 "$ref": "#/components/schemas/TodayFoodUnopened"
               },
               {
@@ -4778,12 +4961,25 @@
               },
               {
                 "$ref": "#/components/schemas/TodayFoodEstimated"
+              },
+              {
+                "$ref": "#/components/schemas/TodayFoodUnavailable"
               }
             ],
             "title": "Food"
           },
           "garden": {
             "$ref": "#/components/schemas/TodayGardenResponse"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
           },
           "next_action": {
             "anyOf": [
@@ -4844,6 +5040,8 @@
         },
         "required": [
           "pet",
+          "household_id",
+          "generated_at",
           "food",
           "garden",
           "care_guidance"
@@ -8864,6 +9062,54 @@
           }
         ],
         "summary": "Open Inventory",
+        "tags": [
+          "pet-life"
+        ]
+      }
+    },
+    "/api/v1/pet-life/inventory/{unit_id}/reorder-assessment": {
+      "post": {
+        "operationId": "inventory_reorder_assessment_api_v1_pet_life_inventory__unit_id__reorder_assessment_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReorderAssessmentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Inventory Reorder Assessment",
         "tags": [
           "pet-life"
         ]

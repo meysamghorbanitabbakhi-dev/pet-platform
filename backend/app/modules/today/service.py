@@ -9,10 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.time import utc_now
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.garden.models import GardenReward
-from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit
+from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit, ReorderSnooze
 from app.modules.journeys.models import PetJourney
 from app.modules.orders.fulfillment import FulfillmentEvent
-from app.modules.orders.models import Order
+from app.modules.orders.models import Order, OrderLine, OrderLinePetPlan
 from app.modules.pet_knowledge.guidance import today_guidance
 from app.modules.pets.models import Pet
 
@@ -21,9 +21,10 @@ async def build_today(session: AsyncSession, *, pet_id: UUID) -> dict[str, Any]:
     pet = await session.get(Pet, pet_id)
     if pet is None:
         raise ValueError("pet not found")
+    now = utc_now()
     food_row = (
         await session.execute(
-            select(InventoryUnit, FoodEstimate)
+            select(InventoryUnit, FoodEstimate, ConsumptionAssignment)
             .join(
                 ConsumptionAssignment,
                 ConsumptionAssignment.inventory_unit_id == InventoryUnit.id,
@@ -41,6 +42,25 @@ async def build_today(session: AsyncSession, *, pet_id: UUID) -> dict[str, Any]:
             .limit(1)
         )
     ).first()
+    planned_order = await session.scalar(
+        select(Order)
+        .join(OrderLine, OrderLine.order_id == Order.id)
+        .join(OrderLinePetPlan, OrderLinePetPlan.order_line_id == OrderLine.id)
+        .where(
+            OrderLinePetPlan.pet_id == pet.id,
+            Order.status.in_(("paid", "sourcing", "in_transit")),
+        )
+        .order_by(Order.created_at, Order.id)
+        .limit(1)
+    )
+    failed_planned_order = await session.scalar(
+        select(Order)
+        .join(OrderLine, OrderLine.order_id == Order.id)
+        .join(OrderLinePetPlan, OrderLinePetPlan.order_line_id == OrderLine.id)
+        .where(OrderLinePetPlan.pet_id == pet.id, Order.status == "failed")
+        .order_by(Order.created_at.desc(), Order.id.desc())
+        .limit(1)
+    )
     journey = await session.scalar(
         select(PetJourney)
         .where(PetJourney.pet_id == pet.id, PetJourney.status.in_(("active", "paused")))
@@ -63,7 +83,7 @@ async def build_today(session: AsyncSession, *, pet_id: UUID) -> dict[str, Any]:
     if order is not None:
         if order.status == "failed":
             order_attention = {"type": "sourcing_failed", "order_id": order.id}
-        elif order.delivery_commitment_at is not None and order.delivery_commitment_at < utc_now():
+        elif order.delivery_commitment_at is not None and order.delivery_commitment_at < now:
             order_attention = {"type": "delivery_overdue", "order_id": order.id}
         elif order.status == "in_transit":
             latest_event = await session.scalar(
@@ -74,24 +94,53 @@ async def build_today(session: AsyncSession, *, pet_id: UUID) -> dict[str, Any]:
             )
             if latest_event is not None and latest_event.event_type == "delayed":
                 order_attention = {"type": "delivery_delayed", "order_id": order.id}
-    care_guidance = await today_guidance(session, pet=pet)
+    try:
+        care_guidance = await today_guidance(session, pet=pet)
+    except Exception:
+        care_guidance = {}
     food: dict[str, Any]
     next_action: str | None
     if food_row is None:
-        food = {"state": "none"}
+        if planned_order is not None:
+            food = {
+                "state": "incoming",
+                "order_id": planned_order.id,
+                "label": "planned_delivery",
+            }
+        elif failed_planned_order is not None:
+            food = {"state": "unavailable", "reason_key": "planned_order_failed"}
+        else:
+            food = {"state": "none"}
         next_action = None
     else:
-        unit, estimate = food_row
+        unit, estimate, assignment = food_row
+        active_snooze = await session.scalar(
+            select(ReorderSnooze)
+            .where(
+                ReorderSnooze.inventory_unit_id == unit.id,
+                ReorderSnooze.household_id == pet.household_id,
+                ReorderSnooze.snoozed_until > now,
+            )
+            .order_by(ReorderSnooze.snoozed_until.desc())
+            .limit(1)
+        )
         if unit.state == "unopened":
             food = {"state": "unopened", "inventory_unit_id": unit.id, "label": unit.label}
             next_action = "confirm_opening"
+        elif assignment.share_basis_points is None:
+            food = {
+                "state": "unknown_estimate",
+                "inventory_unit_id": unit.id,
+                "label": unit.label,
+            }
+            next_action = None if active_snooze is not None else "improve_food_estimate"
         elif estimate is None or estimate.low_days is None:
             food = {
                 "state": "unknown_estimate",
                 "inventory_unit_id": unit.id,
                 "label": unit.label,
             }
-            next_action = "improve_food_estimate"
+            next_action = None if active_snooze is not None else "improve_food_estimate"
         else:
             food = {
                 "state": "estimated",
@@ -104,6 +153,8 @@ async def build_today(session: AsyncSession, *, pet_id: UUID) -> dict[str, Any]:
             next_action = None
     return {
         "pet": {"id": pet.id, "name": pet.name, "species": pet.species},
+        "household_id": pet.household_id,
+        "generated_at": now,
         "food": food,
         "next_action": next_action,
         "primary_attention": (

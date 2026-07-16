@@ -21,6 +21,11 @@ class InventoryService:
         *,
         inventory_unit_id: UUID,
         remaining_grams: int,
+        remaining_low_grams: int,
+        remaining_high_grams: int,
+        remaining_input_mode: str,
+        remaining_provenance: dict[str, object],
+        feeding_context: str,
         daily_portion_grams: int | None,
     ) -> FoodEstimate:
         unit = await session.scalar(
@@ -33,10 +38,16 @@ class InventoryService:
         unit.state = "opened"
         unit.opened_at = unit.opened_at or utc_now()
         unit.remaining_quantity_grams = remaining_grams
+        unit.remaining_low_grams = remaining_low_grams
+        unit.remaining_high_grams = remaining_high_grams
+        unit.remaining_input_mode = remaining_input_mode
+        unit.remaining_provenance = remaining_provenance
 
         if daily_portion_grams is not None and daily_portion_grams <= 0:
             raise InventoryError("daily portion must be positive")
-        if daily_portion_grams is None:
+        if feeding_context != "exclusive":
+            daily_portion_grams = None
+        if daily_portion_grams is None and feeding_context == "exclusive":
             assignments = list(
                 (
                     await session.scalars(
@@ -66,6 +77,15 @@ class InventoryService:
             status="active",
             calculated_at=utc_now(),
             basis=basis,
+            scope="household",
+            last_confirmed_at=unit.opened_at,
+            provenance={
+                "remaining_input_mode": remaining_input_mode,
+                "remaining_low_grams": remaining_low_grams,
+                "remaining_high_grams": remaining_high_grams,
+                "feeding_context": feeding_context,
+                **remaining_provenance,
+            },
         )
         session.add(estimate)
         await session.commit()

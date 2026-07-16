@@ -30,6 +30,9 @@ The following are configuration boundaries only and require product, finance, op
 | Reserve-now and self-service resolutions | POLICY BLOCKED | Commercial workflow, inventory, payment, and support controls |
 | Availability subscription and concierge | POLICY BLOCKED | Product scope, consent, operations, and support model |
 | Care-journey delivery | POLICY BLOCKED | Clinical/content approval, eligibility, and delivery controls |
+| Semantic remaining-level bounds | POLICY BLOCKED | Approved percentage bands for full/more-than-half/less-than-half/near-empty |
+| Reorder safety buffer | POLICY BLOCKED | Approved pessimistic buffer before reorder recommendation becomes actionable |
+| Early snooze break | POLICY BLOCKED | Material-worsening threshold that may end a snooze before expiry |
 
 ## Consequences
 
