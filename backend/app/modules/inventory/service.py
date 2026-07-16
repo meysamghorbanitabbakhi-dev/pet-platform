@@ -20,7 +20,7 @@ class InventoryService:
         session: AsyncSession,
         *,
         inventory_unit_id: UUID,
-        remaining_grams: int,
+        remaining_grams: int | None,
         remaining_low_grams: int,
         remaining_high_grams: int,
         remaining_input_mode: str,
@@ -33,7 +33,11 @@ class InventoryService:
         )
         if unit is None or unit.state not in ("unopened", "opened"):
             raise InventoryError("inventory unit cannot be opened")
-        if remaining_grams <= 0:
+        if remaining_grams is not None and remaining_grams <= 0:
+            raise InventoryError("remaining quantity must be positive")
+        if remaining_low_grams < 0 or remaining_high_grams < remaining_low_grams:
+            raise InventoryError("remaining bounds are invalid")
+        if remaining_high_grams <= 0:
             raise InventoryError("remaining quantity must be positive")
         unit.state = "opened"
         unit.opened_at = unit.opened_at or utc_now()
@@ -64,9 +68,8 @@ class InventoryService:
         if daily_portion_grams is None:
             low_days, high_days, confidence, basis = None, None, "low", "unknown_portion"
         else:
-            central = max(1, remaining_grams // daily_portion_grams)
-            low_days = max(0, int(central * 0.8))
-            high_days = max(low_days, int(central * 1.2))
+            low_days = remaining_low_grams // daily_portion_grams
+            high_days = max(low_days, remaining_high_grams // daily_portion_grams)
             confidence = "medium"
             basis = "owner_confirmed_portion"
         estimate = FoodEstimate(

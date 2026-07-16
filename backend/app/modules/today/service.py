@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.time import utc_now
+from app.core.config import get_settings
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.garden.models import GardenReward
 from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit, ReorderSnooze
@@ -15,12 +16,14 @@ from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderLine, OrderLinePetPlan
 from app.modules.pet_knowledge.guidance import today_guidance
 from app.modules.pets.models import Pet
+from app.modules.replenishment.service import should_break_reorder_snooze
 
 
 async def build_today(session: AsyncSession, *, pet_id: UUID) -> dict[str, Any]:
     pet = await session.get(Pet, pet_id)
     if pet is None:
         raise ValueError("pet not found")
+    settings = get_settings()
     now = utc_now()
     food_row = (
         await session.execute(
@@ -124,6 +127,14 @@ async def build_today(session: AsyncSession, *, pet_id: UUID) -> dict[str, Any]:
             .order_by(ReorderSnooze.snoozed_until.desc())
             .limit(1)
         )
+        if active_snooze is not None and should_break_reorder_snooze(
+            baseline_low_days=active_snooze.baseline_low_days,
+            current_low_days=estimate.low_days if estimate else None,
+            latest_delivery_days=(settings.delivery_commitment_hours + 23) // 24,
+            safety_buffer_days=settings.reorder_safety_buffer_days or 0,
+            worsening_days=settings.reorder_snooze_early_break_worsening_days,
+        ):
+            active_snooze = None
         if unit.state == "unopened":
             food = {"state": "unopened", "inventory_unit_id": unit.id, "label": unit.label}
             next_action = "confirm_opening"

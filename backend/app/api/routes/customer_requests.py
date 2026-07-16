@@ -231,4 +231,5 @@ def _customer_request_response(item: CustomerRequest) -> CustomerRequestResponse
         created_at=item.created_at,
         updated_at=item.updated_at,
         promises=_no_customer_request_promises(),
+        acknowledgement_fa=get_settings().customer_request_acknowledgement_fa,
     )

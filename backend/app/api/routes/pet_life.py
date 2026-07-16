@@ -38,7 +38,7 @@ from app.common.phone import normalize_iranian_mobile
 from app.common.time import utc_now
 from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
-from app.modules.catalog.models import Offer
+from app.modules.catalog.models import Offer, Product
 from app.modules.diary.models import DiaryEntry
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.garden.models import GardenReward
@@ -54,7 +54,7 @@ from app.modules.journeys.models import JourneyCheckIn, JourneyDefinition, PetJo
 from app.modules.journeys.service import JourneyError, JourneyService
 from app.modules.notifications.models import Notification, NotificationPreference
 from app.modules.pets.models import Pet
-from app.modules.replenishment.service import assess_reorder
+from app.modules.replenishment.service import assess_reorder, should_break_reorder_snooze
 from app.modules.today.service import build_today
 from app.modules.wallet.models import WalletAccount, WalletCredit
 
@@ -379,7 +379,7 @@ async def open_inventory(
     if unit is None:
         raise HTTPException(status_code=404, detail="inventory_not_found")
     await _household_access(session, identity.id, unit.household_id)
-    remaining = _remaining_facts(body, settings)
+    remaining = await _remaining_facts(session, unit, body, settings)
     try:
         estimate = await InventoryService().open_and_estimate(
             session,
@@ -409,7 +409,7 @@ async def correct_estimate(
     if unit is None:
         raise HTTPException(status_code=404, detail="inventory_not_found")
     await _household_access(session, identity.id, unit.household_id)
-    remaining = _remaining_facts(body, settings)
+    remaining = await _remaining_facts(session, unit, body, settings)
     active = list(
         (
             await session.scalars(
@@ -607,18 +607,25 @@ async def inventory_reorder_assessment(
         FoodEstimateProvenanceRow(key="offer_options", source="catalog", value=len(options)),
     ]
     if snooze is not None:
-        return ReorderAssessmentResponse(
-            recommendation="snoozed",
-            outcome="snoozed",
-            risk_gap_days=None,
-            remaining_low_days=active.low_days if active else None,
-            remaining_high_days=active.high_days if active else None,
+        if not should_break_reorder_snooze(
+            baseline_low_days=snooze.baseline_low_days,
+            current_low_days=active.low_days if active else None,
             latest_delivery_days=latest_delivery_days,
-            safety_buffer_days=settings.reorder_safety_buffer_days,
-            snoozed_until=snooze.snoozed_until,
-            provenance=provenance,
-            options=options,
-        )
+            safety_buffer_days=settings.reorder_safety_buffer_days or 0,
+            worsening_days=settings.reorder_snooze_early_break_worsening_days,
+        ):
+            return ReorderAssessmentResponse(
+                recommendation="snoozed",
+                outcome="snoozed",
+                risk_gap_days=None,
+                remaining_low_days=active.low_days if active else None,
+                remaining_high_days=active.high_days if active else None,
+                latest_delivery_days=latest_delivery_days,
+                safety_buffer_days=settings.reorder_safety_buffer_days,
+                snoozed_until=snooze.snoozed_until,
+                provenance=provenance,
+                options=options,
+            )
     if settings.reorder_safety_buffer_days is None:
         return ReorderAssessmentResponse(
             recommendation="policy_blocked",
@@ -1361,7 +1368,12 @@ async def _reorder_options(session: AsyncSession, unit: InventoryUnit) -> list[d
     ]
 
 
-def _remaining_facts(body: OpenInventoryBody, settings: Settings) -> dict[str, Any]:
+async def _remaining_facts(
+    session: AsyncSession,
+    unit: InventoryUnit,
+    body: OpenInventoryBody,
+    settings: Settings,
+) -> dict[str, Any]:
     if body.remaining is None:
         assert body.remaining_grams is not None
         return {
@@ -1387,7 +1399,36 @@ def _remaining_facts(body: OpenInventoryBody, settings: Settings) -> dict[str, A
         }
     if not settings.semantic_level_estimation_enabled:
         raise HTTPException(status_code=409, detail="semantic_level_policy_disabled")
-    raise HTTPException(status_code=409, detail="semantic_level_bounds_unconfigured")
+    nominal_quantity_grams = unit.initial_quantity_grams
+    if nominal_quantity_grams is None and unit.product_id is not None:
+        nominal_quantity_grams = await session.scalar(
+            select(Product.nominal_quantity_grams).where(Product.id == unit.product_id)
+        )
+    if nominal_quantity_grams is None:
+        raise HTTPException(status_code=409, detail="semantic_level_nominal_quantity_required")
+    level_bounds = {
+        "near_empty": (0, 25),
+        "less_than_half": (25, 50),
+        "more_than_half": (50, 75),
+        "full": (75, 100),
+    }
+    low_percent, high_percent = level_bounds[body.remaining.level]
+    low_grams = (nominal_quantity_grams * low_percent) // 100
+    high_grams = (nominal_quantity_grams * high_percent) // 100
+    return {
+        "remaining_grams": None,
+        "remaining_low_grams": low_grams,
+        "remaining_high_grams": high_grams,
+        "remaining_input_mode": "level",
+        "remaining_provenance": {
+            "contract_version": 1,
+            "source_field": "remaining.level",
+            "level": body.remaining.level,
+            "nominal_quantity_grams": nominal_quantity_grams,
+            "low_percent": low_percent,
+            "high_percent": high_percent,
+        },
+    }
 
 
 def _estimate_response(estimate: FoodEstimate) -> FoodEstimateResponse:

@@ -903,6 +903,10 @@
       },
       "CustomerRequestResponse": {
         "properties": {
+          "acknowledgement_fa": {
+            "title": "Acknowledgement Fa",
+            "type": "string"
+          },
           "contact_preference": {
             "enum": [
               "in_app",
@@ -1005,7 +1009,8 @@
           "status",
           "created_at",
           "updated_at",
-          "promises"
+          "promises",
+          "acknowledgement_fa"
         ],
         "title": "CustomerRequestResponse",
         "type": "object"
@@ -4650,6 +4655,10 @@
             "title": "Customer Display Unit",
             "type": "string"
           },
+          "customer_request_acknowledgement_fa": {
+            "title": "Customer Request Acknowledgement Fa",
+            "type": "string"
+          },
           "delay_compensation_customer_visible": {
             "title": "Delay Compensation Customer Visible",
             "type": "boolean"
@@ -4683,9 +4692,28 @@
             "title": "Late Credit Expiry Months",
             "type": "integer"
           },
+          "push_notifications_enabled": {
+            "title": "Push Notifications Enabled",
+            "type": "boolean"
+          },
           "refund_self_service_enabled": {
             "title": "Refund Self Service Enabled",
             "type": "boolean"
+          },
+          "reorder_safety_buffer_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reorder Safety Buffer Days"
+          },
+          "reorder_snooze_early_break_worsening_days": {
+            "title": "Reorder Snooze Early Break Worsening Days",
+            "type": "integer"
           },
           "replacement_self_service_enabled": {
             "title": "Replacement Self Service Enabled",
@@ -4693,6 +4721,10 @@
           },
           "reserve_now_enabled": {
             "title": "Reserve Now Enabled",
+            "type": "boolean"
+          },
+          "semantic_level_estimation_enabled": {
+            "title": "Semantic Level Estimation Enabled",
             "type": "boolean"
           },
           "sourcing_start_rule": {
@@ -4736,6 +4768,10 @@
           "availability_subscriptions_enabled",
           "concierge_requests_enabled",
           "care_journey_delivery_enabled",
+          "push_notifications_enabled",
+          "semantic_level_estimation_enabled",
+          "reorder_snooze_early_break_worsening_days",
+          "customer_request_acknowledgement_fa",
           "storage_backend",
           "sourcing_start_rule"
         ],

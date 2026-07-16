@@ -52,8 +52,14 @@ class Settings(BaseSettings):
     availability_subscriptions_enabled: bool = True
     concierge_requests_enabled: bool = True
     care_journey_delivery_enabled: bool = False
-    semantic_level_estimation_enabled: bool = False
-    reorder_safety_buffer_days: int | None = Field(default=None, ge=0, le=30)
+    push_notifications_enabled: bool = False
+    semantic_level_estimation_enabled: bool = True
+    reorder_safety_buffer_days: int | None = Field(default=3, ge=0, le=30)
+    reorder_snooze_early_break_worsening_days: int = Field(default=2, ge=1, le=30)
+    customer_request_acknowledgement_fa: str = (
+        "درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. "
+        "ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست."
+    )
     storage_backend: Literal["filesystem"] = "filesystem"
 
     zarinpal_sandbox: bool = True

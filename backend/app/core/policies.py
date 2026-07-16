@@ -25,6 +25,11 @@ class LaunchPolicies:
     availability_subscriptions_enabled: bool
     concierge_requests_enabled: bool
     care_journey_delivery_enabled: bool
+    push_notifications_enabled: bool
+    semantic_level_estimation_enabled: bool
+    reorder_safety_buffer_days: int | None
+    reorder_snooze_early_break_worsening_days: int
+    customer_request_acknowledgement_fa: str
     storage_backend: str
     sourcing_start_rule: str
 
@@ -51,6 +56,13 @@ class LaunchPolicies:
             availability_subscriptions_enabled=settings.availability_subscriptions_enabled,
             concierge_requests_enabled=settings.concierge_requests_enabled,
             care_journey_delivery_enabled=settings.care_journey_delivery_enabled,
+            push_notifications_enabled=settings.push_notifications_enabled,
+            semantic_level_estimation_enabled=settings.semantic_level_estimation_enabled,
+            reorder_safety_buffer_days=settings.reorder_safety_buffer_days,
+            reorder_snooze_early_break_worsening_days=(
+                settings.reorder_snooze_early_break_worsening_days
+            ),
+            customer_request_acknowledgement_fa=settings.customer_request_acknowledgement_fa,
             storage_backend=settings.storage_backend,
             sourcing_start_rule="supplier_financial_commitment_with_timestamp_and_evidence",
         )

@@ -39,3 +39,25 @@ def assess_reorder(
         latest_delivery_days=latest_delivery_days,
         safety_buffer_days=safety_buffer_days,
     )
+
+
+def should_break_reorder_snooze(
+    *,
+    baseline_low_days: int | None,
+    current_low_days: int | None,
+    latest_delivery_days: int,
+    safety_buffer_days: int,
+    worsening_days: int,
+) -> bool:
+    """Return whether approved policy allows an active snooze to surface reorder again."""
+    if (
+        baseline_low_days is None
+        or current_low_days is None
+        or latest_delivery_days < 0
+        or safety_buffer_days < 0
+        or worsening_days < 1
+    ):
+        return False
+    worsened_enough = baseline_low_days - current_low_days >= worsening_days
+    threshold_crossed = current_low_days <= latest_delivery_days + safety_buffer_days
+    return worsened_enough and threshold_crossed

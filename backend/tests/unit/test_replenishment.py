@@ -1,5 +1,5 @@
 import pytest
-from app.modules.replenishment.service import assess_reorder
+from app.modules.replenishment.service import assess_reorder, should_break_reorder_snooze
 
 
 def test_reorder_uses_pessimistic_food_range_and_latest_delivery() -> None:
@@ -32,3 +32,27 @@ def test_reorder_rejects_invalid_ranges() -> None:
             latest_delivery_days=7,
             safety_buffer_days=2,
         )
+
+
+def test_reorder_snooze_break_requires_worsening_and_threshold_crossing() -> None:
+    assert should_break_reorder_snooze(
+        baseline_low_days=19,
+        current_low_days=17,
+        latest_delivery_days=14,
+        safety_buffer_days=3,
+        worsening_days=2,
+    )
+    assert not should_break_reorder_snooze(
+        baseline_low_days=18,
+        current_low_days=17,
+        latest_delivery_days=14,
+        safety_buffer_days=3,
+        worsening_days=2,
+    )
+    assert not should_break_reorder_snooze(
+        baseline_low_days=22,
+        current_low_days=19,
+        latest_delivery_days=14,
+        safety_buffer_days=3,
+        worsening_days=2,
+    )

@@ -2,16 +2,16 @@
 
 Base revision: `1da656bcd5e08310596a5c77e5cad4f421e74691`
 
-Status: K9 implementation is complete through K9.4. Release remains policy-blocked where product approval is intentionally absent.
+Status: K9 implementation is complete through K9.4 with MVP policy closure applied. Release is GO for K9; intentionally disabled post-MVP capabilities remain inaccessible.
 
 ## Checkpoints
 
 | Checkpoint | Result | Notes |
 |---|---|---|
-| K9.0 | GO / POLICY BLOCKED | Typed contracts, IRR money, policy flags and OpenAPI drift checks are present. Unresolved policy defaults fail closed. |
+| K9.0 | GO | Typed contracts, IRR money, policy flags and OpenAPI drift checks are present. |
 | K9.1 | GO | Context, catalog detail, order detail, pet plans and delivery-to-unopened inventory are present. |
-| K9.2 | GO / POLICY BLOCKED | Inventory detail, exact-grams opening, estimates, authoritative reorder, snooze and typed Today are present. Semantic level bounds and safety buffer remain policy-blocked. |
-| K9.3 | GO / POLICY BLOCKED | Availability subscriptions, customer requests, delay acknowledgement, journey check-ins, diary detail and Garden state/storage are present. Care journey delivery remains disabled by default. |
+| K9.2 | GO | Inventory detail, exact-grams/semantic-level opening, estimates, 3-day-buffer reorder, approved snooze break and typed Today are present. |
+| K9.3 | GO | Availability subscriptions, customer requests, delay acknowledgement, journey check-ins, diary detail and Garden state/storage are present. Care journey delivery remains disabled by default pending approved content. |
 | K9.4 | GO | Acceptance scenario coverage, fixture, documentation reconciliation and archive packaging are present. |
 
 ## Acceptance scenario coverage
@@ -22,10 +22,10 @@ Status: K9 implementation is complete through K9.4. Release remains policy-block
 | K9-T2 | Fixture validates new-device context and pet switcher chain. |
 | K9-T3 | Fixture validates offer detail to checkout, payment, reload-safe order and sourcing chain. |
 | K9-T4 | Fixture validates pet planning to unopened unknown-share inventory with no estimate. |
-| K9-T5 | Fixture plus K9.2 tests validate exact-grams opening and known-fact estimate behavior. |
+| K9-T5 | Fixture plus K9.2 tests validate exact-grams and semantic-level opening with known-fact estimate behavior. |
 | K9-T6 | Fixture plus K9.2 tests validate unknown-share household-only output. |
 | K9-T7 | Fixture validates external inventory lifecycle. |
-| K9-T8 | Fixture plus K9.2 tests validate reorder assessment, 72-hour snooze and Today suppression contract. |
+| K9-T8 | Fixture plus K9.2 tests validate reorder assessment, 72-hour snooze, Today suppression and approved early-break contract. |
 | K9-T9 | Fixture plus K9.3 tests validate subscription no-commercial-record behavior and notification replay. |
 | K9-T10 | Fixture validates delayed order journey and idempotent acknowledgement with no compensation implication. |
 | K9-T11 | Fixture plus K9.3 tests validate approved journey, check-ins, one diary/reward and Garden storage. |

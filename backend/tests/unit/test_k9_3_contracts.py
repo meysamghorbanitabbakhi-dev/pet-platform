@@ -50,6 +50,7 @@ def test_customer_request_contract_makes_no_operational_promises() -> None:
         "response_time": False,
         "sourcing_success": False,
     }
+    assert "ثبت درخواست به‌معنای تضمین موجودی" in response.acknowledgement_fa
 
 
 def test_journey_check_in_validation_and_completion_requirements() -> None:

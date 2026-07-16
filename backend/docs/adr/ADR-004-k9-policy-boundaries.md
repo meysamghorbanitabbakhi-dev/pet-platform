@@ -33,13 +33,15 @@ The following are configuration boundaries only and require product, finance, op
 | Self-service replacement | `replacement_self_service_enabled=false`; no customer endpoint | Support UI may submit request only; no replacement promise | Approved replacement request/decision flow |
 | Self-service substitution | `substitution_self_service_enabled=false`; no customer endpoint | Catalog/order UI must not offer substitution | Approved substitution workflow |
 | Delay compensation | `delay_compensation_customer_visible=false`; acknowledgement implies nothing | `/orders/{order_id}/delay-acknowledgements`, order delay UI | Explicit compensation policy and customer copy |
-| Semantic remaining-level percentage bounds | `semantic_level_estimation_enabled=false`; level input fails closed | `/pet-life/inventory/{unit_id}/open`, `/estimate/correct` | Server conversion of semantic levels into honest low/high gram bounds |
-| Reorder safety buffer | `reorder_safety_buffer_days=null`; assessment returns `policy_blocked` when otherwise required | `/pet-life/inventory/{unit_id}/reorder-assessment`, Today reorder UX | Actionable reorder recommendation threshold |
-| Early snooze break | No early-break rule; snooze lasts until expiry | `/pet-life/inventory/{unit_id}/reorder-snooze`, Today attention | Material-worsening rule that may re-surface reorder attention |
+| Semantic remaining-level percentage bounds | CLOSED: `near_empty` 0–25%, `less_than_half` 25–50%, `more_than_half` 50–75%, `full` 75–100%; exact grams remain unknown | `/pet-life/inventory/{unit_id}/open`, `/estimate/correct` | Enabled MVP semantic opening from nominal quantity |
+| Reorder safety buffer | CLOSED: `reorder_safety_buffer_days=3` | `/pet-life/inventory/{unit_id}/reorder-assessment`, Today reorder UX | Actionable reorder recommendation threshold |
+| Early snooze break | CLOSED: break only when pessimistic remaining bound worsens by at least 2 days and now crosses reorder threshold | `/pet-life/inventory/{unit_id}/reorder-snooze`, Today attention | Re-surface reorder attention during active snooze only under approved worsening rule |
 | Availability subscription notification copy and activation policy | In-app/SMS side effect only; `order_created=false`; max once per activation cycle | Availability subscription UI and notification inbox | Final customer wording, consent copy and activation-cycle operational rules |
 | Concierge/support operating promises | Explicit promises all false | `/customer-requests`, customer support UI | Staffing/response-time/escalation commitments |
 | Care journey delivery approval | `care_journey_delivery_enabled=false`; endpoints fail closed | Journey discovery, start, detail and check-in UI | Approved active journey content delivery |
 | Push notifications | No push claim | Notification settings UI | Approved push channel and consent model |
+
+Closed MVP policies remain documented here for traceability; only rows still marked as safe defaults without approval remain release blockers.
 
 ## Consequences
 

@@ -13,8 +13,8 @@ The checked OpenAPI contract contains 133 public operations. Routes use the `/ap
 | PUT | `/orders/{order_id}/pet-plan` | Idempotent complete replacement of planned pets for order lines |
 | POST | `/orders/{order_id}/delay-acknowledgements` | Idempotently acknowledge visible delivery delay with no compensation implication |
 | GET | `/pet-life/inventory/{unit_id}` | Rich household inventory detail with assignments and active estimate |
-| POST | `/pet-life/inventory/{unit_id}/reorder-assessment` | Authoritative reorder recommendation from server facts |
-| PUT | `/pet-life/inventory/{unit_id}/reorder-snooze` | Durable 72-hour maximum reorder snooze |
+| POST | `/pet-life/inventory/{unit_id}/reorder-assessment` | Authoritative reorder recommendation from server facts and 3-day safety buffer |
+| PUT | `/pet-life/inventory/{unit_id}/reorder-snooze` | Durable 72-hour maximum reorder snooze with approved early-break rule |
 | GET | `/pet-life/pets/{pet_id}/today` | Typed Today projection with discriminated food state |
 | POST | `/catalog/offers/{offer_id}/availability-subscriptions` | Idempotent availability subscription; never creates commercial records |
 | DELETE | `/catalog/offers/{offer_id}/availability-subscriptions` | Idempotent availability cancellation |

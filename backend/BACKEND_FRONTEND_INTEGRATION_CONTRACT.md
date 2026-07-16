@@ -20,7 +20,7 @@ The checked OpenAPI artifact at `docs/api/openapi.json` is authoritative. The fr
 | Household inventory detail | endpoint-backed | `GET /api/v1/pet-life/inventory/{unit_id}` |
 | External inventory | endpoint-backed | `POST /api/v1/pet-life/households/{household_id}/inventory/external` |
 | Exact-grams opening | endpoint-backed | `POST /api/v1/pet-life/inventory/{unit_id}/open` |
-| Semantic-level opening | policy-gated | Same endpoint, stable `semantic_level_policy_disabled` while bounds are unapproved |
+| Semantic-level opening | endpoint-backed | `POST /api/v1/pet-life/inventory/{unit_id}/open`; approved 0–25/25–50/50–75/75–100% bounds from nominal quantity |
 | Reorder assessment | endpoint-backed | `POST /api/v1/pet-life/inventory/{unit_id}/reorder-assessment` |
 | Reorder snooze | endpoint-backed | `PUT /api/v1/pet-life/inventory/{unit_id}/reorder-snooze` |
 | Today hub | endpoint-backed | `GET /api/v1/pet-life/pets/{pet_id}/today` |
@@ -34,7 +34,7 @@ The checked OpenAPI artifact at `docs/api/openapi.json` is authoritative. The fr
 | Garden state/place/store | endpoint-backed | `GET /api/v1/pet-life/pets/{pet_id}/garden`, `PUT/DELETE /api/v1/pet-life/garden/{reward_id}/placement` |
 | Reserve now | policy-gated | No executable customer endpoint |
 | Self-service refund/replacement/substitution | policy-gated | No executable customer endpoint |
-| Push notifications | deferred | K9 only claims in-app and SMS notifications |
+| Push notifications | deferred | K9 only claims governed in-app and opted-in SMS notifications |
 | Client-side route cache and animation state | frontend-local | No backend state |
 
 Result: zero unexplained intents.
@@ -46,6 +46,6 @@ Result: zero unexplained intents.
 - Incoming Today food appears only for planned pets.
 - Unopened and incoming food states have no remaining-days value.
 - Unknown shares never produce pet-level remaining-days numbers.
-- Availability subscriptions always return `order_created=false`.
+- Availability subscriptions always return `order_created=false`; push is disabled until a real push channel exists.
 - Delay acknowledgement never implies compensation, cancellation, waiver or resolution.
 - Garden unlock/placement state is server-derived; no XP, streaks, decay or purchase rewards.

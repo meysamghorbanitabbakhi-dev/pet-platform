@@ -27,6 +27,11 @@ def test_policy_defaults_preserve_k8_behavior() -> None:
     assert policies.availability_subscriptions_enabled is True
     assert policies.concierge_requests_enabled is True
     assert policies.care_journey_delivery_enabled is False
+    assert policies.push_notifications_enabled is False
+    assert policies.semantic_level_estimation_enabled is True
+    assert policies.reorder_safety_buffer_days == 3
+    assert policies.reorder_snooze_early_break_worsening_days == 2
+    assert "تضمین موجودی" in policies.customer_request_acknowledgement_fa
     assert policies.storage_backend == "filesystem"
 
 

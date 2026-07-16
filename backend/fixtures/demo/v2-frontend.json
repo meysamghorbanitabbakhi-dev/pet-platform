@@ -12,8 +12,10 @@
     "substitution_self_service_enabled": false,
     "delay_compensation_customer_visible": false,
     "care_journey_delivery_enabled": false,
-    "semantic_level_estimation_enabled": false,
-    "reorder_safety_buffer_days": null
+    "push_notifications_enabled": false,
+    "semantic_level_estimation_enabled": true,
+    "reorder_safety_buffer_days": 3,
+    "reorder_snooze_early_break_worsening_days": 2
   },
   "actors": {
     "identity_id": "00000000-0000-4000-8000-000000000001",
@@ -127,7 +129,7 @@
       ],
       "assertions": [
         "exact grams are preserved",
-        "semantic level input validates but fails closed until approved bounds exist",
+        "semantic level input stores approved low/high bounds without exact grams",
         "known facts justify a pet range"
       ]
     },
@@ -165,7 +167,7 @@
       "assertions": [
         "snooze maximum is 72 hours",
         "Today suppresses reorder attention",
-        "no early return occurs because no documented worsening rule is approved"
+        "early return occurs only when low-day baseline worsens by at least 2 days and crosses the reorder threshold"
       ]
     },
     "K9-T9": {
@@ -221,7 +223,7 @@
     { "intent": "reload-order", "classification": "endpoint-backed", "endpoint": "GET /api/v1/orders/{order_id}" },
     { "intent": "plan-pets-for-order-line", "classification": "endpoint-backed", "endpoint": "PUT /api/v1/orders/{order_id}/pet-plan" },
     { "intent": "inventory-detail", "classification": "endpoint-backed", "endpoint": "GET /api/v1/pet-life/inventory/{unit_id}" },
-    { "intent": "semantic-level-opening", "classification": "policy-gated", "endpoint": "POST /api/v1/pet-life/inventory/{unit_id}/open" },
+    { "intent": "semantic-level-opening", "classification": "endpoint-backed", "endpoint": "POST /api/v1/pet-life/inventory/{unit_id}/open" },
     { "intent": "exact-grams-opening", "classification": "endpoint-backed", "endpoint": "POST /api/v1/pet-life/inventory/{unit_id}/open" },
     { "intent": "reorder-assessment", "classification": "endpoint-backed", "endpoint": "POST /api/v1/pet-life/inventory/{unit_id}/reorder-assessment" },
     { "intent": "reorder-snooze", "classification": "endpoint-backed", "endpoint": "PUT /api/v1/pet-life/inventory/{unit_id}/reorder-snooze" },

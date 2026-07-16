@@ -173,18 +173,24 @@
     "feeding_context": "exclusive",
     "daily_portion_grams": 70
   },
+  "inventory_open_level_request": {
+    "remaining": { "mode": "level", "level": "more_than_half" },
+    "feeding_context": "exclusive",
+    "daily_portion_grams": 70,
+    "policy": "stores 50–75% bounds from nominal quantity; exact grams remain null"
+  },
   "reorder_assessment": {
-    "recommendation": "policy_blocked",
-    "outcome": "policy_blocked",
-    "risk_gap_days": null,
+    "recommendation": "order_now",
+    "outcome": "order_now",
+    "risk_gap_days": 3,
     "remaining_low_days": 16,
     "remaining_high_days": 24,
     "latest_delivery_days": 16,
-    "safety_buffer_days": null,
+    "safety_buffer_days": 3,
     "snoozed_until": null,
     "provenance": [
       { "key": "estimate", "source": "server", "value": "active" },
-      { "key": "safety_buffer_days", "source": "policy", "value": null }
+      { "key": "safety_buffer_days", "source": "policy", "value": 3 }
     ],
     "options": []
   },
@@ -224,7 +230,8 @@
       "replacement": false,
       "response_time": false,
       "sourcing_success": false
-    }
+    },
+    "acknowledgement_fa": "درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست."
   },
   "delay_acknowledgement": {
     "id": "00000000-0000-4000-8000-000000001201",

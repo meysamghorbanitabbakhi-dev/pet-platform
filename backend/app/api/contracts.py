@@ -67,6 +67,11 @@ class PolicyResponse(BaseModel):
     availability_subscriptions_enabled: bool
     concierge_requests_enabled: bool
     care_journey_delivery_enabled: bool
+    push_notifications_enabled: bool
+    semantic_level_estimation_enabled: bool
+    reorder_safety_buffer_days: int | None = None
+    reorder_snooze_early_break_worsening_days: int
+    customer_request_acknowledgement_fa: str
     storage_backend: Literal["filesystem"]
     sourcing_start_rule: Literal["supplier_financial_commitment_with_timestamp_and_evidence"]
 
@@ -327,6 +332,7 @@ class CustomerRequestResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     promises: dict[str, bool]
+    acknowledgement_fa: str
 
 
 class DelayAcknowledgementResponse(BaseModel):

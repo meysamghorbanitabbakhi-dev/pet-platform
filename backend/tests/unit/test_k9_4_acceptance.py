@@ -48,8 +48,10 @@ def test_k9_t12_policy_gates_are_disabled_and_non_executable() -> None:
     assert settings.replacement_self_service_enabled is False
     assert settings.substitution_self_service_enabled is False
     assert settings.delay_compensation_customer_visible is False
-    assert settings.semantic_level_estimation_enabled is False
-    assert settings.reorder_safety_buffer_days is None
+    assert settings.semantic_level_estimation_enabled is True
+    assert settings.reorder_safety_buffer_days == 3
+    assert settings.care_journey_delivery_enabled is False
+    assert settings.push_notifications_enabled is False
     paths = _paths()
     forbidden_fragments = ("reserve", "refund", "replacement", "substitution", "compensation")
     customer_paths = [path for path in paths if not path.startswith("/api/v1/operator/")]
@@ -139,6 +141,7 @@ def test_k9_examples_cover_every_new_customer_operation() -> None:
         "order_pet_plan_request",
         "inventory_detail",
         "inventory_open_exact_grams_request",
+        "inventory_open_level_request",
         "reorder_assessment",
         "reorder_snooze_request",
         "today_unknown_estimate",
