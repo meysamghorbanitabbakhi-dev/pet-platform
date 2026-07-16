@@ -98,7 +98,7 @@ async def build_today(session: AsyncSession, *, pet_id: UUID) -> dict[str, Any]:
             if latest_event is not None and latest_event.event_type == "delayed":
                 order_attention = {"type": "delivery_delayed", "order_id": order.id}
     try:
-        care_guidance = await today_guidance(session, pet=pet)
+        care_guidance = await today_guidance(session, pet=pet) or {}
     except Exception:
         care_guidance = {}
     food: dict[str, Any]

@@ -2006,6 +2006,56 @@
         "title": "InventoryListItem",
         "type": "object"
       },
+      "JourneyActiveWindowResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "active_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active From"
+          },
+          "active_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Until"
+          }
+        },
+        "title": "JourneyActiveWindowResponse",
+        "type": "object"
+      },
+      "JourneyAnswerOptionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label_fa": {
+            "title": "Label Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label_fa"
+        ],
+        "title": "JourneyAnswerOptionResponse",
+        "type": "object"
+      },
       "JourneyApprovalBody": {
         "properties": {
           "approved_by": {
@@ -2130,6 +2180,23 @@
         "title": "JourneyCompleteBody",
         "type": "object"
       },
+      "JourneyCompletionRequirementsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "required_step_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Step Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "required_step_keys"
+        ],
+        "title": "JourneyCompletionRequirementsResponse",
+        "type": "object"
+      },
       "JourneyCompletionResponse": {
         "properties": {
           "diary_entry_id": {
@@ -2150,12 +2217,75 @@
         "title": "JourneyCompletionResponse",
         "type": "object"
       },
+      "JourneyContentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "active_window": {
+            "$ref": "#/components/schemas/JourneyActiveWindowResponse"
+          },
+          "completion_requirements": {
+            "$ref": "#/components/schemas/JourneyCompletionRequirementsResponse"
+          },
+          "duration_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Days"
+          },
+          "eligibility": {
+            "$ref": "#/components/schemas/JourneyEligibilityResponse"
+          },
+          "exception_behavior": {
+            "$ref": "#/components/schemas/JourneyExceptionBehaviorResponse"
+          },
+          "garden_object_key": {
+            "title": "Garden Object Key",
+            "type": "string"
+          },
+          "professional_approval_ref": {
+            "title": "Professional Approval Ref",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/JourneyStepResponse"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "summary_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Fa"
+          }
+        },
+        "required": [
+          "steps",
+          "completion_requirements",
+          "eligibility",
+          "active_window",
+          "exception_behavior",
+          "garden_object_key",
+          "professional_approval_ref"
+        ],
+        "title": "JourneyContentResponse",
+        "type": "object"
+      },
       "JourneyDefinitionBody": {
         "properties": {
           "content": {
-            "additionalProperties": true,
-            "title": "Content",
-            "type": "object"
+            "$ref": "#/components/schemas/JourneyContentResponse"
           },
           "key": {
             "maxLength": 100,
@@ -2199,9 +2329,7 @@
             "type": "string"
           },
           "content": {
-            "additionalProperties": true,
-            "title": "Content",
-            "type": "object"
+            "$ref": "#/components/schemas/JourneyContentResponse"
           },
           "id": {
             "format": "uuid",
@@ -2289,13 +2417,18 @@
             "type": "string"
           },
           "status": {
+            "enum": [
+              "active",
+              "paused",
+              "stopped",
+              "completed"
+            ],
             "title": "Status",
             "type": "string"
           },
           "steps": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/JourneyStepResponse"
             },
             "title": "Steps",
             "type": "array"
@@ -2317,6 +2450,57 @@
           "check_ins"
         ],
         "title": "JourneyDetailResponse",
+        "type": "object"
+      },
+      "JourneyEligibilityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "eligible_species": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "dog",
+                    "cat"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eligible Species"
+          }
+        },
+        "title": "JourneyEligibilityResponse",
+        "type": "object"
+      },
+      "JourneyExceptionBehaviorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "behavior": {
+            "const": "non_diagnostic",
+            "title": "Behavior",
+            "type": "string"
+          },
+          "message_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Fa"
+          }
+        },
+        "required": [
+          "behavior"
+        ],
+        "title": "JourneyExceptionBehaviorResponse",
         "type": "object"
       },
       "JourneyOfferResponse": {
@@ -2382,6 +2566,38 @@
           "definition_id"
         ],
         "title": "JourneyStartBody",
+        "type": "object"
+      },
+      "JourneyStepResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_answers": {
+            "items": {
+              "$ref": "#/components/schemas/JourneyAnswerOptionResponse"
+            },
+            "title": "Allowed Answers",
+            "type": "array"
+          },
+          "body_fa": {
+            "title": "Body Fa",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "title_fa": {
+            "title": "Title Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title_fa",
+          "body_fa",
+          "allowed_answers"
+        ],
+        "title": "JourneyStepResponse",
         "type": "object"
       },
       "JourneyStopBody": {
@@ -5074,8 +5290,7 @@
           },
           "options": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/ReorderOptionResponse"
             },
             "title": "Options",
             "type": "array"
@@ -5210,6 +5425,41 @@
           "latest_delivery_days"
         ],
         "title": "ReorderBody",
+        "type": "object"
+      },
+      "ReorderOptionResponse": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "offer_id": {
+            "format": "uuid",
+            "title": "Offer Id",
+            "type": "string"
+          },
+          "reason_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Key"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          }
+        },
+        "required": [
+          "offer_id",
+          "sku",
+          "available"
+        ],
+        "title": "ReorderOptionResponse",
         "type": "object"
       },
       "ReorderSnoozeBody": {

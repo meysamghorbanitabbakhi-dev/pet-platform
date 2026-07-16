@@ -35,6 +35,7 @@ class PaymentAttempt(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     amount_irr: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="IRR", nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_hash: Mapped[str | None] = mapped_column(String(64))
     provider_reference: Mapped[str | None] = mapped_column(String(255))
     provider_transaction_id: Mapped[str | None] = mapped_column(String(255))
     redirect_url: Mapped[str | None] = mapped_column(Text)

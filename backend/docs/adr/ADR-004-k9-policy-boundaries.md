@@ -38,7 +38,7 @@ The following are configuration boundaries only and require product, finance, op
 | Early snooze break | CLOSED: break only when pessimistic remaining bound worsens by at least 2 days and now crosses reorder threshold | `/pet-life/inventory/{unit_id}/reorder-snooze`, Today attention | Re-surface reorder attention during active snooze only under approved worsening rule |
 | Availability subscription notification copy and activation policy | In-app/SMS side effect only; `order_created=false`; max once per activation cycle | Availability subscription UI and notification inbox | Final customer wording, consent copy and activation-cycle operational rules |
 | Concierge/support operating promises | Explicit promises all false | `/customer-requests`, customer support UI | Staffing/response-time/escalation commitments |
-| Care journey delivery approval | `care_journey_delivery_enabled=false`; endpoints fail closed | Journey discovery, start, detail and check-in UI | Approved active journey content delivery |
+| Care journey delivery approval | CLOSED: `care_journey_delivery_enabled=true`; endpoints still fail closed for draft, inactive, expired, ineligible, species-incompatible or professionally unreferenced definitions | Journey discovery, start, detail and check-in UI | Delivery of approved active journey content only |
 | Push notifications | No push claim | Notification settings UI | Approved push channel and consent model |
 
 Closed MVP policies remain documented here for traceability; only rows still marked as safe defaults without approval remain release blockers.

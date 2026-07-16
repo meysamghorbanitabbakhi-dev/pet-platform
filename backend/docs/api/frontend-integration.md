@@ -66,7 +66,7 @@ Availability subscriptions are managed with `POST/DELETE /api/v1/catalog/offers/
 
 `POST /api/v1/orders/{order_id}/delay-acknowledgements` requires a visible delay and `Idempotency-Key`. The response records the delay event version and explicitly states no compensation, cancellation, waiver, or resolution implication.
 
-Journey discovery/detail/check-ins are available under `/api/v1/pet-life/*` only when care journey delivery is enabled. Definitions must be approved, active, eligible, and professionally referenced. Check-ins validate server-side allowed answers and completion requirements; completion creates at most one diary memory and one Garden reward. Diary detail is typed at `/api/v1/pet-life/pets/{pet_id}/diary/{entry_id}`. Garden state is server-derived, has no XP/decay/purchase rewards, and `DELETE /api/v1/pet-life/garden/{reward_id}/placement` stores an object while preserving its memory link.
+Journey discovery/detail/check-ins are available under `/api/v1/pet-life/*` because `care_journey_delivery_enabled=true`. Definitions must be approved, active, eligible, species-compatible and professionally referenced; if none qualify, offers return an empty list. Journey content, steps, Persian copy, answer options, completion requirements, eligibility, active windows, exception behavior, Garden reward key and professional approval reference are strict typed contracts. Check-ins validate server-side allowed answers and completion requirements; completion creates at most one diary memory and one Garden reward. Diary detail is typed at `/api/v1/pet-life/pets/{pet_id}/diary/{entry_id}`. Garden state is server-derived, has no XP/decay/purchase rewards, and `DELETE /api/v1/pet-life/garden/{reward_id}/placement` stores an object while preserving its memory link.
 
 ## Policy posture
 
@@ -76,6 +76,6 @@ Journey discovery/detail/check-ins are available under `/api/v1/pet-life/*` only
 
 K9.4 reconciles the frontend contract with `fixtures/demo/v2-frontend.json`, `docs/api/examples.json`, `BACKEND_FRONTEND_INTEGRATION_CONTRACT.md`, `API_ENDPOINT_CATALOG.md`, and the checked OpenAPI artifacts. The v2 fixture covers K9-T1 through K9-T11 and classifies every approved frontend intent as endpoint-backed, frontend-local, policy-gated, or deferred. There are zero unexplained intents.
 
-Frontend clients must treat policy-gated flows as visible only when `GET /api/v1/system/policies` exposes an enabled capability and the relevant endpoint does not fail closed. Current safe defaults keep reserve/refund/replacement/substitution/compensation, push notifications, and care journey delivery approval blocked. Semantic level bounds and the 3-day reorder safety buffer are founder-approved for MVP.
+Frontend clients must treat policy-gated flows as visible only when `GET /api/v1/system/policies` exposes an enabled capability and the relevant endpoint does not fail closed. Current safe defaults keep reserve/refund/replacement/substitution/compensation and push notifications blocked. Care journey delivery, semantic level bounds and the 3-day reorder safety buffer are founder-approved for MVP.
 
 The deterministic demo scenarios in `fixtures/demo/` are sample data, not a claim that their product, price, nutritional content, or operational state exists in production.

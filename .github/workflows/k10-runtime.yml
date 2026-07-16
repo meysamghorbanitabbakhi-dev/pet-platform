@@ -1,0 +1,58 @@
+name: k10-runtime
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: pet_platform
+          POSTGRES_USER: pet_platform
+          POSTGRES_PASSWORD: pet_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pet_platform -d pet_platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql+asyncpg://pet_platform:pet_platform@localhost:5432/pet_platform
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET: ci-development-only-secret-32-chars
+      WEBHOOK_SECRET: ci-development-only-webhook-secret
+      OTP_PEPPER: ci-development-only-otp-pepper-value
+      K10_RUNTIME_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m ruff check .
+      - run: python -m mypy app
+      - run: python -m alembic upgrade head
+      - run: python -m pytest
+      - run: python -m alembic downgrade -1
+      - run: python -m alembic upgrade head
+      - run: python -m app.cli.export_openapi --output docs/api/openapi.json
+      - run: python -m pytest tests/api/test_system.py::test_checked_openapi_artifact_matches_application

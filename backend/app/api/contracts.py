@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MoneyIRR(BaseModel):
@@ -241,6 +241,62 @@ class JourneyCompletionResponse(BaseModel):
     garden_reward_id: UUID
 
 
+class JourneyAnswerOptionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    label_fa: str
+
+
+class JourneyStepResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    title_fa: str
+    body_fa: str
+    allowed_answers: list[JourneyAnswerOptionResponse]
+
+
+class JourneyCompletionRequirementsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    required_step_keys: list[str]
+
+
+class JourneyEligibilityResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    eligible_species: list[Literal["dog", "cat"]] | None = None
+
+
+class JourneyActiveWindowResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    active_from: datetime | None = None
+    active_until: datetime | None = None
+
+
+class JourneyExceptionBehaviorResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    behavior: Literal["non_diagnostic"]
+    message_fa: str | None = None
+
+
+class JourneyContentResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    summary_fa: str | None = None
+    steps: list[JourneyStepResponse]
+    completion_requirements: JourneyCompletionRequirementsResponse
+    eligibility: JourneyEligibilityResponse
+    duration_days: int | None = None
+    active_window: JourneyActiveWindowResponse
+    exception_behavior: JourneyExceptionBehaviorResponse
+    garden_object_key: str
+    professional_approval_ref: str
+
+
 class JourneyOfferResponse(BaseModel):
     definition_id: UUID
     key: str
@@ -256,7 +312,7 @@ class JourneyDefinitionResponse(BaseModel):
     version: int
     title_fa: str
     summary_fa: str | None = None
-    content: dict[str, Any]
+    content: JourneyContentResponse
     approved_at: datetime
 
 
@@ -276,12 +332,19 @@ class JourneyDetailResponse(BaseModel):
     pet_id: UUID
     definition_id: UUID
     definition_version: int
-    status: str
+    status: Literal["active", "paused", "stopped", "completed"]
     started_at: datetime
     ended_at: datetime | None = None
     title_fa: str
-    steps: list[dict[str, Any]]
+    steps: list[JourneyStepResponse]
     check_ins: list[JourneyCheckInResponse]
+
+
+class ReorderOptionResponse(BaseModel):
+    offer_id: UUID
+    sku: str
+    available: bool
+    reason_key: str | None = None
 
 
 class ReorderAssessmentResponse(BaseModel):
@@ -294,7 +357,7 @@ class ReorderAssessmentResponse(BaseModel):
     safety_buffer_days: int | None = None
     snoozed_until: datetime | None = None
     provenance: list[FoodEstimateProvenanceRow] = Field(default_factory=list)
-    options: list[dict[str, Any]] = Field(default_factory=list)
+    options: list[ReorderOptionResponse] = Field(default_factory=list)
 
 
 class WalletSummaryResponse(BaseModel):

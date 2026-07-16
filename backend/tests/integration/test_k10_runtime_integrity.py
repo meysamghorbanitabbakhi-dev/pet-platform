@@ -1,0 +1,681 @@
+from __future__ import annotations
+
+import asyncio
+import os
+import uuid
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+from typing import Any
+
+import httpx
+import pytest
+from app.api.dependencies import get_current_identity
+from app.common.time import utc_now
+from app.core.config import get_settings
+from app.db.session import SessionFactory, close_database
+from app.integrations.payment.port import (
+    PaymentInitiation,
+    PaymentInquiry,
+    PaymentRequest,
+    PaymentReversal,
+    PaymentVerification,
+)
+from app.main import create_app
+from app.modules.catalog.availability import notify_available_subscribers
+from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.checkout.service import CheckoutItem, CheckoutService
+from app.modules.diary.models import DiaryEntry
+from app.modules.garden.models import GardenReward
+from app.modules.households.models import Household, HouseholdAddress, HouseholdMembership
+from app.modules.identity.models import AuthIdentity
+from app.modules.journeys.models import JourneyCheckIn, JourneyDefinition, PetJourney
+from app.modules.notifications.models import Notification
+from app.modules.orders.fulfillment import FulfillmentEvent
+from app.modules.orders.models import Order, OrderDelayAcknowledgement
+from app.modules.payments.service import PaymentService
+from app.modules.pets.models import Pet
+from app.modules.sourcing.models import SourcingJob
+from app.modules.support.models import CustomerRequest
+from app.modules.system.event_registry import EVENT_REGISTRY
+from app.modules.system.models import OutboxEvent
+from app.modules.system.outbox import DomainEvent, OutboxDispatcher, add_outbox_event
+from redis.asyncio import Redis
+from sqlalchemy import func, select, text
+
+pytestmark = pytest.mark.skipif(
+    os.getenv("K10_RUNTIME_TESTS") != "1",
+    reason="K10_RUNTIME_TESTS=1 with PostgreSQL/Redis is required",
+)
+
+
+@pytest.fixture(autouse=True)
+async def dispose_engine_between_event_loops() -> AsyncIterator[None]:
+    yield
+    await close_database()
+
+
+@dataclass(slots=True)
+class Seed:
+    identity: AuthIdentity
+    other_identity: AuthIdentity
+    household: Household
+    other_household: Household
+    address: HouseholdAddress
+    offer: Offer
+    unavailable_offer: Offer
+    pet: Pet
+    other_pet: Pet
+
+
+class FakePaymentGateway:
+    def __init__(self) -> None:
+        self.initiations = 0
+        self.verifications = 0
+
+    async def initiate(self, request: PaymentRequest) -> PaymentInitiation:
+        self.initiations += 1
+        return PaymentInitiation(
+            provider_reference=f"fake-{request.order_id}",
+            redirect_url=f"https://payments.test/{request.order_id}",
+        )
+
+    async def verify(self, *, provider_reference: str, amount_irr: int) -> PaymentVerification:
+        self.verifications += 1
+        return PaymentVerification(
+            state="verified",
+            provider_reference=provider_reference,
+            provider_transaction_id=f"txn-{provider_reference}",
+            masked_card="****1111",
+            card_hash="hash",
+            fee_irr=0,
+        )
+
+    async def inquiry(self, *, provider_reference: str) -> PaymentInquiry:
+        return PaymentInquiry(state="verified", provider_reference=provider_reference)
+
+    async def reverse(self, *, provider_reference: str) -> PaymentReversal:
+        return PaymentReversal(reversed=True, provider_reference=provider_reference)
+
+    async def aclose(self) -> None:
+        return None
+
+
+def approved_journey_content() -> dict[str, object]:
+    return {
+        "professional_approval_ref": "vet-board-1",
+        "garden_object_key": "leaf",
+        "summary_fa": "مسیر تایید شده",
+        "duration_days": 2,
+        "eligible_species": ["cat"],
+        "steps": [
+            {
+                "key": "step-1",
+                "title_fa": "مرحله اول",
+                "body_fa": "مشاهده غیرتشخیصی را ثبت کنید.",
+                "allowed_answers": [{"key": "done", "label_fa": "انجام شد"}],
+            }
+        ],
+        "completion_requires": ["step-1"],
+        "exception_behavior": {
+            "behavior": "non_diagnostic",
+            "message_fa": "در صورت نگرانی با متخصص مشورت کنید.",
+        },
+        "completion_memory_title_fa": "خاطره مسیر",
+    }
+
+
+@pytest.fixture()
+async def redis_client() -> AsyncIterator[Redis]:
+    client = Redis.from_url(get_settings().redis_url, decode_responses=True)
+    await client.ping()
+    yield client
+    await client.aclose()
+
+
+@pytest.fixture()
+async def seed() -> Seed:
+    token = uuid.uuid4().hex[:10]
+    async with SessionFactory() as session:
+        identity = AuthIdentity(
+            identity_type="customer", mobile_e164=f"+98910{token[:7]}", status="active"
+        )
+        other_identity = AuthIdentity(
+            identity_type="customer", mobile_e164=f"+98911{token[:7]}", status="active"
+        )
+        supplier = Supplier(internal_name=f"supplier-{token}", country_code="IR", active=True)
+        product = Product(
+            name_fa="غذای تست",
+            description_fa="توضیح تست",
+            nominal_quantity_grams=1000,
+            status="active",
+        )
+        household = Household(name=f"hh-{token}")
+        other_household = Household(name=f"other-{token}")
+        session.add_all([identity, other_identity, supplier, product, household, other_household])
+        await session.flush()
+        session.add_all(
+            [
+                HouseholdMembership(
+                    household_id=household.id, identity_id=identity.id, role="owner"
+                ),
+                HouseholdMembership(
+                    household_id=other_household.id, identity_id=other_identity.id, role="owner"
+                ),
+            ]
+        )
+        address = HouseholdAddress(
+            household_id=household.id,
+            label="خانه",
+            recipient_name="Pet User",
+            recipient_mobile_e164=identity.mobile_e164,
+            province="Tehran",
+            city="Tehran",
+            address_line="Runtime integrity address",
+            postal_code=None,
+            active=True,
+        )
+        offer = Offer(
+            product_id=product.id,
+            supplier_id=supplier.id,
+            sku=f"K10-{token}",
+            title_fa="پیشنهاد تست",
+            unit_label_fa="کیسه",
+            price_irr=1_000_000,
+            reference_price_irr=1_200_000,
+            status="active",
+            stock_posture="sourced_after_payment",
+            minimum_shelf_life_months=6,
+        )
+        unavailable_offer = Offer(
+            product_id=product.id,
+            supplier_id=supplier.id,
+            sku=f"K10-U-{token}",
+            title_fa="ناموجود تست",
+            unit_label_fa="کیسه",
+            price_irr=1_000_000,
+            status="unavailable",
+            stock_posture="unavailable",
+            minimum_shelf_life_months=6,
+        )
+        pet = Pet(household_id=household.id, name="Milo", species="cat", status="active")
+        other_pet = Pet(
+            household_id=other_household.id, name="Nilo", species="cat", status="active"
+        )
+        session.add_all([address, offer, unavailable_offer, pet, other_pet])
+        await session.commit()
+        return Seed(
+            identity=identity,
+            other_identity=other_identity,
+            household=household,
+            other_household=other_household,
+            address=address,
+            offer=offer,
+            unavailable_offer=unavailable_offer,
+            pet=pet,
+            other_pet=other_pet,
+        )
+
+
+async def test_k9_t1_to_t14_runtime_checkout_payment_replay_and_access(seed: Seed) -> None:
+    gateway = FakePaymentGateway()
+    async def checkout() -> Order:
+        async with SessionFactory() as session:
+            return await CheckoutService().create_order(
+                session,
+                customer_identity_id=seed.identity.id,
+                household_id=seed.household.id,
+                address_id=seed.address.id,
+                items=[CheckoutItem(seed.offer.id, 1)],
+                idempotency_key="same-checkout-key",
+            )
+
+    first, replay = await asyncio.gather(checkout(), checkout())
+    async with SessionFactory() as session:
+        assert first.id == replay.id
+        attempt = await PaymentService().initiate(
+            session,
+            gateway,
+            order_id=first.id,
+            customer_identity_id=seed.identity.id,
+            customer_mobile_e164=seed.identity.mobile_e164,
+            callback_url="https://app.test/callback",
+            idempotency_key="same-payment-key",
+        )
+    async def verify() -> Order:
+        async with SessionFactory() as session:
+            return await PaymentService().verify(
+                session, gateway, provider_reference=f"fake-{first.id}"
+            )
+
+    verified_a, verified_b = await asyncio.gather(verify(), verify())
+    async with SessionFactory() as session:
+        assert verified_a.id == verified_b.id == first.id
+        assert attempt.redirect_url.endswith(str(first.id))
+        assert (
+            await session.scalar(
+                select(func.count(SourcingJob.id)).where(SourcingJob.order_id == first.id)
+            )
+        ) == 1
+
+        conflict = await session.scalar(
+            select(Order).where(
+                Order.customer_identity_id == seed.identity.id,
+                Order.checkout_idempotency_key == "same-checkout-key",
+            )
+        )
+        assert conflict is not None and conflict.checkout_request_hash is not None
+        assert await session.get(Pet, seed.other_pet.id) is not None
+
+
+async def test_k9_t9_to_t14_api_replay_and_cross_household(seed: Seed, monkeypatch: Any) -> None:
+    settings = get_settings()
+    settings.care_journey_delivery_enabled = True
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    fake_gateway = FakePaymentGateway()
+    monkeypatch.setattr(
+        "app.api.routes.commerce.build_payment_gateway",
+        lambda settings: fake_gateway,
+    )
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        unavailable = await client.post(
+            f"/api/v1/catalog/offers/{seed.unavailable_offer.id}/availability-subscriptions"
+        )
+        assert unavailable.status_code == 200
+        assert unavailable.json()["order_created"] is False
+        other_pet = await client.get(f"/api/v1/pet-life/pets/{seed.other_pet.id}/today")
+        assert other_pet.status_code == 404
+        request_body = {
+            "household_id": str(seed.household.id),
+            "request_type": "support",
+            "message_fa": "لطفا بررسی شود",
+            "contact_preference": "in_app",
+        }
+        one, two = await asyncio.gather(
+            client.post(
+                "/api/v1/customer-requests",
+                json=request_body,
+                headers={"Idempotency-Key": "same-request-key"},
+            ),
+            client.post(
+                "/api/v1/customer-requests",
+                json=request_body,
+                headers={"Idempotency-Key": "same-request-key"},
+            ),
+        )
+        assert one.status_code in (200, 201)
+        assert two.status_code in (200, 201)
+        assert one.json()["id"] == two.json()["id"]
+        different = dict(request_body, message_fa="متن متفاوت")
+        conflict = await client.post(
+            "/api/v1/customer-requests",
+            json=different,
+            headers={"Idempotency-Key": "same-request-key"},
+        )
+        assert conflict.status_code == 409
+
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.unavailable_offer.id)
+        assert offer is not None
+        offer.status = "active"
+        offer.stock_posture = "sourced_after_payment"
+        offer.sourcing_capacity_status = "open"
+        await notify_available_subscribers(session, offer)
+        await session.commit()
+        offer = await session.get(Offer, seed.unavailable_offer.id)
+        assert offer is not None
+        await notify_available_subscribers(session, offer)
+        await session.commit()
+        assert (
+            await session.scalar(
+                        select(func.count(Notification.id)).where(
+                            Notification.event_key == "catalog.offer_available",
+                            Notification.recipient_identity_id == seed.identity.id,
+                        )
+                )
+            ) == 2
+        assert (
+            await session.scalar(
+                select(func.count(CustomerRequest.id)).where(
+                    CustomerRequest.identity_id == seed.identity.id
+                )
+            )
+        ) == 1
+
+    settings.care_journey_delivery_enabled = False
+    app.dependency_overrides.clear()
+
+
+async def test_k9_t10_t11_delay_ack_and_journey_effects_are_canonical(seed: Seed) -> None:
+    async with SessionFactory() as session:
+        operator = AuthIdentity(
+            identity_type="operator",
+            mobile_e164=f"+98912{uuid.uuid4().hex[:7]}",
+            status="active",
+        )
+        order = Order(
+            customer_identity_id=seed.identity.id,
+            household_id=seed.household.id,
+            status="in_transit",
+            currency="IRR",
+            merchandise_total_irr=1000,
+            checkout_idempotency_key=f"manual-{uuid.uuid4()}",
+            delivery_address_snapshot={
+                "label": "x",
+                "recipient_name": "x",
+                "recipient_mobile_e164": seed.identity.mobile_e164,
+                "province": "x",
+                "city": "x",
+                "address_line": "x",
+            },
+        )
+        session.add_all([operator, order])
+        await session.flush()
+        session.add(
+            FulfillmentEvent(
+                order_id=order.id,
+                event_type="delayed",
+                occurred_at=utc_now(),
+                reason="late",
+                operator_identity_id=operator.id,
+            )
+        )
+        definition = JourneyDefinition(
+            key=f"k10-{uuid.uuid4()}",
+            version=1,
+            title_fa="مسیر تست",
+            content={
+                "professional_approval_ref": "approved",
+                "steps": [
+                    {
+                        "key": "step-1",
+                        "title_fa": "مرحله",
+                        "body_fa": "ثبت کنید.",
+                        "allowed_answers": [{"key": "done", "label_fa": "انجام شد"}],
+                    }
+                ],
+                "completion_requires": ["step-1"],
+                "garden_object_key": "leaf",
+                "completion_memory_title_fa": "خاطره تست",
+            },
+            approval_status="approved",
+            approved_by="vet",
+            approved_at=utc_now(),
+        )
+        session.add(definition)
+        await session.commit()
+
+    settings = get_settings()
+    settings.care_journey_delivery_enabled = True
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        ack_a, ack_b = await asyncio.gather(
+            client.post(
+                f"/api/v1/orders/{order.id}/delay-acknowledgements",
+                headers={"Idempotency-Key": "same-ack-key"},
+            ),
+            client.post(
+                f"/api/v1/orders/{order.id}/delay-acknowledgements",
+                headers={"Idempotency-Key": "same-ack-key"},
+            ),
+        )
+        assert ack_a.status_code == 200
+        assert ack_b.status_code == 200
+        assert ack_a.json()["id"] == ack_b.json()["id"]
+        start = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/journeys",
+            json={"definition_id": str(definition.id)},
+        )
+        assert start.status_code in (200, 201)
+        journey_id = start.json()["id"]
+        check_in_a, check_in_b = await asyncio.gather(
+            client.post(
+                f"/api/v1/pet-life/journeys/{journey_id}/check-ins",
+                json={"check_in_key": "step-1", "answer_key": "done"},
+                headers={"Idempotency-Key": "same-checkin-key"},
+            ),
+            client.post(
+                f"/api/v1/pet-life/journeys/{journey_id}/check-ins",
+                json={"check_in_key": "step-1", "answer_key": "done"},
+                headers={"Idempotency-Key": "same-checkin-key"},
+            ),
+        )
+        assert check_in_a.status_code == 200
+        assert check_in_b.status_code == 200
+    async with SessionFactory() as session:
+        assert (
+            await session.scalar(
+                select(func.count(OrderDelayAcknowledgement.id)).where(
+                    OrderDelayAcknowledgement.order_id == order.id
+                )
+            )
+        ) == 1
+        assert (
+            await session.scalar(
+                select(func.count(JourneyCheckIn.id)).where(
+                    JourneyCheckIn.journey_id == uuid.UUID(journey_id)
+                )
+            )
+        ) == 1
+    settings.care_journey_delivery_enabled = False
+    app.dependency_overrides.clear()
+
+
+async def test_approved_journey_delivery_lifecycle_today_and_replay(seed: Seed) -> None:
+    async with SessionFactory() as session:
+        approved = JourneyDefinition(
+            key=f"approved-{uuid.uuid4()}",
+            version=1,
+            title_fa="مسیر تایید شده",
+            content=approved_journey_content(),
+            approval_status="approved",
+            approved_by="vet",
+            approved_at=utc_now(),
+        )
+        draft = JourneyDefinition(
+            key=f"draft-{uuid.uuid4()}",
+            version=1,
+            title_fa="پیش‌نویس",
+            content=approved_journey_content(),
+            approval_status="draft",
+        )
+        dog_only = JourneyDefinition(
+            key=f"dog-{uuid.uuid4()}",
+            version=1,
+            title_fa="سگ",
+            content={**approved_journey_content(), "eligible_species": ["dog"]},
+            approval_status="approved",
+            approved_by="vet",
+            approved_at=utc_now(),
+        )
+        invalid = JourneyDefinition(
+            key=f"invalid-{uuid.uuid4()}",
+            version=1,
+            title_fa="بی‌مرجع",
+            content={**approved_journey_content(), "professional_approval_ref": ""},
+            approval_status="approved",
+            approved_by="vet",
+            approved_at=utc_now(),
+        )
+        session.add_all([approved, draft, dog_only, invalid])
+        await session.commit()
+
+    settings = get_settings()
+    original = settings.care_journey_delivery_enabled
+    settings.care_journey_delivery_enabled = True
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        offers = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/journey-offers")
+        assert offers.status_code == 200
+        offer_ids = {item["definition_id"] for item in offers.json()}
+        assert str(approved.id) in offer_ids
+        assert str(draft.id) not in offer_ids
+        assert str(dog_only.id) not in offer_ids
+        assert str(invalid.id) not in offer_ids
+        draft_detail = await client.get(f"/api/v1/pet-life/journey-definitions/{draft.id}")
+        invalid_detail = await client.get(
+            f"/api/v1/pet-life/journey-definitions/{invalid.id}"
+        )
+        assert draft_detail.status_code == 404
+        assert invalid_detail.status_code == 404
+        started = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/journeys",
+            json={"definition_id": str(approved.id)},
+        )
+        assert started.status_code == 200
+        journey_id = started.json()["id"]
+        detail = await client.get(f"/api/v1/pet-life/journeys/{journey_id}")
+        assert detail.status_code == 200
+        assert "additionalProperties" not in detail.json()["steps"][0]
+        pause = await client.post(f"/api/v1/pet-life/journeys/{journey_id}/pause")
+        resume = await client.post(f"/api/v1/pet-life/journeys/{journey_id}/resume")
+        assert pause.status_code == 204
+        assert resume.status_code == 204
+        today = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/today")
+        assert today.json()["primary_attention"]["type"] == "active_journey"
+        bad = await client.post(
+            f"/api/v1/pet-life/journeys/{journey_id}/check-ins",
+            json={"check_in_key": "step-1", "answer_key": "other"},
+            headers={"Idempotency-Key": "journey-bad-key"},
+        )
+        assert bad.status_code == 422
+        first = await client.post(
+            f"/api/v1/pet-life/journeys/{journey_id}/check-ins",
+            json={"check_in_key": "step-1", "answer_key": "done"},
+            headers={"Idempotency-Key": "journey-ok-key"},
+        )
+        replay = await client.post(
+            f"/api/v1/pet-life/journeys/{journey_id}/check-ins",
+            json={"check_in_key": "step-1", "answer_key": "done"},
+            headers={"Idempotency-Key": "journey-ok-key"},
+        )
+        conflict = await client.post(
+            f"/api/v1/pet-life/journeys/{journey_id}/check-ins",
+            json={"check_in_key": "step-1", "answer_key": "other"},
+            headers={"Idempotency-Key": "journey-ok-key"},
+        )
+        assert first.status_code == 200
+        assert replay.status_code == 200
+        assert first.json()["id"] == replay.json()["id"]
+        assert conflict.status_code == 409
+        garden = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/garden")
+        assert {"xp", "streak", "decay", "purchase_reward"} & set(garden.json()) == set()
+    app.dependency_overrides[get_current_identity] = lambda: seed.other_identity
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        assert (await client.get(f"/api/v1/pet-life/journeys/{journey_id}")).status_code == 404
+    async with SessionFactory() as session:
+        assert (
+            await session.scalar(
+                select(func.count(DiaryEntry.id)).where(
+                    DiaryEntry.source_id == journey_id,
+                    DiaryEntry.source_type == "journey",
+                )
+            )
+        ) == 1
+        assert (
+            await session.scalar(
+                select(func.count(GardenReward.id)).where(
+                    GardenReward.source_id == journey_id,
+                    GardenReward.source_type == "journey_completion",
+                )
+            )
+        ) == 1
+        journey = await session.get(PetJourney, uuid.UUID(journey_id))
+        assert journey is not None and journey.status == "completed"
+    settings.care_journey_delivery_enabled = original
+    app.dependency_overrides.clear()
+
+
+async def test_journey_stop_and_empty_offers_do_not_fabricate_content(seed: Seed) -> None:
+    settings = get_settings()
+    original = settings.care_journey_delivery_enabled
+    settings.care_journey_delivery_enabled = True
+    async with SessionFactory() as session:
+        await session.execute(text("delete from journey_check_ins"))
+        await session.execute(text("delete from journeys_pet_journeys"))
+        await session.execute(text("delete from journeys_definitions"))
+        await session.commit()
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        offers = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/journey-offers")
+        assert offers.status_code == 200
+        assert offers.json() == []
+    async with SessionFactory() as session:
+        definition = JourneyDefinition(
+            key=f"stop-{uuid.uuid4()}",
+            version=1,
+            title_fa="توقف",
+            content=approved_journey_content(),
+            approval_status="approved",
+            approved_by="vet",
+            approved_at=utc_now(),
+        )
+        session.add(definition)
+        await session.commit()
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        started = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/journeys",
+            json={"definition_id": str(definition.id)},
+        )
+        assert started.status_code == 200
+        stopped = await client.post(
+            f"/api/v1/pet-life/journeys/{started.json()['id']}/stop",
+            json={"reason": "customer_request"},
+        )
+        assert stopped.status_code == 204
+    settings.care_journey_delivery_enabled = original
+    app.dependency_overrides.clear()
+
+
+async def test_outbox_registry_retries_dead_letter_and_audit_only(
+    redis_client: Redis,
+) -> None:
+    assert {"order.awaiting_payment", "order.payment_verified", "catalog.offer_available"}.issubset(
+        EVENT_REGISTRY
+    )
+    async with SessionFactory() as session:
+        add_outbox_event(
+            session,
+            DomainEvent(
+                event_type="order.awaiting_payment",
+                aggregate_type="order",
+                aggregate_id="audit",
+                payload={},
+            ),
+        )
+        add_outbox_event(
+            session,
+            DomainEvent(
+                event_type="unknown.event",
+                aggregate_type="unknown",
+                aggregate_id="dead",
+                payload={},
+            ),
+        )
+        await session.commit()
+    dispatcher = OutboxDispatcher(SessionFactory, batch_size=10)
+    for _ in range(6):
+        await dispatcher.dispatch_batch()
+        async with SessionFactory() as session:
+            await session.execute(
+                text("update system_outbox_events set available_at = now() where status = 'failed'")
+            )
+            await session.commit()
+    async with SessionFactory() as session:
+        audit = await session.scalar(
+            select(OutboxEvent).where(OutboxEvent.event_type == "order.awaiting_payment")
+        )
+        unknown = await session.scalar(
+            select(OutboxEvent).where(OutboxEvent.event_type == "unknown.event")
+        )
+        assert audit is not None and audit.status == "published"
+        assert unknown is not None and unknown.status == "dead_letter"
+    await redis_client.set("pet-platform:test:heartbeat", "alive", ex=30)
+    assert await redis_client.get("pet-platform:test:heartbeat") == "alive"

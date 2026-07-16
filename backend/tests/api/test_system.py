@@ -39,7 +39,7 @@ async def test_liveness_and_policy_contract(tmp_path: Path) -> None:
         assert policies.json()["delay_compensation_customer_visible"] is False
         assert policies.json()["availability_subscriptions_enabled"] is True
         assert policies.json()["concierge_requests_enabled"] is True
-        assert policies.json()["care_journey_delivery_enabled"] is False
+        assert policies.json()["care_journey_delivery_enabled"] is True
         assert policies.json()["push_notifications_enabled"] is False
         assert policies.json()["semantic_level_estimation_enabled"] is True
         assert policies.json()["reorder_safety_buffer_days"] == 3

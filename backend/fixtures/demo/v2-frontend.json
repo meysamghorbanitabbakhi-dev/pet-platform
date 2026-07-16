@@ -11,7 +11,7 @@
     "replacement_self_service_enabled": false,
     "substitution_self_service_enabled": false,
     "delay_compensation_customer_visible": false,
-    "care_journey_delivery_enabled": false,
+    "care_journey_delivery_enabled": true,
     "push_notifications_enabled": false,
     "semantic_level_estimation_enabled": true,
     "reorder_safety_buffer_days": 3,

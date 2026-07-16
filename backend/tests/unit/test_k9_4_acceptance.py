@@ -50,7 +50,7 @@ def test_k9_t12_policy_gates_are_disabled_and_non_executable() -> None:
     assert settings.delay_compensation_customer_visible is False
     assert settings.semantic_level_estimation_enabled is True
     assert settings.reorder_safety_buffer_days == 3
-    assert settings.care_journey_delivery_enabled is False
+    assert settings.care_journey_delivery_enabled is True
     assert settings.push_notifications_enabled is False
     paths = _paths()
     forbidden_fragments = ("reserve", "refund", "replacement", "substitution", "compensation")

@@ -5,6 +5,7 @@ from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.time import utc_now
@@ -12,6 +13,7 @@ from app.integrations.payment.port import PaymentGateway, PaymentRequest
 from app.modules.orders.models import Order
 from app.modules.payments.models import PaymentAttempt
 from app.modules.sourcing.models import SourcingJob
+from app.modules.system.idempotency import canonical_request_hash
 from app.modules.system.outbox import DomainEvent, add_outbox_event
 
 
@@ -55,6 +57,9 @@ class PaymentService:
             or order.status != "awaiting_payment"
         ):
             raise PaymentWorkflowError("order is not awaiting payment")
+        request_hash = canonical_request_hash(
+            {"order_id": str(order_id), "callback_url": callback_url}
+        )
         existing = await session.scalar(
             select(PaymentAttempt).where(
                 PaymentAttempt.order_id == order.id,
@@ -62,6 +67,10 @@ class PaymentService:
             )
         )
         if existing is not None:
+            if existing.request_hash not in (None, request_hash):
+                raise PaymentWorkflowError(
+                    "idempotency key was already used for another request"
+                )
             if existing.status != "redirect_ready" or existing.redirect_url is None:
                 raise PaymentWorkflowError("payment request is already processing")
             return PaymentRedirect(existing.id, existing.redirect_url)
@@ -73,9 +82,26 @@ class PaymentService:
             amount_irr=order.merchandise_total_irr,
             currency="IRR",
             idempotency_key=idempotency_key,
+            request_hash=request_hash,
         )
         session.add(attempt)
-        await session.flush()
+        try:
+            await session.flush()
+        except IntegrityError as exc:
+            await session.rollback()
+            replay = await session.scalar(
+                select(PaymentAttempt).where(
+                    PaymentAttempt.order_id == order.id,
+                    PaymentAttempt.idempotency_key == idempotency_key,
+                )
+            )
+            if replay is not None and replay.request_hash in (None, request_hash):
+                if replay.status == "redirect_ready" and replay.redirect_url is not None:
+                    return PaymentRedirect(replay.id, replay.redirect_url)
+                raise PaymentWorkflowError("payment request is already processing") from exc
+            raise PaymentWorkflowError(
+                "idempotency key was already used for another request"
+            ) from exc
         initiation = await gateway.initiate(
             PaymentRequest(
                 amount_irr=attempt.amount_irr,

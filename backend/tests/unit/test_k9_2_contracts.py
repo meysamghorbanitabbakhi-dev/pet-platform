@@ -30,6 +30,9 @@ def test_k9_2_routes_and_unions_are_in_checked_application_contract() -> None:
         "unavailable",
     }
     assert "outcome" in schemas["ReorderAssessmentResponse"]["properties"]
+    assert schemas["ReorderAssessmentResponse"]["properties"]["options"]["items"] == {
+        "$ref": "#/components/schemas/ReorderOptionResponse"
+    }
 
 
 class _RemainingSession:

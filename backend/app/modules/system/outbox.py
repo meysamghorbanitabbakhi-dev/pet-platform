@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.common.time import utc_now
+from app.modules.system.event_registry import event_disposition
 from app.modules.system.models import OutboxEvent
 
 EventHandler = Callable[[dict[str, Any]], Awaitable[None]]
@@ -34,6 +35,8 @@ def add_outbox_event(session: AsyncSession, event: DomainEvent) -> UUID:
         payload=event.payload,
         occurred_at=now,
         available_at=now,
+        status="pending",
+        disposition=event_disposition(event.event_type) or "unregistered",
     )
     session.add(record)
     return event_id
@@ -62,7 +65,7 @@ class OutboxDispatcher:
             statement = (
                 select(OutboxEvent)
                 .where(
-                    OutboxEvent.published_at.is_(None),
+                    OutboxEvent.status.in_(("pending", "failed")),
                     OutboxEvent.available_at <= now,
                     (OutboxEvent.claimed_until.is_(None) | (OutboxEvent.claimed_until < now)),
                 )
@@ -79,7 +82,10 @@ class OutboxDispatcher:
     async def _dispatch_one(self, claimed: OutboxEvent) -> None:
         handlers = self._handlers.get(claimed.event_type, [])
         try:
-            if not handlers:
+            if claimed.disposition == "audit_only":
+                await self._mark_published(claimed.id)
+                return
+            if claimed.disposition == "unregistered" or not handlers:
                 raise RuntimeError(f"no handler registered for {claimed.event_type}")
             for handler in handlers:
                 await handler(claimed.payload)
@@ -95,12 +101,19 @@ class OutboxDispatcher:
                 record.published_at = utc_now()
                 record.claimed_until = None
                 record.last_error = None
+                record.status = "published"
 
     async def _mark_failed(self, record_id: UUID, error: str) -> None:
         async with self._session_factory() as session, session.begin():
             record = await session.get(OutboxEvent, record_id, with_for_update=True)
             if record is not None and record.published_at is None:
+                if record.attempts >= 5:
+                    record.status = "dead_letter"
+                    record.claimed_until = None
+                    record.last_error = error[:4000]
+                    return
                 delay_seconds = min(3600, 2 ** min(record.attempts, 10))
                 record.available_at = utc_now() + timedelta(seconds=delay_seconds)
                 record.claimed_until = None
                 record.last_error = error[:4000]
+                record.status = "failed"

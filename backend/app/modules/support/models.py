@@ -43,6 +43,7 @@ class CustomerRequest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     contact_preference: Mapped[str] = mapped_column(String(20), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="submitted", nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_hash: Mapped[str | None] = mapped_column(String(64))
 
 
 class CustomerRequestStatusAudit(UUIDPrimaryKeyMixin, Base):

@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.contracts import (
@@ -19,15 +20,23 @@ from app.api.contracts import (
     InventoryAssignmentResponse,
     InventoryDetailResponse,
     InventoryListItem,
+    JourneyActiveWindowResponse,
+    JourneyAnswerOptionResponse,
     JourneyCheckInResponse,
+    JourneyCompletionRequirementsResponse,
     JourneyCompletionResponse,
+    JourneyContentResponse,
     JourneyDefinitionResponse,
     JourneyDetailResponse,
+    JourneyEligibilityResponse,
+    JourneyExceptionBehaviorResponse,
     JourneyOfferResponse,
+    JourneyStepResponse,
     NotificationListItem,
     OffsetPage,
     PetSummary,
     ReorderAssessmentResponse,
+    ReorderOptionResponse,
     TodayResponse,
     WalletSummaryResponse,
 )
@@ -50,11 +59,21 @@ from app.modules.households.access import (
 from app.modules.households.models import Household, HouseholdAddress, HouseholdMembership
 from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit, ReorderSnooze
 from app.modules.inventory.service import InventoryError, InventoryService
+from app.modules.journeys.content import (
+    completion_requirements_met,
+    content_int,
+    content_steps,
+    content_str,
+    journey_deliverable,
+    parse_content_datetime,
+    valid_check_in,
+)
 from app.modules.journeys.models import JourneyCheckIn, JourneyDefinition, PetJourney
 from app.modules.journeys.service import JourneyError, JourneyService
 from app.modules.notifications.models import Notification, NotificationPreference
 from app.modules.pets.models import Pet
 from app.modules.replenishment.service import assess_reorder, should_break_reorder_snooze
+from app.modules.system.idempotency import canonical_request_hash
 from app.modules.today.service import build_today
 from app.modules.wallet.models import WalletAccount, WalletCredit
 
@@ -685,7 +704,15 @@ async def start_journey(
 ) -> IdResponse:
     if not settings.care_journey_delivery_enabled:
         raise HTTPException(status_code=409, detail="care_journey_delivery_disabled")
-    await _pet_access(session, identity.id, pet_id)
+    pet = await _pet_access(session, identity.id, pet_id)
+    definition = await session.get(JourneyDefinition, body.definition_id)
+    if (
+        definition is None
+        or definition.approval_status != "approved"
+        or definition.approved_at is None
+        or not journey_deliverable(definition.content, pet.species, utc_now())
+    ):
+        raise HTTPException(status_code=404, detail="journey_definition_not_found")
     try:
         journey = await JourneyService().start(
             session, pet_id=pet_id, definition_id=body.definition_id
@@ -718,7 +745,7 @@ async def journey_offers(
     offers = [
         definition
         for definition in definitions
-        if _journey_definition_deliverable(definition, pet.species, now)
+        if journey_deliverable(definition.content, pet.species, now)
     ]
     return [
         JourneyOfferResponse(
@@ -726,8 +753,8 @@ async def journey_offers(
             key=item.key,
             version=item.version,
             title_fa=item.title_fa,
-            summary_fa=_content_str(item.content, "summary_fa"),
-            duration_days=_content_int(item.content, "duration_days"),
+            summary_fa=content_str(item.content, "summary_fa"),
+            duration_days=content_int(item.content, "duration_days"),
         )
         for item in offers
     ]
@@ -751,7 +778,7 @@ async def journey_definition_detail(
         definition is None
         or definition.approval_status != "approved"
         or definition.approved_at is None
-        or not _journey_definition_deliverable(definition, None, utc_now())
+        or not journey_deliverable(definition.content, None, utc_now())
     ):
         raise HTTPException(status_code=404, detail="journey_definition_not_found")
     return JourneyDefinitionResponse(
@@ -759,7 +786,7 @@ async def journey_definition_detail(
         key=definition.key,
         version=definition.version,
         title_fa=definition.title_fa,
-        summary_fa=_content_str(definition.content, "summary_fa"),
+        summary_fa=content_str(definition.content, "summary_fa"),
         content=_public_journey_content(definition.content),
         approved_at=definition.approved_at,
     )
@@ -795,7 +822,7 @@ async def journey_detail(
         started_at=journey.started_at,
         ended_at=journey.ended_at,
         title_fa=definition.title_fa if definition else "",
-        steps=_content_list(content, "steps"),
+        steps=_journey_steps_response(content),
         check_ins=[
             JourneyCheckInResponse(
                 id=item.id,
@@ -826,8 +853,7 @@ async def journey_check_in(
     if journey is None:
         raise HTTPException(status_code=404, detail="journey_not_found")
     await _pet_access(session, identity.id, journey.pet_id)
-    if journey.status != "active":
-        raise HTTPException(status_code=409, detail="journey_not_active")
+    request_hash = canonical_request_hash(body.model_dump(mode="json"))
     existing = await session.scalar(
         select(JourneyCheckIn).where(
             JourneyCheckIn.journey_id == journey.id,
@@ -835,6 +861,8 @@ async def journey_check_in(
         )
     )
     if existing is not None:
+        if existing.request_hash not in (None, request_hash):
+            raise HTTPException(status_code=409, detail="idempotency_key_conflict")
         return JourneyCheckInResponse(
             id=existing.id,
             journey_id=existing.journey_id,
@@ -842,11 +870,13 @@ async def journey_check_in(
             answer_key=existing.answer_key,
             submitted_at=existing.submitted_at,
         )
+    if journey.status != "active":
+        raise HTTPException(status_code=409, detail="journey_not_active")
     content = journey.definition_snapshot
     if content is None:
         definition = await session.get(JourneyDefinition, journey.definition_id)
         content = definition.content if definition else {}
-    if not _valid_check_in(content, body.check_in_key, body.answer_key):
+    if not valid_check_in(content, body.check_in_key, body.answer_key):
         raise HTTPException(status_code=422, detail="invalid_journey_check_in")
     check_in = JourneyCheckIn(
         journey_id=journey.id,
@@ -855,10 +885,29 @@ async def journey_check_in(
         submitted_by_identity_id=identity.id,
         submitted_at=utc_now(),
         idempotency_key=idempotency_key,
+        request_hash=request_hash,
     )
     session.add(check_in)
-    await session.flush()
-    completed = _completion_requirements_met(
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        await session.rollback()
+        existing = await session.scalar(
+            select(JourneyCheckIn).where(
+                JourneyCheckIn.journey_id == journey_id,
+                JourneyCheckIn.idempotency_key == idempotency_key,
+            )
+        )
+        if existing is None or existing.request_hash not in (None, request_hash):
+            raise HTTPException(status_code=409, detail="idempotency_key_conflict") from exc
+        return JourneyCheckInResponse(
+            id=existing.id,
+            journey_id=existing.journey_id,
+            check_in_key=existing.check_in_key,
+            answer_key=existing.answer_key,
+            submitted_at=existing.submitted_at,
+        )
+    completed = completion_requirements_met(
         content,
         {
             item.check_in_key
@@ -1332,7 +1381,9 @@ async def _owned_journey(session: AsyncSession, identity_id: UUID, journey_id: U
     return journey
 
 
-async def _reorder_options(session: AsyncSession, unit: InventoryUnit) -> list[dict[str, Any]]:
+async def _reorder_options(
+    session: AsyncSession, unit: InventoryUnit
+) -> list[ReorderOptionResponse]:
     if unit.product_id is None:
         return []
     offers = list(
@@ -1348,22 +1399,22 @@ async def _reorder_options(session: AsyncSession, unit: InventoryUnit) -> list[d
         ).all()
     )
     return [
-        {
-            "offer_id": offer.id,
-            "sku": offer.sku,
-            "available": (
+        ReorderOptionResponse(
+            offer_id=offer.id,
+            sku=offer.sku,
+            available=(
                 offer.status == "active"
                 and offer.stock_posture == "sourced_after_payment"
                 and offer.sourcing_capacity_status == "open"
             ),
-            "reason_key": (
+            reason_key=(
                 None
                 if offer.status == "active"
                 and offer.stock_posture == "sourced_after_payment"
                 and offer.sourcing_capacity_status == "open"
                 else "offer_unavailable_or_capacity_paused"
             ),
-        }
+        )
         for offer in offers
     ]
 
@@ -1454,36 +1505,76 @@ def _estimate_response(estimate: FoodEstimate) -> FoodEstimateResponse:
 
 
 def _content_str(content: dict[str, object], key: str) -> str | None:
-    value = content.get(key)
-    return value if isinstance(value, str) else None
+    return content_str(content, key)
 
 
 def _content_int(content: dict[str, object], key: str) -> int | None:
-    value = content.get(key)
-    return value if isinstance(value, int) else None
+    return content_int(content, key)
 
 
 def _content_list(content: dict[str, object], key: str) -> list[dict[str, Any]]:
-    value = content.get(key)
-    if not isinstance(value, list):
-        return []
-    return [item for item in value if isinstance(item, dict)]
+    return content_steps(content) if key == "steps" else []
 
 
-def _public_journey_content(content: dict[str, object]) -> dict[str, Any]:
-    allowed = {
-        "summary_fa",
-        "eligibility",
-        "duration_days",
-        "active_from",
-        "active_until",
-        "steps",
-        "completion_requires",
-        "exception_behavior",
-        "garden_object_key",
-        "professional_approval_ref",
-    }
-    return {key: value for key, value in content.items() if key in allowed}
+def _public_journey_content(content: dict[str, object]) -> JourneyContentResponse:
+    required = content.get("completion_requires")
+    eligible_species = content.get("eligible_species")
+    exception = content.get("exception_behavior")
+    exception_message = None
+    if isinstance(exception, dict):
+        value = exception.get("message_fa")
+        exception_message = value if isinstance(value, str) else None
+    return JourneyContentResponse(
+        summary_fa=content_str(content, "summary_fa"),
+        steps=_journey_steps_response(content),
+        completion_requirements=JourneyCompletionRequirementsResponse(
+            required_step_keys=[item for item in required if isinstance(item, str)]
+            if isinstance(required, list)
+            else []
+        ),
+        eligibility=JourneyEligibilityResponse(
+            eligible_species=[
+                item for item in eligible_species if item in ("dog", "cat")
+            ]
+            if isinstance(eligible_species, list)
+            else None
+        ),
+        duration_days=content_int(content, "duration_days"),
+        active_window=JourneyActiveWindowResponse(
+            active_from=parse_content_datetime(content.get("active_from")),
+            active_until=parse_content_datetime(content.get("active_until")),
+        ),
+        exception_behavior=JourneyExceptionBehaviorResponse(
+            behavior="non_diagnostic",
+            message_fa=exception_message,
+        ),
+        garden_object_key=content_str(content, "garden_object_key") or "",
+        professional_approval_ref=content_str(content, "professional_approval_ref") or "",
+    )
+
+
+def _journey_steps_response(content: dict[str, object]) -> list[JourneyStepResponse]:
+    steps: list[JourneyStepResponse] = []
+    for step in content_steps(content):
+        answers = step.get("allowed_answers")
+        steps.append(
+            JourneyStepResponse(
+                key=content_str(step, "key") or "",
+                title_fa=content_str(step, "title_fa") or "",
+                body_fa=content_str(step, "body_fa") or "",
+                allowed_answers=[
+                    JourneyAnswerOptionResponse(
+                        key=content_str(answer, "key") or "",
+                        label_fa=content_str(answer, "label_fa") or "",
+                    )
+                    for answer in answers
+                    if isinstance(answer, dict)
+                ]
+                if isinstance(answers, list)
+                else [],
+            )
+        )
+    return steps
 
 
 def _journey_definition_deliverable(
@@ -1491,42 +1582,12 @@ def _journey_definition_deliverable(
     species: str | None,
     now: Any,
 ) -> bool:
-    content = definition.content
-    if not isinstance(content.get("professional_approval_ref"), str):
-        return False
-    from_raw = content.get("active_from")
-    until_raw = content.get("active_until")
-    if isinstance(from_raw, str) and from_raw and now.isoformat() < from_raw:
-        return False
-    if isinstance(until_raw, str) and until_raw and now.isoformat() >= until_raw:
-        return False
-    eligible_species = content.get("eligible_species")
-    if (
-        species is not None
-        and isinstance(eligible_species, list)
-        and species not in eligible_species
-    ):
-        return False
-    return bool(_content_list(content, "steps"))
+    return journey_deliverable(definition.content, species, now)
 
 
 def _valid_check_in(content: dict[str, object], check_in_key: str, answer_key: str) -> bool:
-    for step in _content_list(content, "steps"):
-        if step.get("key") != check_in_key:
-            continue
-        answers = step.get("allowed_answers")
-        return isinstance(answers, list) and answer_key in answers
-    return False
+    return valid_check_in(content, check_in_key, answer_key)
 
 
 def _completion_requirements_met(content: dict[str, object], submitted_keys: set[str]) -> bool:
-    required = content.get("completion_requires")
-    if isinstance(required, list):
-        required_keys = {str(item) for item in required if isinstance(item, str)}
-    else:
-        required_keys = {
-            str(step["key"])
-            for step in _content_list(content, "steps")
-            if isinstance(step.get("key"), str)
-        }
-    return bool(required_keys) and required_keys.issubset(submitted_keys)
+    return completion_requirements_met(content, submitted_keys)

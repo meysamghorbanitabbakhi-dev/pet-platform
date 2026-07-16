@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.contracts import CustomerRequestResponse, OffsetPage
@@ -18,6 +19,7 @@ from app.modules.catalog.models import Offer
 from app.modules.households.access import HouseholdAccessError, require_household_membership
 from app.modules.orders.models import Order
 from app.modules.support.models import CustomerRequest, CustomerRequestStatusAudit
+from app.modules.system.idempotency import canonical_request_hash
 
 router = APIRouter(tags=["customer-requests"])
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
@@ -66,12 +68,15 @@ async def create_customer_request(
         offer = await session.get(Offer, body.offer_id)
         if offer is None or offer.status == "retired":
             raise HTTPException(status_code=404, detail="offer_not_found")
+    request_hash = canonical_request_hash(body.model_dump(mode="json"))
     existing = await session.scalar(
         select(CustomerRequest).where(
             CustomerRequest.identity_id == identity.id,
             CustomerRequest.idempotency_key == idempotency_key,
         )
     )
+    if existing is not None and existing.request_hash not in (None, request_hash):
+        raise HTTPException(status_code=409, detail="idempotency_key_conflict")
     if existing is None:
         existing = CustomerRequest(
             identity_id=identity.id,
@@ -84,9 +89,22 @@ async def create_customer_request(
             contact_preference=body.contact_preference,
             status="submitted",
             idempotency_key=idempotency_key,
+            request_hash=request_hash,
         )
         session.add(existing)
-        await session.flush()
+        try:
+            await session.flush()
+        except IntegrityError as exc:
+            await session.rollback()
+            existing = await session.scalar(
+                select(CustomerRequest).where(
+                    CustomerRequest.identity_id == identity.id,
+                    CustomerRequest.idempotency_key == idempotency_key,
+                )
+            )
+            if existing is None or existing.request_hash not in (None, request_hash):
+                raise HTTPException(status_code=409, detail="idempotency_key_conflict") from exc
+            return _customer_request_response(existing)
         session.add(
             CustomerRequestStatusAudit(
                 request_id=existing.id,
@@ -98,7 +116,18 @@ async def create_customer_request(
                 changed_at=utc_now(),
             )
         )
-        await session.commit()
+        try:
+            await session.commit()
+        except IntegrityError as exc:
+            await session.rollback()
+            existing = await session.scalar(
+                select(CustomerRequest).where(
+                    CustomerRequest.identity_id == identity.id,
+                    CustomerRequest.idempotency_key == idempotency_key,
+                )
+            )
+            if existing is None or existing.request_hash not in (None, request_hash):
+                raise HTTPException(status_code=409, detail="idempotency_key_conflict") from exc
     return _customer_request_response(existing)
 
 

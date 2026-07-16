@@ -41,6 +41,7 @@ class Order(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     currency: Mapped[str] = mapped_column(String(3), default="IRR", nullable=False)
     merchandise_total_irr: Mapped[int] = mapped_column(Integer, nullable=False)
     checkout_idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    checkout_request_hash: Mapped[str | None] = mapped_column(String(64))
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     delivery_commitment_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -106,3 +107,4 @@ class OrderDelayAcknowledgement(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     delay_event_version: Mapped[int] = mapped_column(Integer, nullable=False)
     acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_hash: Mapped[str | None] = mapped_column(String(64))

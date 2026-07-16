@@ -44,7 +44,7 @@
     "capabilities": {
       "availability_subscriptions_enabled": true,
       "concierge_requests_enabled": true,
-      "care_journey_delivery_enabled": false
+      "care_journey_delivery_enabled": true
     }
   },
   "household_pets": [

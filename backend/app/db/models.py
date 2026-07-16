@@ -42,6 +42,15 @@ from app.modules.pet_knowledge.models import (
     KnowledgeVariety,
 )
 from app.modules.pets.models import Pet, PetBreedSelection
+from app.modules.price_intelligence.models import (
+    ExchangeRateSnapshot,
+    ExternalCollectionRun,
+    ExternalPriceObservation,
+    ExternalPriceSource,
+    ExternalProduct,
+    ExternalProductMatch,
+    ExternalSeller,
+)
 from app.modules.sourcing.models import SourcingJob
 from app.modules.support.models import CustomerRequest, CustomerRequestStatusAudit
 from app.modules.system.models import (
@@ -69,6 +78,13 @@ __all__ = [
     "ConsumptionAssignment",
     "DiaryEntry",
     "CatalogAvailabilitySubscription",
+    "ExchangeRateSnapshot",
+    "ExternalCollectionRun",
+    "ExternalPriceObservation",
+    "ExternalPriceSource",
+    "ExternalProduct",
+    "ExternalProductMatch",
+    "ExternalSeller",
     "FoodEstimate",
     "FulfillmentEvent",
     "GardenReward",

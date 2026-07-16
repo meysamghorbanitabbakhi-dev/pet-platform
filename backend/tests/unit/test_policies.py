@@ -26,7 +26,7 @@ def test_policy_defaults_preserve_k8_behavior() -> None:
     assert policies.delay_compensation_customer_visible is False
     assert policies.availability_subscriptions_enabled is True
     assert policies.concierge_requests_enabled is True
-    assert policies.care_journey_delivery_enabled is False
+    assert policies.care_journey_delivery_enabled is True
     assert policies.push_notifications_enabled is False
     assert policies.semantic_level_estimation_enabled is True
     assert policies.reorder_safety_buffer_days == 3

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.time import utc_now
 from app.modules.diary.models import DiaryEntry
 from app.modules.garden.models import GardenReward
+from app.modules.journeys.content import valid_journey_content
 from app.modules.journeys.models import JourneyDefinition, PetJourney
 from app.modules.system.outbox import DomainEvent, add_outbox_event
 
@@ -21,7 +22,11 @@ class JourneyService:
         self, session: AsyncSession, *, pet_id: UUID, definition_id: UUID
     ) -> PetJourney:
         definition = await session.get(JourneyDefinition, definition_id)
-        if definition is None or definition.approval_status != "approved":
+        if (
+            definition is None
+            or definition.approval_status != "approved"
+            or not valid_journey_content(definition.content)
+        ):
             raise JourneyError("journey content is not approved")
         journey = PetJourney(
             pet_id=pet_id,
@@ -62,8 +67,8 @@ class JourneyService:
                 if diary is not None and reward is not None:
                     return diary, reward
             raise JourneyError("journey cannot be completed")
-        definition = await session.get(JourneyDefinition, journey.definition_id)
-        object_key = definition.content.get("garden_object_key") if definition else None
+        snapshot = journey.definition_snapshot or {}
+        object_key = snapshot.get("garden_object_key")
         if not isinstance(object_key, str) or not object_key:
             raise JourneyError("approved journey has no configured Garden reward")
         now = utc_now()

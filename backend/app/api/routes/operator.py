@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.contracts import JourneyContentResponse
 from app.api.dependencies import CurrentOperator
 from app.api.middleware import request_id_context
 from app.common.time import utc_now
@@ -34,6 +35,7 @@ from app.modules.identity.models import AuthIdentity, AuthSession
 from app.modules.identity.privacy import PrivacyRequest
 from app.modules.inventory.models import InventoryUnit
 from app.modules.inventory.projection import DeliveryProjectionError, project_delivered_order
+from app.modules.journeys.content import valid_journey_content
 from app.modules.journeys.models import JourneyDefinition, PetJourney
 from app.modules.notifications.models import Notification, NotificationTemplate
 from app.modules.orders.fulfillment import (
@@ -142,13 +144,46 @@ class JourneyDefinitionBody(BaseModel):
     key: str = Field(min_length=1, max_length=100)
     version: int = Field(ge=1)
     title_fa: str = Field(min_length=1, max_length=300)
-    content: dict[str, object]
+    content: JourneyContentResponse
     reason: str = Field(min_length=5, max_length=1000)
 
 
 class JourneyApprovalBody(BaseModel):
     approved_by: str = Field(min_length=3, max_length=200)
     reason: str = Field(min_length=5, max_length=1000)
+
+
+def _journey_content_to_storage(content: JourneyContentResponse) -> dict[str, object]:
+    return {
+        "summary_fa": content.summary_fa,
+        "duration_days": content.duration_days,
+        "active_from": content.active_window.active_from.isoformat()
+        if content.active_window.active_from
+        else None,
+        "active_until": content.active_window.active_until.isoformat()
+        if content.active_window.active_until
+        else None,
+        "eligible_species": content.eligibility.eligible_species,
+        "steps": [
+            {
+                "key": step.key,
+                "title_fa": step.title_fa,
+                "body_fa": step.body_fa,
+                "allowed_answers": [
+                    {"key": answer.key, "label_fa": answer.label_fa}
+                    for answer in step.allowed_answers
+                ],
+            }
+            for step in content.steps
+        ],
+        "completion_requires": content.completion_requirements.required_step_keys,
+        "exception_behavior": {
+            "behavior": content.exception_behavior.behavior,
+            "message_fa": content.exception_behavior.message_fa,
+        },
+        "garden_object_key": content.garden_object_key,
+        "professional_approval_ref": content.professional_approval_ref,
+    }
 
 
 class LateCreditBody(BaseModel):
@@ -2116,7 +2151,7 @@ async def create_journey_definition(
         key=body.key,
         version=body.version,
         title_fa=body.title_fa,
-        content=body.content,
+        content=_journey_content_to_storage(body.content),
         approval_status="draft",
     )
     session.add(definition)
@@ -2148,9 +2183,8 @@ async def approve_journey_definition(
         raise HTTPException(status_code=404, detail="journey_definition_not_found")
     if definition.approval_status != "draft":
         raise HTTPException(status_code=409, detail="only_draft_content_can_be_approved")
-    reward_key = definition.content.get("garden_object_key")
-    if not isinstance(reward_key, str) or not reward_key:
-        raise HTTPException(status_code=422, detail="garden_reward_configuration_required")
+    if not valid_journey_content(definition.content):
+        raise HTTPException(status_code=422, detail="approved_journey_content_required")
     definition.approval_status = "approved"
     definition.approved_by = body.approved_by
     definition.approved_at = utc_now()

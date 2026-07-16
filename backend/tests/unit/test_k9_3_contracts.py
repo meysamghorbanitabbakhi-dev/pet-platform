@@ -15,7 +15,9 @@ from app.modules.support.models import CustomerRequest
 
 
 def test_k9_3_routes_are_in_checked_application_contract() -> None:
-    paths = create_app().openapi()["paths"]
+    schema = create_app().openapi()
+    paths = schema["paths"]
+    schemas = schema["components"]["schemas"]
     assert "/api/v1/catalog/offers/{offer_id}/availability-subscriptions" in paths
     assert "/api/v1/me/availability-subscriptions" in paths
     assert "/api/v1/customer-requests" in paths
@@ -27,6 +29,39 @@ def test_k9_3_routes_are_in_checked_application_contract() -> None:
     assert "/api/v1/pet-life/journeys/{journey_id}/check-ins" in paths
     assert "/api/v1/pet-life/pets/{pet_id}/diary/{entry_id}" in paths
     assert "/api/v1/pet-life/garden/{reward_id}/placement" in paths
+    assert schemas["JourneyDefinitionResponse"]["properties"]["content"] == {
+        "$ref": "#/components/schemas/JourneyContentResponse"
+    }
+    assert schemas["JourneyDetailResponse"]["properties"]["steps"]["items"] == {
+        "$ref": "#/components/schemas/JourneyStepResponse"
+    }
+    assert schemas["JourneyContentResponse"]["additionalProperties"] is False
+    assert schemas["JourneyStepResponse"]["additionalProperties"] is False
+
+
+def test_today_attention_discriminator_values_are_pinned() -> None:
+    schemas = create_app().openapi()["components"]["schemas"]
+    values: set[str] = set()
+    for schema_name in (
+        "TodaySourcingFailedAttention",
+        "TodayDeliveryDelayedAttention",
+        "TodayDeliveryOverdueAttention",
+        "TodayActionAttention",
+        "TodayActiveJourneyAttention",
+    ):
+        type_schema = schemas[schema_name]["properties"]["type"]
+        if "const" in type_schema:
+            values.add(type_schema["const"])
+        else:
+            values.update(type_schema["enum"])
+    assert values == {
+        "sourcing_failed",
+        "delivery_delayed",
+        "delivery_overdue",
+        "confirm_opening",
+        "improve_food_estimate",
+        "active_journey",
+    }
 
 
 def test_customer_request_contract_makes_no_operational_promises() -> None:
@@ -56,8 +91,21 @@ def test_customer_request_contract_makes_no_operational_promises() -> None:
 def test_journey_check_in_validation_and_completion_requirements() -> None:
     content = {
         "steps": [
-            {"key": "water", "allowed_answers": ["done"]},
-            {"key": "walk", "allowed_answers": ["short", "long"]},
+            {
+                "key": "water",
+                "title_fa": "آب",
+                "body_fa": "آب تازه بگذارید.",
+                "allowed_answers": [{"key": "done", "label_fa": "انجام شد"}],
+            },
+            {
+                "key": "walk",
+                "title_fa": "پیاده‌روی",
+                "body_fa": "پیاده‌روی را ثبت کنید.",
+                "allowed_answers": [
+                    {"key": "short", "label_fa": "کوتاه"},
+                    {"key": "long", "label_fa": "بلند"},
+                ],
+            },
         ],
         "completion_requires": ["water", "walk"],
     }

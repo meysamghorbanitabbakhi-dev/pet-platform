@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.time import utc_now
 from app.modules.catalog.models import Offer, Supplier
 from app.modules.households.models import HouseholdAddress
 from app.modules.orders.models import Order, OrderLine
+from app.modules.system.idempotency import canonical_request_hash
 from app.modules.system.outbox import DomainEvent, add_outbox_event
 
 
@@ -36,6 +39,16 @@ class CheckoutService:
     ) -> Order:
         if not items or any(item.quantity <= 0 for item in items):
             raise CheckoutError("checkout requires positive quantities")
+        request_hash = canonical_request_hash(
+            {
+                "household_id": str(household_id),
+                "address_id": str(address_id),
+                "items": [
+                    {"offer_id": str(item.offer_id), "quantity": item.quantity}
+                    for item in sorted(items, key=lambda item: str(item.offer_id))
+                ],
+            }
+        )
 
         existing = await session.scalar(
             select(Order).where(
@@ -44,6 +57,8 @@ class CheckoutService:
             )
         )
         if existing is not None:
+            if existing.checkout_request_hash not in (None, request_hash):
+                raise CheckoutError("idempotency key was already used for another request")
             return existing
 
         address = await session.get(HouseholdAddress, address_id)
@@ -72,6 +87,7 @@ class CheckoutService:
             currency="IRR",
             merchandise_total_irr=1,
             checkout_idempotency_key=idempotency_key,
+            checkout_request_hash=request_hash,
             delivery_address_snapshot={
                 "address_id": str(address.id),
                 "label": address.label,
@@ -84,7 +100,19 @@ class CheckoutService:
             },
         )
         session.add(order)
-        await session.flush()
+        try:
+            await session.flush()
+        except IntegrityError as exc:
+            await session.rollback()
+            replay = await session.scalar(
+                select(Order).where(
+                    Order.customer_identity_id == customer_identity_id,
+                    Order.checkout_idempotency_key == idempotency_key,
+                )
+            )
+            if replay is not None and replay.checkout_request_hash in (None, request_hash):
+                return replay
+            raise CheckoutError("idempotency key was already used for another request") from exc
         for item in items:
             offer, supplier = offers[item.offer_id]
             if offer.status != "active" or offer.stock_posture != "sourced_after_payment":
@@ -132,5 +160,17 @@ class CheckoutService:
                 payload={"order_id": str(order.id), "amount_irr": total, "currency": "IRR"},
             ),
         )
-        await session.commit()
+        try:
+            await session.commit()
+        except IntegrityError as exc:
+            await session.rollback()
+            replay = await session.scalar(
+                select(Order).where(
+                    Order.customer_identity_id == customer_identity_id,
+                    Order.checkout_idempotency_key == idempotency_key,
+                )
+            )
+            if replay is not None and replay.checkout_request_hash in (None, request_hash):
+                return cast(Order, replay)
+            raise CheckoutError("idempotency key was already used for another request") from exc
         return order

@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy import and_, delete, func, or_, select, tuple_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.contracts import (
@@ -52,6 +53,7 @@ from app.modules.orders.models import Order, OrderDelayAcknowledgement, OrderLin
 from app.modules.payments.models import PaymentAttempt
 from app.modules.payments.service import PaymentService, PaymentWorkflowError
 from app.modules.pets.models import Pet
+from app.modules.system.idempotency import canonical_request_hash
 from app.modules.trust.models import SourcedUnitEvidence
 
 router = APIRouter(tags=["commerce"])
@@ -255,7 +257,19 @@ async def subscribe_offer_availability(
             activation_cycle=(latest.activation_cycle + 1 if latest else 0),
         )
         session.add(existing)
-        await session.flush()
+        try:
+            await session.flush()
+        except IntegrityError:
+            await session.rollback()
+            existing = await session.scalar(
+                select(CatalogAvailabilitySubscription).where(
+                    CatalogAvailabilitySubscription.identity_id == identity.id,
+                    CatalogAvailabilitySubscription.offer_id == offer.id,
+                    CatalogAvailabilitySubscription.status == "active",
+                )
+            )
+            if existing is None:
+                raise
     await session.commit()
     return _availability_subscription_response(existing)
 
@@ -618,6 +632,11 @@ async def acknowledge_order_delay(
     if not delayed_events:
         raise HTTPException(status_code=409, detail="no_visible_delay")
     version = len(delayed_events)
+    request_hash = canonical_request_hash(
+        {"order_id": str(order.id), "delay_event_version": version}
+    )
+    order_id_value = order.id
+    identity_id_value = identity.id
     acknowledgement = await session.scalar(
         select(OrderDelayAcknowledgement).where(
             OrderDelayAcknowledgement.identity_id == identity.id,
@@ -625,6 +644,8 @@ async def acknowledge_order_delay(
             OrderDelayAcknowledgement.idempotency_key == idempotency_key,
         )
     )
+    if acknowledgement is not None and acknowledgement.request_hash not in (None, request_hash):
+        raise HTTPException(status_code=409, detail="idempotency_key_conflict")
     if acknowledgement is None:
         existing_version = await session.scalar(
             select(OrderDelayAcknowledgement).where(
@@ -639,9 +660,25 @@ async def acknowledge_order_delay(
             delay_event_version=version,
             acknowledged_at=utc_now(),
             idempotency_key=idempotency_key,
+            request_hash=request_hash,
         )
         session.add(acknowledgement)
-        await session.commit()
+        try:
+            await session.commit()
+        except IntegrityError as exc:
+            await session.rollback()
+            acknowledgement = await session.scalar(
+                select(OrderDelayAcknowledgement).where(
+                    OrderDelayAcknowledgement.identity_id == identity_id_value,
+                    OrderDelayAcknowledgement.order_id == order_id_value,
+                    OrderDelayAcknowledgement.idempotency_key == idempotency_key,
+                )
+            )
+            if acknowledgement is None or acknowledgement.request_hash not in (
+                None,
+                request_hash,
+            ):
+                raise HTTPException(status_code=409, detail="idempotency_key_conflict") from exc
     return DelayAcknowledgementResponse(
         id=acknowledgement.id,
         order_id=acknowledgement.order_id,
