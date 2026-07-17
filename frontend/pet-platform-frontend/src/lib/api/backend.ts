@@ -19,6 +19,10 @@ import type {
   OrderResponse,
   OtpRequestBody,
   OtpRequestResponse,
+  DiaryEntryDetailResponse,
+  DiaryListItem,
+  GardenPlacementBody,
+  GardenStateResponse,
   InventoryListItem,
   JourneyCheckInBody,
   JourneyCheckInResponse,
@@ -467,6 +471,72 @@ export async function completeJourneyBackend(
     backendClient.POST("/api/v1/pet-life/journeys/{journey_id}/complete", {
       params: { path: { journey_id: journeyId } },
       body,
+      headers,
+    }),
+  );
+}
+
+export async function listDiaryBackend(petId: string): Promise<DiaryListItem[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listDiary(petId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/pets/{pet_id}/diary", {
+      params: { path: { pet_id: petId } },
+      headers,
+    }),
+  );
+}
+
+export async function getDiaryEntryBackend(
+  petId: string,
+  entryId: string,
+): Promise<DiaryEntryDetailResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getDiaryEntry(petId, entryId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/pets/{pet_id}/diary/{entry_id}", {
+      params: { path: { entry_id: entryId, pet_id: petId } },
+      headers,
+    }),
+  );
+}
+
+export async function getGardenBackend(
+  petId: string,
+): Promise<GardenStateResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getGarden(petId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/pets/{pet_id}/garden", {
+      params: { path: { pet_id: petId } },
+      headers,
+    }),
+  );
+}
+
+export async function placeGardenObjectBackend(
+  rewardId: string,
+  body: GardenPlacementBody,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.placeGardenObject(rewardId, body);
+  return withAuthVoid((headers) =>
+    backendClient.PUT("/api/v1/pet-life/garden/{reward_id}/placement", {
+      params: { path: { reward_id: rewardId } },
+      body,
+      headers,
+    }),
+  );
+}
+
+export async function returnGardenObjectBackend(
+  rewardId: string,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.returnGardenObject(rewardId);
+  return withAuthVoid((headers) =>
+    backendClient.DELETE("/api/v1/pet-life/garden/{reward_id}/placement", {
+      params: { path: { reward_id: rewardId } },
       headers,
     }),
   );

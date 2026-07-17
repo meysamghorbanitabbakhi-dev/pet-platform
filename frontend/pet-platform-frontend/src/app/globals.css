@@ -445,6 +445,44 @@ button {
   font-weight: 600;
 }
 
+.garden-object {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  border: none;
+  background: transparent;
+  padding: var(--space-2);
+  cursor: pointer;
+  transition: opacity 200ms ease;
+}
+
+.garden-object:disabled {
+  cursor: default;
+}
+
+.garden-object__mark {
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 10px;
+  background: oklch(0.9 0.01 80);
+  border: 1.5px dashed var(--color-paper-border);
+}
+
+.garden-object--placed .garden-object__mark {
+  background: oklch(0.72 0.13 75 / 0.35);
+  border: none;
+  box-shadow: 0 0 16px oklch(0.72 0.13 70 / 0.3);
+}
+
+.garden-object__label {
+  font-size: 10px;
+  color: var(--color-paper-ink-secondary);
+  text-align: center;
+}
+
 .bottom-nav {
   position: fixed;
   inset-block-end: 0;

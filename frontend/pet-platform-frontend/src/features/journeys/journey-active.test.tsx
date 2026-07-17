@@ -183,5 +183,18 @@ describe("JourneyActive", () => {
         memory_title_fa: "هفته خوبی بود",
       }),
     );
+
+    expect(
+      await screen.findByRole("link", { name: "مشاهده خاطره" }),
+    ).toHaveAttribute(
+      "href",
+      `/diary/${journeyDetailFixture.pet_id}/diary-1`,
+    );
+    expect(
+      screen.getByRole("link", { name: "مشاهده پاداش در باغ" }),
+    ).toHaveAttribute(
+      "href",
+      `/garden/${journeyDetailFixture.pet_id}?reward=reward-1`,
+    );
   });
 });

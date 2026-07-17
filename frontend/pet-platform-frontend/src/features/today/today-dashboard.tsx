@@ -175,10 +175,11 @@ function CareJourneyPreview({ offers }: { offers: JourneyOfferResponse[] }) {
 
 function GardenPreview({ today }: { today: TodayResponse }) {
   return (
-    <section
+    <Link
       className="garden-preview stack"
       id="garden"
       data-testid="garden-preview"
+      href={`/garden/${today.pet.id}`}
     >
       <div className="split">
         <div>
@@ -191,7 +192,7 @@ function GardenPreview({ today }: { today: TodayResponse }) {
         </div>
         <div className="garden-mark" aria-hidden="true" />
       </div>
-    </section>
+    </Link>
   );
 }
 

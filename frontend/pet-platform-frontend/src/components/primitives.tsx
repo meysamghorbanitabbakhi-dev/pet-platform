@@ -584,6 +584,28 @@ function formatPersianNumberInline(value: number) {
   );
 }
 
+export function GardenObject({
+  label,
+  placed,
+  onClick,
+}: {
+  label: string;
+  placed: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={clsx("garden-object", placed && "garden-object--placed")}
+      onClick={onClick}
+      disabled={!onClick}
+    >
+      <span className="garden-object__mark" aria-hidden="true" />
+      <span className="garden-object__label">{label}</span>
+    </button>
+  );
+}
+
 export function BottomNav() {
   const pathname = usePathname();
   const items = [

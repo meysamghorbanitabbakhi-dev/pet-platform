@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
@@ -12,7 +13,7 @@ import {
   Skeleton,
   StatusChip,
 } from "@/components/primitives";
-import type { JourneyStepResponse } from "@/lib/api-types";
+import type { JourneyCompletionResponse, JourneyStepResponse } from "@/lib/api-types";
 import {
   completeJourney,
   getJourney,
@@ -149,11 +150,15 @@ export function JourneyActive({ journeyId }: { journeyId: string }) {
     },
   });
 
+  const [completion, setCompletion] = useState<JourneyCompletionResponse | null>(
+    null,
+  );
   const completeMutation = useMutation({
     mutationFn: () =>
       completeJourney(journeyId, { memory_title_fa: memoryTitle }),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       setSheet(null);
+      setCompletion(result);
       await invalidateJourney();
     },
   });
@@ -253,6 +258,26 @@ export function JourneyActive({ journeyId }: { journeyId: string }) {
           <Banner tone="info">
             این مسیر تکمیل شده است. خاطره و پاداش باغ آن ثبت شده است.
           </Banner>
+        ) : null}
+
+        {completion ? (
+          <Card className="stack">
+            <div className="eyebrow">خاطره و پاداش</div>
+            <div className="cluster">
+              <Link
+                className="button button--selection"
+                href={`/diary/${journey.pet_id}/${completion.diary_entry_id}`}
+              >
+                مشاهده خاطره
+              </Link>
+              <Link
+                className="button button--ghost"
+                href={`/garden/${journey.pet_id}?reward=${completion.garden_reward_id}`}
+              >
+                مشاهده پاداش در باغ
+              </Link>
+            </div>
+          </Card>
         ) : null}
 
         {journey.status === "active" || journey.status === "paused" ? (

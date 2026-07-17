@@ -1,6 +1,9 @@
 import type {
   AddressResponse,
+  DiaryEntryDetailResponse,
+  DiaryListItem,
   FoodEstimateResponse,
+  GardenStateResponse,
   InventoryDetailResponse,
   InventoryListItem,
   JourneyDefinitionResponse,
@@ -482,6 +485,54 @@ export const journeyDetailFixture: JourneyDetailResponse = {
   status: "active",
   steps: journeyDefinitionFixture.content.steps,
   title_fa: "پایش هفتگی وزن",
+};
+
+export const diaryListFixture: DiaryListItem[] = [
+  {
+    entry_type: "journey_completion",
+    happened_at: "2026-07-10T12:00:00Z",
+    id: ids.journey,
+    title_fa: "هفته خوبی بود",
+  },
+];
+
+export const diaryEntryDetailFixture: DiaryEntryDetailResponse = {
+  entry_type: "journey_completion",
+  happened_at: "2026-07-10T12:00:00Z",
+  id: ids.journey,
+  linked_garden_object: {
+    diary_entry_id: ids.journey,
+    id: ids.estimate,
+    object_key: "watering_can",
+    position_x: null,
+    position_y: null,
+    quadrant: null,
+    state: "revealed",
+  },
+  note_fa: "پایش هفتگی وزن با موفقیت تکمیل شد.",
+  source_reference: ids.journey,
+  source_type: "journey_completion",
+  title_fa: "هفته خوبی بود",
+};
+
+export const gardenStateFixture: GardenStateResponse = {
+  layout_version: 1,
+  next_eligibility: { reason_key: "server_derived_milestones_only" },
+  objects: [
+    {
+      diary_entry_id: ids.journey,
+      id: ids.estimate,
+      object_key: "watering_can",
+      position_x: null,
+      position_y: null,
+      quadrant: null,
+      state: "revealed",
+    },
+  ],
+  pet_id: ids.petBishi,
+  slot_rules: { decay_enabled: false, source: "server_milestone_rules", xp_enabled: false },
+  unlocked_quadrants: [1],
+  visible_slot_count: 12,
 };
 
 export const journeyOffersFixture: JourneyOfferResponse[] = [

@@ -4,7 +4,11 @@ import type {
   AddressResponse,
   AddressBody,
   CheckoutBody,
+  DiaryEntryDetailResponse,
+  DiaryListItem,
   FoodEstimateResponse,
+  GardenPlacementBody,
+  GardenStateResponse,
   HouseholdBody,
   IdResponse,
   InventoryDetailResponse,
@@ -185,6 +189,33 @@ export function snoozeReorder(unitId: string, body: ReorderSnoozeBody) {
   return bff<void>(`/api/bff/inventory/${unitId}/reorder-snooze`, {
     method: "PUT",
     body,
+  });
+}
+
+export function listDiary(petId: string) {
+  return bff<DiaryListItem[]>(`/api/bff/pets/${petId}/diary`);
+}
+
+export function getDiaryEntry(petId: string, entryId: string) {
+  return bff<DiaryEntryDetailResponse>(
+    `/api/bff/pets/${petId}/diary/${entryId}`,
+  );
+}
+
+export function getGarden(petId: string) {
+  return bff<GardenStateResponse>(`/api/bff/pets/${petId}/garden`);
+}
+
+export function placeGardenObject(rewardId: string, body: GardenPlacementBody) {
+  return bff<void>(`/api/bff/garden/${rewardId}/placement`, {
+    method: "PUT",
+    body,
+  });
+}
+
+export function returnGardenObject(rewardId: string) {
+  return bff<void>(`/api/bff/garden/${rewardId}/placement`, {
+    method: "DELETE",
   });
 }
 

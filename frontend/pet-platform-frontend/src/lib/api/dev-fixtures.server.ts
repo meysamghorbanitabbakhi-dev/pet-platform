@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import type {
   AddressBody,
   CheckoutBody,
+  GardenPlacementBody,
   HouseholdBody,
   JourneyCheckInBody,
   JourneyCompleteBody,
@@ -136,6 +137,28 @@ export async function loadDevelopmentApi() {
         diary_entry_id: fixtures.ids.journey,
         garden_reward_id: fixtures.ids.journey,
       };
+    },
+    listDiary: async (_petId: string) => {
+      void _petId;
+      return fixtures.diaryListFixture;
+    },
+    getDiaryEntry: async (_petId: string, _entryId: string) => {
+      void _petId;
+      void _entryId;
+      return fixtures.diaryEntryDetailFixture;
+    },
+    getGarden: async (_petId: string) => {
+      void _petId;
+      return fixtures.gardenStateFixture;
+    },
+    placeGardenObject: async (_rewardId: string, _body: GardenPlacementBody) => {
+      void _rewardId;
+      void _body;
+      return undefined;
+    },
+    returnGardenObject: async (_rewardId: string) => {
+      void _rewardId;
+      return undefined;
     },
     getJourneyOffers: async (_petId: string) => {
       void _petId;
