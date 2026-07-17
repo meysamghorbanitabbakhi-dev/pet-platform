@@ -51,11 +51,11 @@ async def run_petmall_am_collection(
                     try:
                         page = await collector.fetch_product_detail(url)
                         parsed = parse_product_detail_page(page.content, page.url)
-                        _product, observation = await service.ingest_parsed_product(
+                        _product, observation_result = await service.ingest_parsed_product(
                             source, parsed, collection_run_id=run.id
                         )
                         products += 1
-                        observations += 1 if observation else 0
+                        observations += 1 if observation_result.created else 0
                     except ParsedProductError:
                         errors += 1
                     except Exception:

@@ -1,6 +1,6 @@
 # Pet Platform backend — system map and capability inventory
 
-Snapshot: Gate K9 complete, 2026-07-16
+Historical Gate K9 snapshot — not current release authority. See `backend/release-contract.json`.
 
 ## 1. Product and operating model
 
@@ -18,7 +18,7 @@ K9 completes frontend integration contracts without resolving open product polic
 | Outbox worker | Reliable asynchronous side effects and provider delivery | PostgreSQL outbox |
 | Scheduler | Due work and review lifecycle | PostgreSQL state |
 | Filesystem storage | Private media/evidence storage abstraction | Persistent volume |
-| Alembic | Ordered database evolution | Head `20260716_0021` |
+| Alembic | Ordered database evolution | Current head governed by the release contract |
 | OpenAPI | Checked frontend/backend contract | `docs/api/openapi.json` |
 
 ## 3. Domain map
@@ -70,7 +70,7 @@ Garden rewards are meaningful server milestones only. There is no XP, streak, de
 |---|---|
 | `app/api/routes` | HTTP endpoints grouped by auth, commerce, customer requests, operator, pet life, health, knowledge, privacy and system |
 | `app/modules` | Domain models/services for identity, commerce, inventory, journeys, support, notifications and governance |
-| `migrations/versions` | Alembic revisions through `20260716_0021` |
+| `migrations/versions` | Alembic revision history; current head is governed by the release contract |
 | `tests` | Unit/API/contract/K9 acceptance checks |
 | `fixtures/demo/v2-frontend.json` | Deterministic K9-T1–T11 frontend demo fixture |
 | `docs/api/openapi.json` | Checked OpenAPI artifact |

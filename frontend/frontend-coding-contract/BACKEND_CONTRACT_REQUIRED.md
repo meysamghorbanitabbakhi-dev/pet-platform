@@ -1,11 +1,11 @@
 # Backend contract required before frontend integration
 
-The design package references a backend contract with:
+Mutable release facts and compatibility requirements are governed by
+`backend/release-contract.json`.
 
-- Alembic head: `20260716_0023`
-- OpenAPI SHA-256: `01fd47b7502efcee57f27f2cdc89fa646decac5ac5495e108ce56194a9fcaaa2`
-- 133 operations
-- 27 policy fields
+The design package historically referenced a backend contract with:
+
+- Alembic head, OpenAPI hash/counts, and policy defaults: see the canonical release contract
 - Typed journey content/steps/answer options and typed reorder options
 
 The authoritative OpenAPI file was not included in the designer ZIP. Therefore the coding agent must obtain it from the current backend repository or a running backend and verify it before generating client types.

@@ -1,8 +1,11 @@
 # Backend/frontend integration contract
 
+Mutable release facts and compatibility requirements are governed by
+`backend/release-contract.json`.
+
 Base revision: `1da656bcd5e08310596a5c77e5cad4f421e74691`
 
-The checked OpenAPI artifact at `docs/api/openapi.json` is authoritative. The frontend must not invent price, delivery, trust, portion, policy or compensation facts.
+The checked OpenAPI artifact is derived from the canonical release contract. The frontend must not invent price, delivery, trust, portion, policy or compensation facts.
 
 ## Intent classification
 
@@ -29,7 +32,7 @@ The checked OpenAPI artifact at `docs/api/openapi.json` is authoritative. The fr
 | Customer support/concierge request | endpoint-backed | `POST /api/v1/customer-requests` |
 | Request history/detail | endpoint-backed | `GET /api/v1/customer-requests`, `GET /api/v1/customer-requests/{request_id}` |
 | Delay acknowledgement | endpoint-backed | `POST /api/v1/orders/{order_id}/delay-acknowledgements` |
-| Journey discovery/detail/check-in | policy-gated | `care_journey_delivery_enabled=false` until approved |
+| Journey discovery/detail/check-in | policy-gated | Approved eligible content uses the governed policy default |
 | Diary detail | endpoint-backed | `GET /api/v1/pet-life/pets/{pet_id}/diary/{entry_id}` |
 | Garden state/place/store | endpoint-backed | `GET /api/v1/pet-life/pets/{pet_id}/garden`, `PUT/DELETE /api/v1/pet-life/garden/{reward_id}/placement` |
 | Reserve now | policy-gated | No executable customer endpoint |

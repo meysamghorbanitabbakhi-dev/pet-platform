@@ -1,5 +1,8 @@
 # K9 test summary
 
+> **Historical snapshot — not current release authority.**
+> See `backend/release-contract.json`.
+
 Base revision: `1da656bcd5e08310596a5c77e5cad4f421e74691`
 
 Final verification results are updated during the K9.4 verification pass.

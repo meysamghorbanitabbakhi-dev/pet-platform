@@ -1,5 +1,8 @@
 # K9 migration notes
 
+> **Historical snapshot — not current release authority.**
+> See `backend/release-contract.json`.
+
 Base revision: `1da656bcd5e08310596a5c77e5cad4f421e74691`
 
 Alembic head after K9 is `20260716_0021`.

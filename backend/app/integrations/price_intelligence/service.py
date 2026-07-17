@@ -10,7 +10,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID, uuid4
 
 from sqlalchemy import and_, func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.time import utc_now
@@ -43,6 +43,16 @@ class FxConversionResult:
     provider: str
     observed_at: datetime
     policy_blocked: bool = False
+
+
+class ObservationIdentityConflict(RuntimeError):
+    """The observation natural identity already belongs to different content."""
+
+
+@dataclass(frozen=True, slots=True)
+class ObservationInsertResult:
+    observation: ExternalPriceObservation
+    created: bool
 
 
 class PriceIntelligenceService:
@@ -211,7 +221,7 @@ class PriceIntelligenceService:
         parsed: ParsedExternalProduct,
         *,
         collection_run_id: UUID | None,
-    ) -> tuple[ExternalProduct, ExternalPriceObservation | None]:
+    ) -> tuple[ExternalProduct, ObservationInsertResult]:
         seller = await self.get_or_create_seller(
             source.id,
             seller_name=parsed.seller_name or source.name,
@@ -315,7 +325,7 @@ class PriceIntelligenceService:
         observed_at: datetime,
         collection_run_id: UUID | None = None,
         raw_price_text: str | None = None,
-    ) -> ExternalPriceObservation | None:
+    ) -> ObservationInsertResult:
         if price_minor <= 0:
             raise ValueError("price_minor_must_be_positive")
         payload = {
@@ -334,20 +344,26 @@ class PriceIntelligenceService:
         ).hexdigest()
         seller_part = str(seller_id) if seller_id else "no-seller"
         ingestion_key = hashlib.sha256(
-            f"{external_product_id}:{seller_part}:{observed_at.isoformat()}:{content_hash}".encode()
+            f"{external_product_id}:{seller_part}:{observed_at.isoformat()}".encode()
         ).hexdigest()
-        existing = (
-            await self._session.execute(
-                select(ExternalPriceObservation).where(
-                    ExternalPriceObservation.ingestion_key == ingestion_key
-                )
-            )
+        natural_key = (
+            ExternalPriceObservation.external_product_id == external_product_id,
+            ExternalPriceObservation.seller_id.is_not_distinct_from(seller_id),
+            ExternalPriceObservation.observed_at == observed_at,
+        )
+        legacy = (
+            await self._session.execute(select(ExternalPriceObservation).where(*natural_key))
         ).scalar_one_or_none()
-        if existing:
-            return existing
+        if legacy is not None:
+            if legacy.content_hash != content_hash:
+                raise ObservationIdentityConflict(
+                    "observation natural key already exists with different content"
+                )
+            return ObservationInsertResult(observation=legacy, created=False)
         unit_price = (price_minor * 1000) // total_weight_g if total_weight_g else None
-        observation = ExternalPriceObservation(
-            id=uuid4(),
+        observation_id = uuid4()
+        values = dict(
+            id=observation_id,
             external_product_id=external_product_id,
             seller_id=seller_id,
             currency=currency,
@@ -365,19 +381,37 @@ class PriceIntelligenceService:
             ingestion_key=ingestion_key,
             raw_price_text=raw_price_text,
         )
-        self._session.add(observation)
-        try:
-            await self._session.flush()
-        except IntegrityError:
-            await self._session.rollback()
-            return (
-                await self._session.execute(
-                    select(ExternalPriceObservation).where(
-                        ExternalPriceObservation.ingestion_key == ingestion_key
-                    )
+        inserted_id = (
+            await self._session.execute(
+                insert(ExternalPriceObservation)
+                .values(**values)
+                .on_conflict_do_nothing()
+                .returning(ExternalPriceObservation.id)
+            )
+        ).scalar_one_or_none()
+        if inserted_id is not None:
+            observation = await self._session.get(ExternalPriceObservation, inserted_id)
+            assert observation is not None
+            return ObservationInsertResult(observation=observation, created=True)
+
+        existing = (
+            await self._session.execute(
+                select(ExternalPriceObservation).where(
+                    ExternalPriceObservation.ingestion_key == ingestion_key
                 )
-            ).scalar_one()
-        return observation
+            )
+        ).scalar_one_or_none()
+        if existing is None:
+            existing = (
+                await self._session.execute(select(ExternalPriceObservation).where(*natural_key))
+            ).scalar_one_or_none()
+        if existing is None:
+            raise RuntimeError("observation_conflict_without_existing_row")
+        if existing.content_hash != content_hash:
+            raise ObservationIdentityConflict(
+                "observation natural key already exists with different content"
+            )
+        return ObservationInsertResult(observation=existing, created=False)
 
     async def approve_match(
         self,

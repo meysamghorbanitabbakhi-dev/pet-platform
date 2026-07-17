@@ -16,6 +16,7 @@ def main() -> None:
     output.write_text(
         json.dumps(create_app().openapi(), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
+        newline="\n",
     )
     print(f"openapi_exported path={output}")
 
