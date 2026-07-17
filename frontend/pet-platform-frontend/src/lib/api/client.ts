@@ -5,7 +5,10 @@ import type {
   AddressBody,
   AvailabilitySubscriptionPage,
   AvailabilitySubscriptionResponse,
+  BodyAssessmentBody,
+  BreedSelectionBody,
   CheckoutBody,
+  ConsentBody,
   CustomerRequestBody,
   CustomerRequestPage,
   CustomerRequestResponse,
@@ -14,6 +17,7 @@ import type {
   FoodEstimateResponse,
   GardenPlacementBody,
   GardenStateResponse,
+  GuidancePreferenceBody,
   HouseholdBody,
   IdResponse,
   InventoryDetailResponse,
@@ -27,6 +31,7 @@ import type {
   JourneyOfferResponse,
   JourneyStartBody,
   JourneyStopBody,
+  MeasurementBody,
   MeContextResponse,
   NotificationPage,
   OfferDetailResponse,
@@ -53,6 +58,17 @@ import type {
   TodayResponse,
   WalletSummaryResponse,
 } from "@/lib/api-types";
+import type {
+  BodyAssessmentItem,
+  BreedDetailResponse,
+  BreedListItem,
+  BreedSearchItem,
+  CareGuidanceResponse,
+  MeasurementItem,
+  PetAssetItem,
+  PetKnowledgeResponse,
+  WeightTrendResponse,
+} from "@/lib/pet-health-types";
 import { csrfHeaders } from "@/lib/session";
 import { mapApiError } from "./errors";
 
@@ -387,4 +403,115 @@ export function replaceOrderPetPlan(orderId: string, body: OrderPetPlanBody) {
     method: "PUT",
     body,
   });
+}
+
+export function listMeasurements(petId: string) {
+  return bff<MeasurementItem[]>(`/api/bff/pets/${petId}/measurements`);
+}
+
+export function recordMeasurement(petId: string, body: MeasurementBody) {
+  return bff<{ id: string; status: string }>(
+    `/api/bff/pets/${petId}/measurements`,
+    { method: "POST", body },
+  );
+}
+
+export function getWeightTrend(petId: string) {
+  return bff<WeightTrendResponse>(`/api/bff/pets/${petId}/weight-trend`);
+}
+
+export function listPetAssets(petId: string) {
+  return bff<PetAssetItem[]>(`/api/bff/pets/${petId}/assets`);
+}
+
+export function grantPetConsent(petId: string, body: ConsentBody) {
+  return bff<{ id: string; status: string }>(`/api/bff/pets/${petId}/consents`, {
+    method: "POST",
+    body,
+  });
+}
+
+export async function uploadPetAsset(
+  petId: string,
+  file: File,
+  options: { category: string; consentId: string },
+): Promise<{ id: string; status: string }> {
+  const response = await fetch(`/api/bff/pets/${petId}/assets`, {
+    body: file,
+    credentials: "include",
+    headers: {
+      "Content-Type": file.type,
+      "X-Asset-Category": options.category,
+      "X-Consent-ID": options.consentId,
+      "X-Filename": file.name,
+      ...csrfHeaders(),
+    },
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw mapApiError(response.status, await response.json().catch(() => undefined));
+  }
+  return response.json();
+}
+
+export function petAssetUrl(petId: string, assetId: string) {
+  return `/api/bff/pets/${petId}/assets/${assetId}`;
+}
+
+export function deletePetAsset(petId: string, assetId: string) {
+  return bff<void>(`/api/bff/pets/${petId}/assets/${assetId}`, {
+    method: "DELETE",
+  });
+}
+
+export function createBodyAssessment(petId: string, body: BodyAssessmentBody) {
+  return bff<{ id: string; assessment_source: string }>(
+    `/api/bff/pets/${petId}/body-assessments`,
+    { method: "POST", body },
+  );
+}
+
+export function listBodyAssessments(petId: string) {
+  return bff<BodyAssessmentItem[]>(`/api/bff/pets/${petId}/body-assessments`);
+}
+
+export function listBreeds(species?: "dog" | "cat") {
+  const query = species ? `?species=${species}` : "";
+  return bff<{ items: BreedListItem[] }>(`/api/bff/breeds${query}`);
+}
+
+export function searchBreeds(query: string, species?: "dog" | "cat") {
+  const params = new URLSearchParams({ q: query });
+  if (species) params.set("species", species);
+  return bff<{ items: BreedSearchItem[] }>(`/api/bff/breeds/search?${params}`);
+}
+
+export function getBreedDetail(breedId: string) {
+  return bff<BreedDetailResponse>(`/api/bff/breeds/${breedId}`);
+}
+
+export function getPetKnowledge(petId: string) {
+  return bff<PetKnowledgeResponse>(`/api/bff/pets/${petId}/knowledge`);
+}
+
+export function selectPetBreed(petId: string, body: BreedSelectionBody) {
+  return bff<void>(`/api/bff/pets/${petId}/breed-selection`, {
+    method: "PUT",
+    body,
+  });
+}
+
+export function getPetCareGuidance(petId: string) {
+  return bff<CareGuidanceResponse>(`/api/bff/pets/${petId}/care-guidance`);
+}
+
+export function setGuidancePreference(
+  petId: string,
+  guidanceId: string,
+  body: GuidancePreferenceBody,
+) {
+  return bff<void>(
+    `/api/bff/pets/${petId}/care-guidance/${guidanceId}/preference`,
+    { method: "PUT", body },
+  );
 }

@@ -9,6 +9,19 @@ import type {
   NotificationPage,
   PrivacyRequestResponse,
   WalletSummaryResponse,
+} from "@/lib/api-types";
+import type {
+  BodyAssessmentItem,
+  BreedDetailResponse,
+  BreedListItem,
+  BreedSearchItem,
+  CareGuidanceResponse,
+  MeasurementItem,
+  PetAssetItem,
+  PetKnowledgeResponse,
+  WeightTrendResponse,
+} from "@/lib/pet-health-types";
+import type {
   FoodEstimateResponse,
   GardenStateResponse,
   InventoryDetailResponse,
@@ -611,6 +624,135 @@ export const privacyExportFixture: Record<string, unknown> = {
   generated_at: "2026-07-17T08:00:00Z",
   households: [],
   identity: { mobile_e164: "+989121234567" },
+};
+
+export const measurementFixture: MeasurementItem = {
+  confidence: "high",
+  id: "ffff5555-ffff-4fff-8fff-fffffffffff5",
+  measured_at: "2026-07-15T08:00:00Z",
+  measurement_method: null,
+  measurement_type: "weight",
+  notes: null,
+  source: "owner_reported",
+  unit: "kg",
+  value: 12.4,
+};
+
+export const weightTrendFixture: WeightTrendResponse = {
+  changes: {
+    "7_days": null,
+    "30_days": { baseline_weight_kg: 12.0, change_percent: 3.3 },
+    "90_days": null,
+  },
+  current_weight_kg: 12.4,
+  interpretation: "personal_trend_only",
+  measured_at: "2026-07-15T08:00:00Z",
+  state: "available",
+};
+
+export const petAssetFixture: PetAssetItem = {
+  captured_at: "2026-07-10T08:00:00Z",
+  category: "body_side",
+  checksum_sha256: "abc123",
+  created_at: "2026-07-10T08:05:00Z",
+  filename: "photo.jpg",
+  id: "aaaa6666-aaaa-4aaa-8aaa-aaaaaaaaaaa6",
+  media_type: "image/jpeg",
+  purpose: "body_photographs",
+  size_bytes: 204800,
+};
+
+export const bodyAssessmentFixture: BodyAssessmentItem = {
+  answers: {},
+  assessed_at: "2026-07-10T08:10:00Z",
+  assessment_source: "owner_reported",
+  bcs_score: 5,
+  bcs_scale: 9,
+  id: "bbbb7777-bbbb-4bbb-8bbb-bbbbbbbbbbb7",
+  muscle_condition: "normal",
+  veterinarian_confirmed_at: null,
+  veterinarian_name: null,
+};
+
+export const breedListFixture: { items: BreedListItem[] } = {
+  items: [
+    { id: "persian", name_en: "Persian", name_fa: "پرشین", species: "cat" },
+  ],
+};
+
+export const breedSearchFixture: { items: BreedSearchItem[] } = {
+  items: [
+    {
+      aliases_fa: [],
+      id: "persian",
+      matched_field: "name_fa",
+      name_en: "Persian",
+      name_fa: "پرشین",
+      species: "cat",
+    },
+  ],
+};
+
+export const breedDetailFixture: BreedDetailResponse = {
+  breed: { id: "persian", name_en: "Persian", name_fa: "پرشین", species: "cat" },
+  claims: [
+    {
+      claim_type: "grooming",
+      id: "claim-1",
+      review_status: "veterinary_approved",
+      reviewer_disclosure: "anonymous_external_veterinarian",
+      sources: [{ id: "source-1", title: "منبع تاییدشده", type: "journal" }],
+      text_fa: "نیاز به شانه‌کشی روزانه دارد.",
+      variety_id: null,
+    },
+  ],
+  guidance: [
+    {
+      domain: "grooming",
+      id: "guidance-1",
+      reviewer_disclosure: "anonymous_external_veterinarian",
+      supporting_claim_ids: ["claim-1"],
+      text_fa: "روزانه شانه بکشید.",
+      variety_id: null,
+    },
+  ],
+  release: {
+    checksum_sha256: "def456",
+    dataset_version: "2026.1",
+    published_at: "2026-01-01T00:00:00Z",
+  },
+  varieties: [],
+};
+
+export const petKnowledgeFixture: PetKnowledgeResponse = {
+  breed: { id: "persian", name_en: "Persian", name_fa: "پرشین", species: "cat" },
+  breed_identification_source: "owner_reported",
+  claims: breedDetailFixture.claims,
+  disclaimer_fa: "این اطلاعات عمومی است و جایگزین نظر دامپزشک نیست.",
+  guidance: breedDetailFixture.guidance,
+  pet_id: ids.petBishi,
+  release: breedDetailFixture.release,
+  status: "available",
+};
+
+export const careGuidanceFixture: CareGuidanceResponse = {
+  disclaimer_fa: "راهنماهای عمومی جایگزین توصیه اختصاصی دامپزشک نیستند.",
+  items: [
+    {
+      domain: "grooming",
+      emergency_classification: "not_emergency",
+      external_id: "guidance-1",
+      id: "cccc8888-cccc-4ccc-8ccc-ccccccccccc8",
+      interpretation: "general_care_guidance_not_individual_medical_advice",
+      population_level_explanation_fa: null,
+      professional_discussion_fa: null,
+      release: { checksum_sha256: "def456", dataset_version: "2026.1" },
+      reviewer_disclosure: "anonymous_external_veterinarian",
+      supporting_claim_ids: ["claim-1"],
+      text_fa: "روزانه شانه بکشید.",
+    },
+  ],
+  state: "available",
 };
 
 export const journeyOffersFixture: JourneyOfferResponse[] = [

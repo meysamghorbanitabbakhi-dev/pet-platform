@@ -54,6 +54,13 @@ import type {
   ReorderSnoozeBody,
   TodayResponse,
 } from "@/lib/api-types";
+import type {
+  BodyAssessmentBody,
+  BreedSelectionBody,
+  ConsentBody,
+  GuidancePreferenceBody,
+  MeasurementBody,
+} from "@/lib/api-types";
 import {
   clearSessionCookies,
   readAccessToken,
@@ -61,6 +68,17 @@ import {
   setSessionCookies,
 } from "@/lib/session/server";
 import { loadDevelopmentApi } from "./dev-fixtures.server";
+import type {
+  BodyAssessmentItem,
+  BreedDetailResponse,
+  BreedListItem,
+  BreedSearchItem,
+  CareGuidanceResponse,
+  MeasurementItem,
+  PetAssetItem,
+  PetKnowledgeResponse,
+  WeightTrendResponse,
+} from "@/lib/pet-health-types";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
@@ -149,6 +167,26 @@ async function withAuthVoid(
     await clearSessionCookies();
   }
   return unwrapVoid(result);
+}
+
+// Raw-fetch path for binary payloads (pet asset upload/download) that openapi-fetch's
+// JSON-oriented client cannot express: the backend takes/returns raw bytes with
+// custom headers, not a JSON body.
+async function withAuthRawFetch(
+  call: (headers: HeadersInit) => Promise<Response>,
+): Promise<Response> {
+  const firstToken = await readAccessToken();
+  let response = await call(toAuthHeaders(firstToken));
+  if (response.status === 401) {
+    const refreshedToken = await refreshSessionOnce();
+    if (refreshedToken) {
+      response = await call(toAuthHeaders(refreshedToken));
+    }
+  }
+  if (response.status === 401) {
+    await clearSessionCookies();
+  }
+  return response;
 }
 
 export async function requestOtpBackend(
@@ -674,6 +712,261 @@ export async function exportMyDataBackend(): Promise<Record<string, unknown>> {
   if (developmentApi) return developmentApi.exportMyData();
   return withAuth((headers) =>
     backendClient.GET("/api/v1/privacy/export", { headers }),
+  );
+}
+
+export async function listMeasurementsBackend(
+  petId: string,
+): Promise<MeasurementItem[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listMeasurements(petId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/pets/{pet_id}/measurements", {
+      params: { path: { pet_id: petId } },
+      headers,
+    }),
+  ) as unknown as Promise<MeasurementItem[]>;
+}
+
+export async function recordMeasurementBackend(
+  petId: string,
+  body: MeasurementBody,
+): Promise<{ id: string; status: string }> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.recordMeasurement(petId, body);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/pet-life/pets/{pet_id}/measurements", {
+      params: { path: { pet_id: petId } },
+      body,
+      headers,
+    }),
+  ) as unknown as Promise<{ id: string; status: string }>;
+}
+
+export async function getWeightTrendBackend(
+  petId: string,
+): Promise<WeightTrendResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getWeightTrend(petId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/pets/{pet_id}/weight-trend", {
+      params: { path: { pet_id: petId } },
+      headers,
+    }),
+  ) as unknown as Promise<WeightTrendResponse>;
+}
+
+export async function listPetAssetsBackend(
+  petId: string,
+): Promise<PetAssetItem[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listPetAssets(petId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/pets/{pet_id}/assets", {
+      params: { path: { pet_id: petId } },
+      headers,
+    }),
+  ) as unknown as Promise<PetAssetItem[]>;
+}
+
+export async function grantPetConsentBackend(
+  petId: string,
+  body: ConsentBody,
+): Promise<{ id: string; status: string }> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.grantPetConsent(petId, body);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/pet-life/pets/{pet_id}/consents", {
+      params: { path: { pet_id: petId } },
+      body,
+      headers,
+    }),
+  ) as unknown as Promise<{ id: string; status: string }>;
+}
+
+export async function uploadPetAssetBackend(
+  petId: string,
+  file: { bytes: ArrayBuffer; mediaType: string },
+  headers: { filename: string; category: string; consentId: string },
+): Promise<{ id: string; status: string }> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.uploadPetAsset(petId, headers);
+  }
+  const response = await withAuthRawFetch((authHeaders) =>
+    fetch(`${baseUrl}/api/v1/pet-life/pets/${petId}/assets`, {
+      body: file.bytes,
+      headers: {
+        ...authHeaders,
+        "Content-Type": file.mediaType,
+        "X-Asset-Category": headers.category,
+        "X-Consent-ID": headers.consentId,
+        "X-Filename": headers.filename,
+      },
+      method: "POST",
+    }),
+  );
+  if (!response.ok) {
+    throw new BackendApiError(response.status, await response.json().catch(() => undefined));
+  }
+  return response.json();
+}
+
+export async function downloadPetAssetBackend(
+  petId: string,
+  assetId: string,
+): Promise<Response> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.downloadPetAsset(petId, assetId);
+  const response = await withAuthRawFetch((authHeaders) =>
+    fetch(`${baseUrl}/api/v1/pet-life/pets/${petId}/assets/${assetId}`, {
+      headers: authHeaders,
+    }),
+  );
+  if (!response.ok) {
+    throw new BackendApiError(response.status, undefined);
+  }
+  return response;
+}
+
+export async function deletePetAssetBackend(
+  petId: string,
+  assetId: string,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.deletePetAsset(petId, assetId);
+  return withAuthVoid((headers) =>
+    backendClient.DELETE("/api/v1/pet-life/pets/{pet_id}/assets/{asset_id}", {
+      params: { path: { asset_id: assetId, pet_id: petId } },
+      headers,
+    }),
+  );
+}
+
+export async function createBodyAssessmentBackend(
+  petId: string,
+  body: BodyAssessmentBody,
+): Promise<{ id: string; assessment_source: string }> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.createBodyAssessment(petId, body);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/pet-life/pets/{pet_id}/body-assessments", {
+      params: { path: { pet_id: petId } },
+      body,
+      headers,
+    }),
+  ) as unknown as Promise<{ id: string; assessment_source: string }>;
+}
+
+export async function listBodyAssessmentsBackend(
+  petId: string,
+): Promise<BodyAssessmentItem[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listBodyAssessments(petId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/pets/{pet_id}/body-assessments", {
+      params: { path: { pet_id: petId } },
+      headers,
+    }),
+  ) as unknown as Promise<BodyAssessmentItem[]>;
+}
+
+export async function listBreedsBackend(
+  species?: "dog" | "cat",
+): Promise<{ items: BreedListItem[] }> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listBreeds(species);
+  return unwrap(
+    await backendClient.GET("/api/v1/knowledge/breeds", {
+      params: { query: species ? { species } : {} },
+    }),
+  ) as unknown as Promise<{ items: BreedListItem[] }>;
+}
+
+export async function searchBreedsBackend(
+  query: string,
+  species?: "dog" | "cat",
+): Promise<{ items: BreedSearchItem[] }> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.searchBreeds(query, species);
+  return unwrap(
+    await backendClient.GET("/api/v1/knowledge/search", {
+      params: { query: { q: query, species } },
+    }),
+  ) as unknown as Promise<{ items: BreedSearchItem[] }>;
+}
+
+export async function getBreedDetailBackend(
+  breedId: string,
+): Promise<BreedDetailResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getBreedDetail(breedId);
+  return unwrap(
+    await backendClient.GET("/api/v1/knowledge/breeds/{breed_id}", {
+      params: { path: { breed_id: breedId } },
+    }),
+  ) as unknown as Promise<BreedDetailResponse>;
+}
+
+export async function getPetKnowledgeBackend(
+  petId: string,
+): Promise<PetKnowledgeResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getPetKnowledge(petId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/knowledge/pets/{pet_id}", {
+      params: { path: { pet_id: petId } },
+      headers,
+    }),
+  ) as unknown as Promise<PetKnowledgeResponse>;
+}
+
+export async function selectPetBreedBackend(
+  petId: string,
+  body: BreedSelectionBody,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.selectPetBreed(petId, body);
+  await withAuth((headers) =>
+    backendClient.PUT("/api/v1/pet-life/pets/{pet_id}/breed-selection", {
+      params: { path: { pet_id: petId } },
+      body,
+      headers,
+    }),
+  );
+}
+
+export async function getPetCareGuidanceBackend(
+  petId: string,
+): Promise<CareGuidanceResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getPetCareGuidance(petId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/pets/{pet_id}/care-guidance", {
+      params: { path: { pet_id: petId } },
+      headers,
+    }),
+  ) as unknown as Promise<CareGuidanceResponse>;
+}
+
+export async function setGuidancePreferenceBackend(
+  petId: string,
+  guidanceId: string,
+  body: GuidancePreferenceBody,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.setGuidancePreference(petId, guidanceId, body);
+  }
+  return withAuthVoid((headers) =>
+    backendClient.PUT(
+      "/api/v1/pet-life/pets/{pet_id}/care-guidance/{guidance_id}/preference",
+      {
+        params: { path: { guidance_id: guidanceId, pet_id: petId } },
+        body,
+        headers,
+      },
+    ),
   );
 }
 

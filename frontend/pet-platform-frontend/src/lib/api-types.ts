@@ -66,6 +66,11 @@ export type NotificationListItem = Schema<"NotificationListItem">;
 export type NotificationPage = Schema<"OffsetPage_NotificationListItem_">;
 export type PrivacyRequestBody = Schema<"PrivacyRequestBody">;
 export type PrivacyRequestResponse = Schema<"PrivacyRequestResponse">;
+export type MeasurementBody = Schema<"MeasurementBody">;
+export type BreedSelectionBody = Schema<"BreedSelectionBody">;
+export type GuidancePreferenceBody = Schema<"GuidancePreferenceBody">;
+export type ConsentBody = Schema<"ConsentBody">;
+export type BodyAssessmentBody = Schema<"BodyAssessmentBody">;
 export type AvailabilitySubscriptionPage =
   Schema<"OffsetPage_AvailabilitySubscriptionResponse_">;
 export type CustomerRequestPage = Schema<"OffsetPage_CustomerRequestResponse_">;

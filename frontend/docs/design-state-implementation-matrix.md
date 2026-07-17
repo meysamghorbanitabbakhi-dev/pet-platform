@@ -10,6 +10,34 @@ Generated: 2026-07-17. Covers all 152 accepted design states from `gate5.2c-scre
 - Component contract: `Gate 5.2C - Final Component Contract R3.1.dc.html` (named components) plus `src/components/primitives.tsx` for primitives actually shared today.
 - Current frontend implementation verified by direct code reading (routes, features, BFF routes, tests) on 2026-07-17, not inferred from file names alone.
 
+## Addendum: capabilities outside the 152-state graph (Wave 6)
+
+Independent verification (keyword search across all 152 `GATE52C_SCREENS` entries, a Persian-language search across
+the actual Hi-Fi visual boards, and a check of the backend's own frontend-integration contract docs) confirmed that
+**pet body measurements, private photo/document assets, body-condition assessments, breed selection, and care
+guidance have zero accepted design states or visual references** in the Gate 5.2C/5.2D package, even though the
+backend fully supports all five via REST (`/api/v1/pet-life/pets/{pet_id}/measurements`, `/assets`,
+`/body-assessments`, `/breed-selection`, `/care-guidance`, `/api/v1/knowledge/breeds`, `/api/v1/knowledge/search`,
+`/api/v1/knowledge/pets/{pet_id}`). They are not counted as IMPLEMENTED/PARTIAL/MISSING rows above because there is
+no accepted `G5-*` state id to attach them to.
+
+With explicit user sign-off to proceed without design authority, a conservative, restrained implementation was built
+using only existing shared primitives and neutral, non-clinical copy:
+
+- `/pets/[petId]` (hub), `/pets/[petId]/measurements` (weight entry + trend + history)
+- `/pets/[petId]/assets` (consent-gated private photo/document upload, gallery via an authenticated BFF proxy — never
+  a direct storage URL — deletion, and body-condition assessment entry/history)
+- `/breeds`, `/breeds/[breedId]` (search, detail with veterinary-approved claims and source attribution, breed
+  selection for a pet)
+- `/pets/[petId]/care` (breed-specific knowledge with disclaimers, and personalized care guidance with
+  dismiss/snooze/restore preference actions)
+
+These backend response shapes are untyped (`additionalProperties: true`) in `backend/openapi.json`; request bodies
+(`MeasurementBody`, `ConsentBody`, `BodyAssessmentBody`, `BreedSelectionBody`, `GuidancePreferenceBody`) are properly
+typed and generated. Response shapes used by the frontend (`src/lib/pet-health-types.ts`) were transcribed directly
+from the backend route/service implementations (`backend/app/api/routes/pet_health.py`, `pet_assets.py`,
+`knowledge.py`), not invented.
+
 ## Status summary
 
 | status | count | meaning |

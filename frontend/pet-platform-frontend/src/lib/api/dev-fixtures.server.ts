@@ -3,14 +3,19 @@ import "server-only";
 import { cookies } from "next/headers";
 import type {
   AddressBody,
+  BodyAssessmentBody,
+  BreedSelectionBody,
   CheckoutBody,
+  ConsentBody,
   CustomerRequestBody,
   GardenPlacementBody,
+  GuidancePreferenceBody,
   HouseholdBody,
   JourneyCheckInBody,
   JourneyCompleteBody,
   JourneyStartBody,
   JourneyStopBody,
+  MeasurementBody,
   OpenInventoryBody,
   OrderPetPlanBody,
   OtpVerifyBody,
@@ -203,6 +208,93 @@ export async function loadDevelopmentApi() {
       return fixtures.privacyRequestFixture;
     },
     exportMyData: async () => fixtures.privacyExportFixture,
+    listMeasurements: async (_petId: string) => {
+      void _petId;
+      return [fixtures.measurementFixture];
+    },
+    recordMeasurement: async (_petId: string, _body: MeasurementBody) => {
+      void _petId;
+      void _body;
+      return { id: fixtures.measurementFixture.id, status: "active" };
+    },
+    getWeightTrend: async (_petId: string) => {
+      void _petId;
+      return fixtures.weightTrendFixture;
+    },
+    listPetAssets: async (_petId: string) => {
+      void _petId;
+      return [fixtures.petAssetFixture];
+    },
+    grantPetConsent: async (_petId: string, _body: ConsentBody) => {
+      void _petId;
+      void _body;
+      return { id: fixtures.petAssetFixture.id, status: "granted" };
+    },
+    uploadPetAsset: async (
+      _petId: string,
+      _headers: { filename: string; category: string; consentId: string },
+    ) => {
+      void _petId;
+      void _headers;
+      return { id: fixtures.petAssetFixture.id, status: "active" };
+    },
+    downloadPetAsset: async (_petId: string, _assetId: string) => {
+      void _petId;
+      void _assetId;
+      return new Response(new Blob(["fixture"]), {
+        headers: { "Content-Type": "image/jpeg" },
+      });
+    },
+    deletePetAsset: async (_petId: string, _assetId: string) => {
+      void _petId;
+      void _assetId;
+      return undefined;
+    },
+    createBodyAssessment: async (_petId: string, _body: BodyAssessmentBody) => {
+      void _petId;
+      void _body;
+      return { assessment_source: "owner_reported", id: fixtures.bodyAssessmentFixture.id };
+    },
+    listBodyAssessments: async (_petId: string) => {
+      void _petId;
+      return [fixtures.bodyAssessmentFixture];
+    },
+    listBreeds: async (_species?: "dog" | "cat") => {
+      void _species;
+      return fixtures.breedListFixture;
+    },
+    searchBreeds: async (_query: string, _species?: "dog" | "cat") => {
+      void _query;
+      void _species;
+      return fixtures.breedSearchFixture;
+    },
+    getBreedDetail: async (_breedId: string) => {
+      void _breedId;
+      return fixtures.breedDetailFixture;
+    },
+    getPetKnowledge: async (_petId: string) => {
+      void _petId;
+      return fixtures.petKnowledgeFixture;
+    },
+    selectPetBreed: async (_petId: string, _body: BreedSelectionBody) => {
+      void _petId;
+      void _body;
+      return undefined;
+    },
+    getPetCareGuidance: async (_petId: string) => {
+      void _petId;
+      return fixtures.careGuidanceFixture;
+    },
+    setGuidancePreference: async (
+      _petId: string,
+      _guidanceId: string,
+      _body: GuidancePreferenceBody,
+    ) => {
+      void _petId;
+      void _guidanceId;
+      void _body;
+      return undefined;
+    },
     getJourneyOffers: async (_petId: string) => {
       void _petId;
       return fixtures.journeyOffersFixture;

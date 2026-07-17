@@ -7,6 +7,15 @@ export function formatPersianNumber(value: number): string {
   return persianDigits.format(value);
 }
 
+const persianDecimals = new Intl.NumberFormat("fa-IR", {
+  maximumFractionDigits: 2,
+  numberingSystem: "arabext",
+});
+
+export function formatPersianDecimal(value: number): string {
+  return persianDecimals.format(value);
+}
+
 export function tomanFromIrr(irr: number, divisor = 10): number {
   return Math.trunc(irr / divisor);
 }

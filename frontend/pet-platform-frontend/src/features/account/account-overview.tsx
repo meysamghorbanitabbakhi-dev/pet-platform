@@ -161,11 +161,13 @@ export function AccountOverview() {
           {petsQuery.data?.length ? (
             <ul className="stack" aria-label="فهرست پت‌ها">
               {petsQuery.data.map((pet) => (
-                <li className="split" key={pet.id}>
-                  <span>{pet.name}</span>
-                  <span className="caption">
-                    {speciesLabelFa[pet.species] ?? pet.species}
-                  </span>
+                <li key={pet.id}>
+                  <Link className="split" href={`/pets/${pet.id}`}>
+                    <span>{pet.name}</span>
+                    <span className="caption">
+                      {speciesLabelFa[pet.species] ?? pet.species}
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
