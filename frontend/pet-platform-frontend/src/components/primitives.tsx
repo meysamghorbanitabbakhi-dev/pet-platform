@@ -579,7 +579,7 @@ export function BottomNav() {
   const pathname = usePathname();
   const items = [
     { href: "/today", label: "امروز", icon: Home },
-    { href: "/inventory/open", label: "انبار", icon: PackageOpen },
+    { href: "/inventory", label: "انبار", icon: PackageOpen },
     { href: "/today#garden", label: "باغ", icon: Leaf },
     { href: "/shop", label: "فروشگاه", icon: ShoppingBag },
     { href: "/account", label: "حساب", icon: UserRound },

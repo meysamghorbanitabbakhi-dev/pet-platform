@@ -19,6 +19,7 @@ import type {
   OrderResponse,
   OtpRequestBody,
   OtpRequestResponse,
+  InventoryListItem,
   OtpVerifyBody,
   OtpVerifyResponse,
   PaymentCallbackResponse,
@@ -28,6 +29,8 @@ import type {
   PetProfilePatch,
   PetSummary,
   PolicyResponse,
+  ReorderAssessmentResponse,
+  ReorderSnoozeBody,
   TodayResponse,
 } from "@/lib/api-types";
 import {
@@ -275,6 +278,73 @@ export async function getJourneyOffersBackend(
   return withAuth((headers) =>
     backendClient.GET("/api/v1/pet-life/pets/{pet_id}/journey-offers", {
       params: { path: { pet_id: petId } },
+      headers,
+    }),
+  );
+}
+
+export async function listHouseholdInventoryBackend(
+  householdId: string,
+): Promise<InventoryListItem[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listHouseholdInventory(householdId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/households/{household_id}/inventory", {
+      params: { path: { household_id: householdId } },
+      headers,
+    }),
+  );
+}
+
+export async function correctEstimateBackend(
+  unitId: string,
+  body: OpenInventoryBody,
+) {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.correctEstimate(unitId, body);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/pet-life/inventory/{unit_id}/estimate/correct", {
+      params: { path: { unit_id: unitId } },
+      body,
+      headers,
+    }),
+  );
+}
+
+export async function exhaustInventoryBackend(unitId: string): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.exhaustInventory(unitId);
+  return withAuthVoid((headers) =>
+    backendClient.POST("/api/v1/pet-life/inventory/{unit_id}/exhaust", {
+      params: { path: { unit_id: unitId } },
+      headers,
+    }),
+  );
+}
+
+export async function assessReorderBackend(
+  unitId: string,
+): Promise<ReorderAssessmentResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.assessReorder(unitId);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/pet-life/inventory/{unit_id}/reorder-assessment", {
+      params: { path: { unit_id: unitId } },
+      headers,
+    }),
+  );
+}
+
+export async function snoozeReorderBackend(
+  unitId: string,
+  body: ReorderSnoozeBody,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.snoozeReorder(unitId, body);
+  return withAuthVoid((headers) =>
+    backendClient.PUT("/api/v1/pet-life/inventory/{unit_id}/reorder-snooze", {
+      params: { path: { unit_id: unitId } },
+      body,
       headers,
     }),
   );

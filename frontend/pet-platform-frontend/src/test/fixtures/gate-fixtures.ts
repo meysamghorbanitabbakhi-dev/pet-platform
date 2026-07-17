@@ -2,6 +2,7 @@ import type {
   AddressResponse,
   FoodEstimateResponse,
   InventoryDetailResponse,
+  InventoryListItem,
   JourneyOfferResponse,
   MeContextResponse,
   OfferDetailResponse,
@@ -12,6 +13,7 @@ import type {
   PaymentCallbackResponse,
   PaymentRedirectResponse,
   PolicyResponse,
+  ReorderAssessmentResponse,
   TodayResponse,
 } from "@/lib/api-types";
 
@@ -398,6 +400,31 @@ export const openedEstimateFixture: FoodEstimateResponse = {
   pet_id: ids.petBishi,
   provenance: [],
   scope: "household",
+};
+
+export const inventoryListFixture: InventoryListItem[] = [
+  {
+    authenticity: "supplier_verified",
+    exact_expiry_date: "2027-01-17",
+    id: ids.inventoryUnit,
+    label: "رویال کنین ادالت - ۳ کیلوگرم",
+    source: "paid_order",
+    state: "delivered_unopened",
+    supplier_country: "فرانسه",
+  },
+];
+
+export const reorderAssessmentFixture: ReorderAssessmentResponse = {
+  latest_delivery_days: 15,
+  options: [{ available: true, offer_id: ids.offerDog, sku: "royal-canin-3kg" }],
+  outcome: "not_yet",
+  provenance: [],
+  recommendation: "موجودی فعلی برای روزهای پیش رو کافی است.",
+  remaining_high_days: 18,
+  remaining_low_days: 12,
+  risk_gap_days: null,
+  safety_buffer_days: 3,
+  snoozed_until: null,
 };
 
 export const journeyOffersFixture: JourneyOfferResponse[] = [

@@ -37,3 +37,7 @@ export type PaymentRedirectResponse = Schema<"PaymentRedirectResponse">;
 export type PaymentCallbackResponse = Schema<"PaymentCallbackResponse">;
 export type OrderPetPlanBody = Schema<"OrderPetPlanBody">;
 export type PetSummary = Schema<"PetSummary">;
+export type InventoryListItem = Schema<"InventoryListItem">;
+export type ReorderAssessmentResponse = Schema<"ReorderAssessmentResponse">;
+export type ReorderSnoozeBody = Schema<"ReorderSnoozeBody">;
+export type InventoryAssignmentResponse = Schema<"InventoryAssignmentResponse">;

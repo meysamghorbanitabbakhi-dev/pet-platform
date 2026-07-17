@@ -8,6 +8,7 @@ import type {
   HouseholdBody,
   IdResponse,
   InventoryDetailResponse,
+  InventoryListItem,
   JourneyOfferResponse,
   MeContextResponse,
   OfferDetailResponse,
@@ -27,6 +28,8 @@ import type {
   PetProfilePatch,
   PetSummary,
   PolicyResponse,
+  ReorderAssessmentResponse,
+  ReorderSnoozeBody,
   TodayResponse,
 } from "@/lib/api-types";
 import { csrfHeaders } from "@/lib/session";
@@ -142,6 +145,37 @@ export function getInventoryDetail(unitId: string) {
 export function openInventory(unitId: string, body: OpenInventoryBody) {
   return bff<FoodEstimateResponse>(`/api/bff/inventory/${unitId}/open`, {
     method: "POST",
+    body,
+  });
+}
+
+export function listHouseholdInventory(householdId: string) {
+  return bff<InventoryListItem[]>(
+    `/api/bff/households/${householdId}/inventory`,
+  );
+}
+
+export function correctEstimate(unitId: string, body: OpenInventoryBody) {
+  return bff<FoodEstimateResponse>(
+    `/api/bff/inventory/${unitId}/estimate/correct`,
+    { method: "POST", body },
+  );
+}
+
+export function exhaustInventory(unitId: string) {
+  return bff<void>(`/api/bff/inventory/${unitId}/exhaust`, { method: "POST" });
+}
+
+export function assessReorder(unitId: string) {
+  return bff<ReorderAssessmentResponse>(
+    `/api/bff/inventory/${unitId}/reorder-assessment`,
+    { method: "POST" },
+  );
+}
+
+export function snoozeReorder(unitId: string, body: ReorderSnoozeBody) {
+  return bff<void>(`/api/bff/inventory/${unitId}/reorder-snooze`, {
+    method: "PUT",
     body,
   });
 }

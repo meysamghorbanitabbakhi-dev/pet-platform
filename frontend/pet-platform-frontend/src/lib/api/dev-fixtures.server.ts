@@ -11,6 +11,7 @@ import type {
   PaymentRequestBody,
   PetBody,
   PetProfilePatch,
+  ReorderSnoozeBody,
 } from "@/lib/api-types";
 
 const devOnboardingCookie = "pet_dev_onboarding";
@@ -58,6 +59,28 @@ export async function loadDevelopmentApi() {
     getInventoryDetail: async (_unitId: string) => {
       void _unitId;
       return fixtures.inventoryDetailFixture;
+    },
+    listHouseholdInventory: async (_householdId: string) => {
+      void _householdId;
+      return fixtures.inventoryListFixture;
+    },
+    correctEstimate: async (_unitId: string, _body: OpenInventoryBody) => {
+      void _unitId;
+      void _body;
+      return fixtures.openedEstimateFixture;
+    },
+    exhaustInventory: async (_unitId: string) => {
+      void _unitId;
+      return undefined;
+    },
+    assessReorder: async (_unitId: string) => {
+      void _unitId;
+      return fixtures.reorderAssessmentFixture;
+    },
+    snoozeReorder: async (_unitId: string, _body: ReorderSnoozeBody) => {
+      void _unitId;
+      void _body;
+      return undefined;
     },
     getJourneyOffers: async (_petId: string) => {
       void _petId;
