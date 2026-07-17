@@ -94,6 +94,10 @@ class Settings(BaseSettings):
     price_intelligence_timeout_seconds: float = Field(default=15.0, gt=0, le=60)
     price_intelligence_max_retries: int = Field(default=3, ge=1, le=10)
     price_intelligence_max_pages: int = Field(default=50, ge=1, le=500)
+    price_intelligence_max_products_per_run: int = Field(default=500, ge=1, le=5000)
+    price_intelligence_max_response_bytes: int = Field(default=1_000_000, ge=10_000, le=5_000_000)
+    price_intelligence_robots_required: bool = True
+    price_intelligence_terms_required: bool = True
     price_intelligence_collection_enabled: bool = False
 
     @model_validator(mode="after")

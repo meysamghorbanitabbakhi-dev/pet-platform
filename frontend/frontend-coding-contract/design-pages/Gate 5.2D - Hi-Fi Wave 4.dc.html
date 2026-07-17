@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800&family=Vazirmatn:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:oklch(0.93 0.006 90);}*{box-sizing:border-box;font-family:'Vazirmatn',system-ui,sans-serif;}</style>
+</helmet>
+<div dir="rtl" lang="fa" style="min-height:100vh;padding:32px;display:flex;flex-direction:column;align-items:center;gap:18px;">
+  <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
+    <div style="font-family:'IBM Plex Mono';direction:ltr;font-size:10.5px;letter-spacing:0.06em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;">Gate 5.2D · wave 4</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:640px;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="10">
+        <button onClick="{{ t.select }}" style="border:1px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }};border-radius:999px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;min-height:36px;">{{ t.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="width:390px;background:oklch(0.98 0.006 80);border:2px solid oklch(0.2 0.005 90);border-radius:26px;padding:0;box-shadow:0 20px 40px oklch(0.3 0.01 90 / 0.18);overflow:hidden;">
+    <div style="height:16px;display:flex;align-items:center;justify-content:center;background:oklch(0.98 0.006 80);"><div style="width:56px;height:5px;border-radius:3px;background:oklch(0.85 0.005 90 / 0.5);"></div></div>
+
+    <sc-if value="{{ isOtpError }}">
+      <div style="padding:32px 24px 40px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-family:'Estedad';font-size:22px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:6px;">تأیید شماره موبایل</div>
+        <div style="font-size:13.5px;line-height:1.9;color:oklch(0.45 0.01 265);margin-bottom:16px;">کد ۶ رقمی به شماره <span style="font-family:'IBM Plex Mono';direction:ltr;display:inline-block;">۰۹۱۲۳۴۵۶۷۸۹</span> پیامک شد.</div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px;direction:ltr;">
+          <sc-for list="{{ otpErrorCells }}" as="c" hint-placeholder-count="6">
+            <div style="width:44px;height:52px;border:1.5px solid oklch(0.6 0.16 30);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono';font-size:20px;font-weight:600;color:oklch(0.4 0.15 30);background:oklch(0.97 0.02 30);">{{ c.val }}</div>
+          </sc-for>
+        </div>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:oklch(0.4 0.15 30);margin-bottom:24px;">⚠ کد وارد شده نادرست است</span>
+        <button style="border:1px solid oklch(0.72 0.13 75);background:oklch(0.72 0.13 75 / 0.12);color:oklch(0.4 0.1 75);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;margin-top:auto;">ارسال مجدد کد</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isOtpLock }}">
+      <div style="padding:40px 24px;min-height:640px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:oklch(0.4 0.15 30);background:oklch(0.96 0.02 30);border:1px solid oklch(0.6 0.16 30);border-radius:999px;padding:8px 16px;margin-bottom:16px;">⚠ قفل موقت</span>
+        <div style="font-family:'Estedad';font-size:18px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:8px;">تلاش بیش از حد</div>
+        <div style="font-size:13px;line-height:1.9;color:oklch(0.45 0.01 265);margin-bottom:24px;">به دلیل تلاش‌های ناموفق مکرر، امکان تأیید کد تا ۱۵ دقیقه دیگر مسدود شده است.</div>
+        <button style="border:1px solid oklch(0.86 0.01 80);background:#fff;color:oklch(0.3 0.01 265);font-weight:700;border-radius:10px;padding:12px 20px;font-size:13px;min-height:44px;cursor:pointer;">بازگشت به ورود</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isOnbAddress }}">
+      <div style="padding:28px 24px 40px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-size:11px;font-weight:700;color:oklch(0.5 0.01 265);margin-bottom:6px;">گام ۳ از ۴</div>
+        <div style="height:5px;border-radius:3px;background:oklch(0.9 0.01 80);margin-bottom:22px;overflow:hidden;"><div style="width:75%;height:100%;background:oklch(0.72 0.13 75);"></div></div>
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:20px;">آدرس تحویل</div>
+        <label style="font-size:12.5px;font-weight:600;color:oklch(0.35 0.01 265);margin-bottom:6px;">استان و شهر</label>
+        <input value="تهران" style="border:1.5px solid oklch(0.86 0.01 80);border-radius:8px;padding:13px 14px;font-size:14px;font-family:inherit;margin-bottom:14px;min-height:48px;background:#fff;color:oklch(0.22 0.01 265);"/>
+        <label style="font-size:12.5px;font-weight:600;color:oklch(0.35 0.01 265);margin-bottom:6px;">آدرس کامل</label>
+        <input value="خیابان ولیعصر، پلاک ۱۲" style="border:1.5px solid oklch(0.86 0.01 80);border-radius:8px;padding:13px 14px;font-size:14px;font-family:inherit;margin-bottom:16px;min-height:48px;background:#fff;color:oklch(0.22 0.01 265);"/>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;margin-top:auto;">ادامه</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isOnbSchedule }}">
+      <div style="padding:28px 24px 40px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-size:11px;font-weight:700;color:oklch(0.5 0.01 265);margin-bottom:6px;">گام ۴ از ۴</div>
+        <div style="height:5px;border-radius:3px;background:oklch(0.9 0.01 80);margin-bottom:22px;overflow:hidden;"><div style="width:100%;height:100%;background:oklch(0.72 0.13 75);"></div></div>
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:8px;">ساعات آرام برای اعلان‌ها</div>
+        <div style="font-size:12.5px;color:oklch(0.45 0.01 265);margin-bottom:18px;">در این بازه پیامک یا اعلان ارسال نمی‌شود.</div>
+        <div style="display:flex;gap:10px;margin-bottom:20px;">
+          <div style="flex:1;border:1.5px solid oklch(0.86 0.01 80);border-radius:10px;padding:14px;text-align:center;"><div style="font-size:11px;color:oklch(0.5 0.01 265);margin-bottom:4px;">شروع</div><div style="font-family:'IBM Plex Mono';direction:ltr;font-size:15px;font-weight:700;">۲۲:۰۰</div></div>
+          <div style="flex:1;border:1.5px solid oklch(0.86 0.01 80);border-radius:10px;padding:14px;text-align:center;"><div style="font-size:11px;color:oklch(0.5 0.01 265);margin-bottom:4px;">پایان</div><div style="font-family:'IBM Plex Mono';direction:ltr;font-size:15px;font-weight:700;">۰۷:۰۰</div></div>
+        </div>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;margin-top:auto;">پایان و ورود به برنامه</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isShopList }}">
+      <div style="padding:20px 20px 90px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:14px;">فروشگاه</div>
+        <div style="border:1.5px solid oklch(0.86 0.01 80);border-radius:10px;padding:12px 14px;font-size:13px;color:oklch(0.5 0.01 265);margin-bottom:16px;min-height:44px;display:flex;align-items:center;">جستجوی محصول یا برند…</div>
+        <sc-for list="{{ shopItems }}" as="p" hint-placeholder-count="3">
+          <div style="display:flex;gap:12px;border:1px solid oklch(0.86 0.01 80);border-radius:14px;padding:12px;margin-bottom:10px;">
+            <div style="width:56px;height:56px;border-radius:10px;background:oklch(0.92 0.01 80);flex:none;"></div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:700;color:oklch(0.22 0.01 265);margin-bottom:4px;">{{ p.name }}</div>
+              <div style="font-family:'Vazirmatn';font-size:14px;font-weight:800;color:oklch(0.22 0.01 265);">{{ p.price }} <span style="font-size:10.5px;font-weight:500;color:oklch(0.45 0.01 265);">تومان</span></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCompare }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">مقایسه پیشنهادها</div>
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;border:1.5px solid oklch(0.72 0.13 75);border-radius:12px;padding:12px;">
+            <div style="width:100%;height:70px;border-radius:8px;background:oklch(0.92 0.01 80);margin-bottom:8px;"></div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:4px;">رویال کنین ۳ کیلوگرم</div>
+            <div style="font-size:13px;font-weight:800;">۴۸۰٬۰۰۰</div>
+          </div>
+          <div style="flex:1;border:1px solid oklch(0.86 0.01 80);border-radius:12px;padding:12px;">
+            <div style="width:100%;height:70px;border-radius:8px;background:oklch(0.92 0.01 80);margin-bottom:8px;"></div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:4px;">پروپلن ۳ کیلوگرم</div>
+            <div style="font-size:13px;font-weight:800;">۴۱۰٬۰۰۰</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSubscribe }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:oklch(0.35 0.1 145);background:oklch(0.94 0.05 145);border-radius:999px;padding:8px 16px;margin-bottom:14px;">✓ اشتراک فعال شد</span>
+        <div style="font-size:13px;color:oklch(0.45 0.01 265);line-height:1.9;margin-bottom:8px;">وقتی این محصول دوباره موجود شد به شما اطلاع می‌دهیم.</div>
+        <div style="font-size:11.5px;color:oklch(0.55 0.01 265);">این اقدام سفارشی برای شما ثبت نمی‌کند.</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isPaymentResult }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:oklch(0.4 0.15 30);background:oklch(0.96 0.02 30);border:1px solid oklch(0.6 0.16 30);border-radius:999px;padding:8px 16px;margin-bottom:16px;">⚠ پرداخت ناموفق</span>
+        <div style="font-size:13px;color:oklch(0.45 0.01 265);line-height:1.9;margin-bottom:24px;">مبلغ از حساب شما کسر نشد. می‌توانید دوباره تلاش کنید یا بعداً از سبد خرید ادامه دهید.</div>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px 24px;font-size:14px;min-height:48px;cursor:pointer;">تلاش مجدد</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isConfirmation }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:oklch(0.35 0.1 145);background:oklch(0.94 0.05 145);border-radius:999px;padding:8px 16px;margin-bottom:16px;">✓ سفارش ثبت شد</span>
+        <div style="font-family:'IBM Plex Mono';direction:ltr;font-size:13px;color:oklch(0.4 0.01 265);margin-bottom:8px;">#ORD-10248</div>
+        <div style="font-size:13px;color:oklch(0.45 0.01 265);line-height:1.9;margin-bottom:24px;">۴۸۰٬۰۰۰ تومان پرداخت شد.</div>
+        <button style="border:1px solid oklch(0.72 0.13 75);background:oklch(0.72 0.13 75 / 0.12);color:oklch(0.4 0.1 75);font-weight:700;border-radius:10px;padding:12px 20px;font-size:13px;min-height:44px;cursor:pointer;">مشاهده سفارش</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isOrderHistory }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">سفارش‌ها</div>
+        <sc-for list="{{ orders }}" as="o" hint-placeholder-count="3">
+          <div style="border:1px solid oklch(0.86 0.01 80);border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-family:'IBM Plex Mono';direction:ltr;font-size:11.5px;color:oklch(0.4 0.01 265);">{{ o.code }}</span>
+              <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:{{ o.tagBg }};color:{{ o.tagFg }};">{{ o.status }}</span>
+            </div>
+            <div style="font-size:12.5px;color:oklch(0.35 0.01 265);">{{ o.summary }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isOrderTimeline }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">جزئیات سفارش #ORD-10248</div>
+        <sc-for list="{{ timeline }}" as="e" hint-placeholder-count="4">
+          <div style="display:flex;gap:12px;margin-bottom:4px;">
+            <div style="display:flex;flex-direction:column;align-items:center;">
+              <div style="width:14px;height:14px;border-radius:50%;background:{{ e.dot }};"></div>
+              <div style="width:2px;flex:1;background:oklch(0.86 0.01 80);"></div>
+            </div>
+            <div style="padding-bottom:20px;">
+              <div style="font-size:13px;font-weight:700;color:{{ e.fg }};">{{ e.label }}</div>
+              <div style="font-size:11.5px;color:oklch(0.5 0.01 265);">{{ e.time }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+  <div style="font-size:11px;color:oklch(0.4 0.01 265);max-width:390px;text-align:center;">توکن‌های G5.2C-R2 · حداقل هدف لمسی ۴۴px همه‌جا</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { tab: 'otp-error' };
+  renderVals() {
+    const tabs = [
+      { id: 'otp-error', label: 'OTP خطا' },
+      { id: 'otp-lock', label: 'OTP قفل' },
+      { id: 'onb-address', label: 'آدرس' },
+      { id: 'onb-schedule', label: 'ساعات آرام' },
+      { id: 'shop-list', label: 'فهرست فروشگاه' },
+      { id: 'compare', label: 'مقایسه' },
+      { id: 'subscribe', label: 'اشتراک موجودی' },
+      { id: 'payment-result', label: 'خطای پرداخت' },
+      { id: 'confirmation', label: 'تأیید سفارش' },
+      { id: 'order-history', label: 'تاریخچه سفارش' },
+      { id: 'order-timeline', label: 'خط سیر سفارش' }
+    ].map(t => ({ ...t, select: () => this.setState({ tab: t.id }), bg: this.state.tab === t.id ? 'oklch(0.72 0.13 75 / 0.15)' : '#fff', border: this.state.tab === t.id ? 'oklch(0.72 0.13 75)' : 'oklch(0.8 0.01 80)', fg: this.state.tab === t.id ? 'oklch(0.3 0.08 75)' : 'oklch(0.35 0.005 90)' }));
+    const otpErrorCells = ['۴', '۷', '۲', '۹', '۱', ''].map(val => ({ val }));
+    const shopItems = [
+      { name: 'رویال کنین ادالت — ۳ کیلوگرم', price: '۴۸۰٬۰۰۰' },
+      { name: 'پروپلن ادالت — ۳ کیلوگرم', price: '۴۱۰٬۰۰۰' },
+      { name: 'هیلز ساینس دایت — ۲ کیلوگرم', price: '۵۲۰٬۰۰۰' }
+    ];
+    const orders = [
+      { code: '#ORD-10248', status: 'در حال تأمین', tagBg: 'oklch(0.94 0.02 250)', tagFg: 'oklch(0.35 0.1 250)', summary: 'رویال کنین ادالت — ۳ کیلوگرم' },
+      { code: '#ORD-10201', status: 'تحویل شد', tagBg: 'oklch(0.94 0.05 145)', tagFg: 'oklch(0.35 0.1 145)', summary: 'پروپلن ادالت — ۳ کیلوگرم' },
+      { code: '#ORD-10177', status: 'لغو شد', tagBg: 'oklch(0.94 0.03 30)', tagFg: 'oklch(0.4 0.15 30)', summary: 'هیلز ساینس دایت — ۲ کیلوگرم' }
+    ];
+    const timeline = [
+      { label: 'پرداخت‌شده', time: '۱۴۰۵/۰۲/۱۰ — ۰۹:۲۰', dot: 'oklch(0.6 0.14 145)', fg: 'oklch(0.22 0.01 265)' },
+      { label: 'در حال تأمین', time: '۱۴۰۵/۰۲/۱۰ — ۱۴:۰۰', dot: 'oklch(0.6 0.14 145)', fg: 'oklch(0.22 0.01 265)' },
+      { label: 'در مسیر ارسال', time: 'در انتظار', dot: 'oklch(0.85 0.01 80)', fg: 'oklch(0.5 0.01 265)' },
+      { label: 'تحویل داده شد', time: 'در انتظار', dot: 'oklch(0.85 0.01 80)', fg: 'oklch(0.5 0.01 265)' }
+    ];
+    return {
+      tabs, otpErrorCells, shopItems, orders, timeline,
+      isOtpError: this.state.tab === 'otp-error', isOtpLock: this.state.tab === 'otp-lock',
+      isOnbAddress: this.state.tab === 'onb-address', isOnbSchedule: this.state.tab === 'onb-schedule',
+      isShopList: this.state.tab === 'shop-list', isCompare: this.state.tab === 'compare',
+      isSubscribe: this.state.tab === 'subscribe', isPaymentResult: this.state.tab === 'payment-result',
+      isConfirmation: this.state.tab === 'confirmation', isOrderHistory: this.state.tab === 'order-history',
+      isOrderTimeline: this.state.tab === 'order-timeline'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

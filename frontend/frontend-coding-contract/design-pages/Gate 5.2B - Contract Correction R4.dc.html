@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:oklch(0.985 0.004 80);}*{box-sizing:border-box;}</style>
+</helmet>
+<div style="font-family:'IBM Plex Sans',system-ui,sans-serif;color:oklch(0.2 0.01 265);max-width:1000px;margin:0 auto;padding:40px 32px 100px;line-height:1.75;">
+  <div style="border:1.5px solid oklch(0.6 0.14 145);background:oklch(0.96 0.03 145);border-radius:10px;padding:14px 18px;margin-bottom:22px;">
+    <div style="font-weight:700;font-size:13px;color:oklch(0.3 0.1 145);">✓ Backend contract fully reconciled</div>
+    <div style="font-size:12.5px;color:oklch(0.3 0.08 145);margin-top:4px;">Verified against the supplied openapi.json (SHA-256 01fd47b7502efcee57f27f2cdc89fa646decac5ac5495e108ce56194a9fcaaa2, 133 operations, 27 policy fields, Alembic head 20260716_0023, care_journey_delivery_enabled=true).</div>
+  </div>
+  <div style="border-bottom:2px solid oklch(0.2 0.01 265);padding-bottom:18px;margin-bottom:22px;">
+    <div style="font-family:'IBM Plex Mono';font-size:11px;letter-spacing:0.08em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;margin-bottom:6px;">Gate 5.2C-R3</div>
+    <h1 style="font-size:24px;font-weight:700;margin:0 0 6px;">Contract Correction R4</h1>
+  </div>
+  <section style="margin-bottom:20px;">
+    <h2 style="font-size:14px;font-weight:700;">1 · Journey discovery route</h2>
+    <p style="font-size:13px;">Replaced <span style="font-family:'IBM Plex Mono';">GET /api/v1/pet-life/pets/{pet_id}/journeys</span> with <span style="font-family:'IBM Plex Mono';">GET /api/v1/pet-life/pets/{pet_id}/journey-offers</span> in all four journey-offer screens (G5-JOURNEY-01–04).</p>
+  </section>
+  <section style="margin-bottom:20px;">
+    <h2 style="font-size:14px;font-weight:700;">2 · Response statuses</h2>
+    <ul style="font-size:13px;padding-inline-start:20px;">
+      <li>Start journey: <span style="font-family:'IBM Plex Mono';">POST .../journeys → 200 IdResponse</span> (not 201).</li>
+      <li>Check-in: <span style="font-family:'IBM Plex Mono';">POST .../check-ins → 200 JourneyCheckInResponse</span>, Idempotency-Key required.</li>
+      <li>Complete: <span style="font-family:'IBM Plex Mono';">POST .../complete → 200 JourneyCompletionResponse</span>.</li>
+      <li>Pause/resume/stop: <span style="font-family:'IBM Plex Mono';">POST .../pause · /resume · /stop → 204 No Content</span>.</li>
+    </ul>
+  </section>
+  <section style="margin-bottom:20px;">
+    <h2 style="font-size:14px;font-weight:700;">3 · Exact parameter names</h2>
+    <p style="font-size:13px;">Every generic <span style="font-family:'IBM Plex Mono';">{id}</span> placeholder replaced with its real OpenAPI name: household_id, pet_id, offer_id, order_id, unit_id, notification_id, definition_id, journey_id, request_id, reward_id.</p>
+  </section>
+  <section style="margin-bottom:20px;">
+    <h2 style="font-size:14px;font-weight:700;">4 · Typed structures replace the four generic CONTRACT BLOCKED shells</h2>
+    <ul style="font-size:13px;padding-inline-start:20px;">
+      <li><span style="font-family:'IBM Plex Mono';">JourneyDefinitionResponse.content</span> → <span style="font-family:'IBM Plex Mono';">JourneyContentResponse</span> {steps, completion_requirements, eligibility, active_window, exception_behavior, garden_object_key, professional_approval_ref} — G5-JOURNEY-05 now renders real fields.</li>
+      <li><span style="font-family:'IBM Plex Mono';">JourneyDetailResponse.steps[]</span> → <span style="font-family:'IBM Plex Mono';">JourneyStepResponse[]</span> {key, title_fa, body_fa, allowed_answers} — G5-JOURNEY-08 renders a real step list.</li>
+      <li><span style="font-family:'IBM Plex Mono';">JourneyStepResponse.allowed_answers[]</span> → {key, label_fa} — check-in screens render real selectable answer chips.</li>
+      <li><span style="font-family:'IBM Plex Mono';">JourneyCheckInBody</span> → {check_in_key, answer_key} — submit posts the real typed body.</li>
+      <li><span style="font-family:'IBM Plex Mono';">ReorderAssessmentResponse.options[]</span> → <span style="font-family:'IBM Plex Mono';">ReorderOptionResponse[]</span> {offer_id, sku, available, reason_key?} — reorder screens render real per-option availability.</li>
+    </ul>
+  </section>
+  <section>
+    <h2 style="font-size:14px;font-weight:700;">5 · Residual (non-API) gaps — unchanged, not contract blockers</h2>
+    <p style="font-size:13px;">Uncertain-payment self-service, client-side semantic-level-to-grams conversion, and quiet-hours read-back remain absent by design/policy, not by missing schema. A missing Garden/nav icon asset is tracked separately as ASSET BLOCKED, never reported as an API contract blocker.</p>
+  </section>
+</div>
+
+</x-dc>
+</body>
+</html>

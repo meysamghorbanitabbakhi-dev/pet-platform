@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800&family=Vazirmatn:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:oklch(0.93 0.006 90);}*{box-sizing:border-box;font-family:'Vazirmatn',system-ui,sans-serif;}</style>
+</helmet>
+<div dir="rtl" lang="fa" style="min-height:100vh;padding:32px;display:flex;flex-direction:column;align-items:center;gap:18px;">
+  <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
+    <div style="font-family:'IBM Plex Mono';direction:ltr;font-size:10.5px;letter-spacing:0.06em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;">Gate 5.2D · wave 1</div>
+    <div style="display:flex;gap:8px;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <button onClick="{{ t.select }}" style="border:1px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }};border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:36px;">{{ t.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="width:390px;background:oklch(0.98 0.006 80);border:2px solid oklch(0.2 0.005 90);border-radius:26px;padding:0;box-shadow:0 20px 40px oklch(0.3 0.01 90 / 0.18);overflow:hidden;">
+    <div style="height:16px;display:flex;align-items:center;justify-content:center;background:oklch(0.98 0.006 80);"><div style="width:56px;height:5px;border-radius:3px;background:oklch(0.85 0.005 90 / 0.5);"></div></div>
+
+    <sc-if value="{{ isShell }}">
+      <div style="padding:20px 20px 90px;min-height:640px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);">امروز</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:oklch(0.94 0.01 80);border:1px solid oklch(0.86 0.01 80);"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;">
+          <div style="flex:none;display:flex;align-items:center;gap:6px;background:oklch(0.72 0.13 75 / 0.14);border:1.5px solid oklch(0.72 0.13 75);color:oklch(0.28 0.07 75);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;min-height:40px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:oklch(0.72 0.13 75 / 0.35);"></div>بیشی
+          </div>
+          <div style="flex:none;display:flex;align-items:center;gap:6px;background:#fff;border:1px solid oklch(0.86 0.01 80);color:oklch(0.4 0.01 265);border-radius:999px;padding:8px 14px;font-size:13px;min-height:40px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:oklch(0.9 0.01 80);"></div>رکس
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid oklch(0.86 0.01 80);border-radius:14px;padding:16px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-family:'Estedad';font-size:15px;font-weight:700;color:oklch(0.22 0.01 265);">غذای بیشی</div>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;background:oklch(0.94 0.05 145);color:oklch(0.35 0.1 145);">● تخمین فعال</span>
+          </div>
+          <div style="height:12px;border-radius:6px;background:oklch(0.92 0.01 80);overflow:hidden;margin-bottom:8px;"><div style="width:64%;height:100%;background:oklch(0.6 0.14 145);"></div></div>
+          <div style="font-size:12.5px;color:oklch(0.45 0.01 265);">برآورد بر پایه سیاست فعال — بدون ادعای دقیق روزشمار</div>
+        </div>
+        <div style="background:oklch(0.28 0.06 150);border-radius:14px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-family:'Estedad';font-size:14px;font-weight:700;color:oklch(0.95 0.02 150);">باغ ایرانی بیشی</div>
+            <div style="font-size:11.5px;color:oklch(0.8 0.03 150);">۳ شیء جای‌گذاری‌شده</div>
+          </div>
+          <div style="width:40px;height:40px;border-radius:10px;background:oklch(0.72 0.13 75 / 0.35);box-shadow:0 0 20px oklch(0.72 0.13 70 / 0.35);"></div>
+        </div>
+        <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid oklch(0.86 0.01 80);display:flex;padding:8px 12px;">
+          <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:44px;justify-content:center;">
+              <div style="width:20px;height:20px;border-radius:5px;background:{{ n.dot }};"></div>
+              <div style="font-size:10px;font-weight:{{ n.fw }};color:{{ n.fg }};">{{ n.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isAuth }}">
+      <div style="padding:32px 24px 40px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-family:'Estedad';font-size:22px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:6px;">تأیید شماره موبایل</div>
+        <div style="font-size:13.5px;line-height:1.9;color:oklch(0.45 0.01 265);margin-bottom:28px;">کد ۶ رقمی به شماره <span style="font-family:'IBM Plex Mono';direction:ltr;display:inline-block;">۰۹۱۲۳۴۵۶۷۸۹</span> پیامک شد.</div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px;direction:ltr;">
+          <sc-for list="{{ otpCells }}" as="c" hint-placeholder-count="6">
+            <div style="width:44px;height:52px;border:1.5px solid {{ c.border }};border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono';font-size:20px;font-weight:600;color:oklch(0.22 0.01 265);background:#fff;">{{ c.val }}</div>
+          </sc-for>
+        </div>
+        <div style="font-size:12.5px;color:oklch(0.45 0.01 265);text-align:center;margin-bottom:24px;">ارسال مجدد کد تا ۰۰:۴۵ دیگر</div>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;margin-top:auto;">تأیید و ادامه</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isOnb }}">
+      <div style="padding:28px 24px 40px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-size:11px;font-weight:700;color:oklch(0.5 0.01 265);margin-bottom:6px;">گام ۲ از ۴</div>
+        <div style="height:5px;border-radius:3px;background:oklch(0.9 0.01 80);margin-bottom:22px;overflow:hidden;"><div style="width:50%;height:100%;background:oklch(0.72 0.13 75);"></div></div>
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:20px;">نام پت شما چیست؟</div>
+        <label style="font-size:12.5px;font-weight:600;color:oklch(0.35 0.01 265);margin-bottom:6px;">نام (الزامی)</label>
+        <input value="بیشی" style="border:1.5px solid oklch(0.86 0.01 80);border-radius:8px;padding:13px 14px;font-size:14px;font-family:inherit;margin-bottom:16px;min-height:48px;background:#fff;color:oklch(0.22 0.01 265);"/>
+        <label style="font-size:12.5px;font-weight:600;color:oklch(0.35 0.01 265);margin-bottom:6px;">گونه</label>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <div style="flex:1;border:1.5px solid oklch(0.72 0.13 75);background:oklch(0.72 0.13 75 / 0.12);color:oklch(0.28 0.07 75);border-radius:10px;padding:12px;text-align:center;font-size:13px;font-weight:700;min-height:48px;">سگ</div>
+          <div style="flex:1;border:1.5px solid oklch(0.86 0.01 80);background:#fff;color:oklch(0.4 0.01 265);border-radius:10px;padding:12px;text-align:center;font-size:13px;min-height:48px;">گربه</div>
+        </div>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;margin-top:auto;">ادامه</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isShop }}">
+      <div style="padding:0 0 40px;min-height:640px;">
+        <div style="height:220px;background:linear-gradient(135deg, oklch(0.94 0.02 80), oklch(0.9 0.015 80));display:flex;align-items:center;justify-content:center;color:oklch(0.6 0.01 90);font-size:12px;">تصویر محصول</div>
+        <div style="padding:18px 20px;">
+          <div style="font-family:'Estedad';font-size:17px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:4px;">رویال کنین ادالت — ۳ کیلوگرم</div>
+          <div style="display:flex;gap:6px;margin-bottom:12px;">
+            <span style="font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:oklch(0.9 0.005 80);color:oklch(0.3 0.01 265);">✓ اصالت تأییدشده</span>
+            <span style="font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:oklch(0.9 0.005 80);color:oklch(0.3 0.01 265);">تأمین‌کننده: فرانسه</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+            <div style="font-family:'Vazirmatn';font-size:21px;font-weight:800;color:oklch(0.22 0.01 265);">۴۸۰٬۰۰۰</div>
+            <div style="font-size:12px;font-weight:500;color:oklch(0.45 0.01 265);">تومان</div>
+            <span style="font-size:11px;font-weight:700;color:oklch(0.35 0.1 145);">۳۶٪ کمتر از قیمت مرجع</span>
+          </div>
+          <div style="font-size:11.5px;color:oklch(0.5 0.01 265);margin-bottom:16px;">بازبینی قیمت مرجع: ۱۴۰۵/۰۲/۱۰ · حداقل ماندگاری: ۶ ماه</div>
+          <button style="border:none;background:oklch(0.72 0.13 75);color:oklch(0.24 0.07 75);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;width:100%;">افزودن به سبد</button>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  <div style="font-size:11px;color:oklch(0.4 0.01 265);max-width:390px;text-align:center;">توکن‌های G5.2C-R2 · حداقل هدف لمسی ۴۴px · اعداد فارسی + جداکننده ٬</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { tab: 'shell' };
+  renderVals() {
+    const tabs = [
+      { id: 'shell', label: 'پوسته/امروز' },
+      { id: 'auth', label: 'احراز هویت' },
+      { id: 'onb', label: 'شروع به کار' },
+      { id: 'shop', label: 'فروشگاه' }
+    ].map(t => ({ ...t, select: () => this.setState({ tab: t.id }), bg: this.state.tab === t.id ? 'oklch(0.72 0.13 75 / 0.15)' : '#fff', border: this.state.tab === t.id ? 'oklch(0.72 0.13 75)' : 'oklch(0.8 0.01 80)', fg: this.state.tab === t.id ? 'oklch(0.3 0.08 75)' : 'oklch(0.35 0.005 90)' }));
+    const navLabels = ['امروز', 'انبار', 'دفترچه', 'فروشگاه', 'حساب'];
+    const navItems = navLabels.map((label, i) => ({ label, dot: i === 0 ? 'oklch(0.72 0.13 75)' : 'oklch(0.85 0.01 80)', fw: i === 0 ? '700' : '400', fg: i === 0 ? 'oklch(0.28 0.07 75)' : 'oklch(0.5 0.01 265)' }));
+    const otpDigits = ['۴', '۷', '۲', '', '', ''];
+    const otpCells = otpDigits.map((val, i) => ({ val, border: val ? 'oklch(0.72 0.13 75)' : 'oklch(0.8 0.01 80)' }));
+    return {
+      tabs, navItems, otpCells,
+      isShell: this.state.tab === 'shell', isAuth: this.state.tab === 'auth', isOnb: this.state.tab === 'onb', isShop: this.state.tab === 'shop'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

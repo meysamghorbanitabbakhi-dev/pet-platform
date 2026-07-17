@@ -8,6 +8,7 @@ are for intelligence only.
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -20,6 +21,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -138,16 +140,32 @@ class ExternalProduct(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint("source_id", "external_product_id", name="uq_extprod_source_extid"),
         CheckConstraint(
-            "species IN ('dog','cat','other',NULL)",
+            "species IN ('dog','cat','other') OR species IS NULL",
             name="valid_species",
         ),
         CheckConstraint(
-            "food_type IN ('dry','wet','treat','other',NULL)",
+            "food_type IN ('dry','wet','treat','other') OR food_type IS NULL",
             name="valid_food_type",
         ),
         CheckConstraint(
-            "life_stage IN ('puppy','kitten','adult','senior','all_stages',NULL)",
+            "life_stage IN ('puppy','kitten','adult','senior','all_stages') OR life_stage IS NULL",
             name="valid_life_stage",
+        ),
+        CheckConstraint(
+            "declared_pack_count IS NULL OR declared_pack_count > 0",
+            name="positive_pack_count",
+        ),
+        CheckConstraint(
+            "declared_unit_weight_g IS NULL OR declared_unit_weight_g > 0",
+            name="positive_unit_weight",
+        ),
+        CheckConstraint(
+            "declared_total_weight_g IS NULL OR declared_total_weight_g > 0",
+            name="positive_total_weight",
+        ),
+        CheckConstraint(
+            "availability IN ('unknown','available','unavailable','preorder')",
+            name="valid_product_availability",
         ),
         CheckConstraint(
             "veterinary_diet IS NULL OR veterinary_diet IN (true, false)",
@@ -231,6 +249,7 @@ class ExternalProductMatch(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_external_product_matches_external_product_id", "external_product_id"),
         Index("ix_external_product_matches_canonical_product_id", "canonical_product_id"),
         Index("ix_external_product_matches_status", "match_status"),
+        UniqueConstraint("external_product_id", name="uq_external_product_current_match"),
     )
 
     external_product_id: Mapped[UUID] = mapped_column(
@@ -269,6 +288,35 @@ class ExternalProductMatch(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class ExternalProductMatchReview(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Immutable operator/audit history for match decisions."""
+
+    __tablename__ = "price_intelligence_external_product_match_reviews"
+    __table_args__ = (
+        CheckConstraint(
+            "decision IN ('approved','rejected','remapped')",
+            name="valid_match_review_decision",
+        ),
+        Index("ix_match_reviews_match_id", "match_id"),
+    )
+
+    match_id: Mapped[UUID] = mapped_column(
+        ForeignKey("price_intelligence_external_product_matches.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    operator_id: Mapped[UUID] = mapped_column(
+        ForeignKey("identity_auth_identities.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    decision: Mapped[str] = mapped_column(String(32), nullable=False)
+    previous_status: Mapped[str | None] = mapped_column(String(32))
+    previous_canonical_product_id: Mapped[str | None] = mapped_column(String(36))
+    new_canonical_product_id: Mapped[str | None] = mapped_column(String(36))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class ExternalPriceObservation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """
     An immutable price observation. Each change creates a new row;
@@ -281,7 +329,12 @@ class ExternalPriceObservation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "availability IN ('unknown','available','unavailable','preorder')",
             name="valid_observation_availability",
         ),
-        CheckConstraint("price_minor >= 0", name="valid_price_minor"),
+        CheckConstraint("price_minor > 0", name="valid_price_minor"),
+        CheckConstraint("currency ~ '^[A-Z]{3}$'", name="valid_observation_currency"),
+        CheckConstraint(
+            "currency_exponent >= 0 AND currency_exponent <= 6",
+            name="valid_currency_exponent",
+        ),
         CheckConstraint(
             "unit_price_per_kg_minor IS NULL OR unit_price_per_kg_minor >= 0",
             name="valid_unit_price_per_kg_minor",
@@ -301,6 +354,7 @@ class ExternalPriceObservation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
         Index("ix_observation_collection_run_id", "collection_run_id"),
         Index("ix_observation_external_product_id", "external_product_id"),
+        UniqueConstraint("ingestion_key", name="uq_observation_ingestion_key"),
     )
 
     external_product_id: Mapped[UUID] = mapped_column(
@@ -316,8 +370,9 @@ class ExternalPriceObservation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, default="AMD", comment="ISO 4217"
     )
+    currency_exponent: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     price_minor: Mapped[int] = mapped_column(
-        BigInteger, nullable=False, comment="e.g. 47500 AMD = 4750000 minor"
+        BigInteger, nullable=False, comment="source-currency minor units"
     )
     compare_at_price_minor: Mapped[int | None] = mapped_column(
         BigInteger, comment="Discounted-from price"
@@ -344,6 +399,9 @@ class ExternalPriceObservation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     content_hash: Mapped[str] = mapped_column(
         String(64), nullable=False, comment="sha256 of raw payload for dedup"
+    )
+    ingestion_key: Mapped[str] = mapped_column(
+        String(128), nullable=False, comment="deterministic source replay key"
     )
     raw_price_text: Mapped[str | None] = mapped_column(String(200))
 
@@ -391,14 +449,19 @@ class ExchangeRateSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "price_intelligence_exchange_rate_snapshots"
     __table_args__ = (
         CheckConstraint("rate > 0", name="valid_exchange_rate"),
-        Index("ix_exchange_rates_base_quote_observed", "base_currency", "quote_currency", "observed_at"),
+        Index(
+            "ix_exchange_rates_base_quote_observed",
+            "base_currency",
+            "quote_currency",
+            "observed_at",
+        ),
     )
 
     base_currency: Mapped[str] = mapped_column(String(3), nullable=False)
     quote_currency: Mapped[str] = mapped_column(String(3), nullable=False)
     # rate stored as high-precision decimal via string to avoid float pitfalls
-    rate: Mapped[str] = mapped_column(
-        String(64), nullable=False, comment="Decimal string, e.g. '0.00256'"
+    rate: Mapped[Decimal] = mapped_column(
+        Numeric(24, 12), nullable=False, comment="Decimal rate from base to quote"
     )
     provider: Mapped[str] = mapped_column(
         String(100), nullable=False, comment="Source of the rate (e.g. ECB, CB_AM)"

@@ -49,6 +49,7 @@ from app.modules.price_intelligence.models import (
     ExternalPriceSource,
     ExternalProduct,
     ExternalProductMatch,
+    ExternalProductMatchReview,
     ExternalSeller,
 )
 from app.modules.sourcing.models import SourcingJob
@@ -84,6 +85,7 @@ __all__ = [
     "ExternalPriceSource",
     "ExternalProduct",
     "ExternalProductMatch",
+    "ExternalProductMatchReview",
     "ExternalSeller",
     "FoodEstimate",
     "FulfillmentEvent",

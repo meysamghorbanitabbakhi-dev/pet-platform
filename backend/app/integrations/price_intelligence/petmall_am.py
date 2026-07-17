@@ -1,206 +1,157 @@
-"""Petmall Armenia price intelligence collector."""
+"""Safe Petmall Armenia collector."""
+
 from __future__ import annotations
 
 import asyncio
-import logging
-from datetime import datetime
-from typing import Any
-from urllib.parse import urljoin
+from dataclasses import dataclass
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
 from app.common.time import utc_now
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
+from app.integrations.price_intelligence.petmall_am_parser import (
+    parse_brand_listing_page,
+    parse_robots_txt,
+)
 
-logger = logging.getLogger(__name__)
+ALLOWED_HOSTS = {"petmall.am", "www.petmall.am"}
+HTML_TYPES = {"text/html", "application/xhtml+xml"}
 
 
 class RobotsTxtError(Exception):
-    """Raised when robots.txt cannot be fetched or parsed."""
+    """Robots policy cannot be safely verified."""
 
 
 class CollectionNotAllowedError(Exception):
-    """Raised when collection is not permitted for the target URL."""
+    """The requested collection is not policy-safe."""
+
+
+@dataclass(frozen=True, slots=True)
+class CollectedPage:
+    url: str
+    content: str
+    collected_at: str
 
 
 class PetmallAmCollector:
-    """Collects Royal Canin product data from petmall.am."""
-
     SOURCE_CODE = "petmall_am"
     SOURCE_NAME = "Petmall Armenia"
-    BASE_URL = "https://petmall.am"
-    ROYAL_CANIN_BRAND_URL = "https://petmall.am/en/pet-food/royal-canin"
+    BASE_URL = "https://www.petmall.am"
+    BRAND_URL = "https://www.petmall.am/en/pet-food/royal-canin"
     COUNTRY_CODE = "AM"
     CURRENCY_CODE = "AMD"
 
     def __init__(
         self,
         http_client: httpx.AsyncClient,
+        *,
+        settings: Settings | None = None,
         user_agent: str | None = None,
-        request_delay_seconds: float = 2.0,
+        request_delay_seconds: float | None = None,
     ) -> None:
-        settings = get_settings()
-        self._http_client = http_client
-        self._user_agent = user_agent or settings.price_intelligence_user_agent
-        self._request_delay_seconds = (
-            request_delay_seconds or settings.price_intelligence_request_delay_seconds
+        self._settings = settings or get_settings()
+        self._http = http_client
+        self._user_agent = user_agent or self._settings.price_intelligence_user_agent
+        self._delay = (
+            request_delay_seconds or self._settings.price_intelligence_request_delay_seconds
         )
-        self._last_request_at: datetime | None = None
-        self._robots_allowed: bool | None = None
-        self._robots_txt_content: str | None = None
+        self._last_request_monotonic: float | None = None
+        self._robots_txt: str | None = None
 
-    async def check_robots_txt(self) -> bool:
-        """Fetch and parse robots.txt to determine if collection is allowed."""
-        robots_url = urljoin(self.BASE_URL, "/robots.txt")
-        
+    async def check_robots_txt(
+        self, path: str = "/en/pet-food/royal-canin"
+    ) -> tuple[bool, str | None]:
+        robots_url = f"{self.BASE_URL}/robots.txt"
         try:
-            response = await self._http_client.get(
-                robots_url,
-                headers={"User-Agent": self._user_agent},
-                follow_redirects=True,
-            )
-            response.raise_for_status()
-            self._robots_txt_content = response.text
-        except httpx.HTTPError as exc:
-            logger.warning("Failed to fetch robots.txt from %s: %s", robots_url, exc)
-            # Conservative: assume no access if robots.txt cannot be fetched
-            self._robots_allowed = False
-            raise RobotsTxtError(f"Failed to fetch robots.txt: {exc}") from exc
+            response = await self._request("GET", robots_url, check_robots=False)
+        except Exception as exc:
+            raise RobotsTxtError("robots_fetch_failed") from exc
+        self._robots_txt = response.content
+        allowed, blocked = parse_robots_txt(response.content, self._user_agent, path)
+        return allowed, None if allowed else ",".join(blocked) or "disallowed"
 
-        self._robots_allowed = self._parse_robots_txt(self._robots_txt_content)
-        logger.info(
-            "Robots.txt check for %s: allowed=%s",
-            self.SOURCE_CODE,
-            self._robots_allowed,
-        )
-        return self._robots_allowed
-
-    def _parse_robots_txt(self, content: str) -> bool:
-        """Parse robots.txt and determine if our user agent is allowed."""
-        lines = content.splitlines()
-        
-        # Simple robots.txt parser
-        current_agent_matches = False
-        disallow_paths: list[str] = []
-        
-        for line in lines:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            
-            if line.lower().startswith("user-agent:"):
-                agent = line.split(":", 1)[1].strip()
-                current_agent_matches = agent == "*" or agent.lower() in self._user_agent.lower()
-            
-            elif current_agent_matches and line.lower().startswith("disallow:"):
-                path = line.split(":", 1)[1].strip()
-                if path:
-                    disallow_paths.append(path)
-        
-        # Check if Royal Canin brand page is disallowed
-        for path in disallow_paths:
-            if self.ROYAL_CANIN_BRAND_URL.endswith(path):
-                return False
-        
-        return True
-
-    async def _throttle(self) -> None:
-        """Enforce request delay to be polite to the source."""
-        if self._last_request_at is not None:
-            elapsed = (utc_now() - self._last_request_at).total_seconds()
-            if elapsed < self._request_delay_seconds:
-                await asyncio.sleep(self._request_delay_seconds - elapsed)
-        self._last_request_at = utc_now()
-
-    async def fetch_brand_page(self, page: int = 1) -> dict[str, Any]:
-        """Fetch a single page of Royal Canin products from the brand listing."""
-        if self._robots_allowed is None:
-            await self.check_robots_txt()
-        
-        if not self._robots_allowed:
-            raise CollectionNotAllowedError(
-                f"Collection not allowed by robots.txt for {self.SOURCE_CODE}"
-            )
-
-        await self._throttle()
-
-        url = self.ROYAL_CANIN_BRAND_URL
-        params = {"page": page} if page > 1 else {}
-
-        try:
-            response = await self._http_client.get(
-                url,
-                params=params,
-                headers={"User-Agent": self._user_agent},
-                follow_redirects=True,
-            )
-            response.raise_for_status()
-        except httpx.HTTPError as exc:
-            logger.error("Failed to fetch brand page %d: %s", page, exc)
-            raise
-
-        return {
-            "url": str(response.url),
-            "status_code": response.status_code,
-            "content": response.text,
-            "collected_at": utc_now().isoformat(),
-        }
-
-    async def fetch_product_detail(self, product_url: str) -> dict[str, Any]:
-        """Fetch detailed product data from a product page."""
-        if self._robots_allowed is False:
-            raise CollectionNotAllowedError(f"Collection not allowed for {self.SOURCE_CODE}")
-
-        await self._throttle()
-
-        try:
-            response = await self._http_client.get(
-                product_url,
-                headers={"User-Agent": self._user_agent},
-                follow_redirects=True,
-            )
-            response.raise_for_status()
-        except httpx.HTTPError as exc:
-            logger.error("Failed to fetch product detail %s: %s", product_url, exc)
-            raise
-
-        return {
-            "url": str(response.url),
-            "status_code": response.status_code,
-            "content": response.text,
-            "collected_at": utc_now().isoformat(),
-        }
+    async def fetch_brand_page(self, page: int = 1) -> CollectedPage:
+        params = f"?page={page}" if page > 1 else ""
+        url = f"{self.BRAND_URL}{params}"
+        await self._ensure_robots_allowed(url)
+        return await self._request("GET", url)
 
     async def discover_product_urls(self, page: int = 1) -> list[str]:
-        """Discover product URLs from a brand listing page."""
         page_data = await self.fetch_brand_page(page)
-        
-        # Simple extraction: look for product links in the content
-        # In production, this would use a proper HTML parser
-        content = page_data["content"]
-        product_urls: list[str] = []
-        
-        # Look for links to /en/products/ or /hy/products/ or /ru/products/
-        for lang in ["en", "hy", "ru"]:
-            prefix = f"/{lang}/products/"
-            start = 0
-            while True:
-                idx = content.find(prefix, start)
-                if idx == -1:
-                    break
-                # Find the end of the URL (quote or whitespace)
-                end = idx
-                while end < len(content) and content[end] not in ('"', "'", " ", ">", "<"):
-                    end += 1
-                url = urljoin(self.BASE_URL, content[idx:end])
-                if url not in product_urls:
-                    product_urls.append(url)
-                start = end
-        
-        logger.info("Discovered %d product URLs on page %d", len(product_urls), page)
-        return product_urls
+        urls = parse_brand_listing_page(page_data.content, self.BASE_URL)
+        return [url for url in urls if self.validate_url(url)]
 
-    async def close(self) -> None:
-        """Close the HTTP client if we own it."""
-        # Caller manages the client lifecycle
-        pass
+    async def fetch_product_detail(self, product_url: str) -> CollectedPage:
+        await self._ensure_robots_allowed(product_url)
+        return await self._request("GET", product_url)
+
+    def validate_url(self, url: str) -> bool:
+        parsed = urlparse(url)
+        if parsed.scheme != "https":
+            return False
+        if parsed.hostname not in ALLOWED_HOSTS:
+            return False
+        if parsed.username or parsed.password or parsed.fragment:
+            return False
+        if parsed.port not in (None, 443):
+            return False
+        return True
+
+    async def _ensure_robots_allowed(self, url: str) -> None:
+        if not self.validate_url(url):
+            raise CollectionNotAllowedError("url_not_allowed")
+        path = urlparse(url).path or "/"
+        if self._robots_txt is None:
+            allowed, _reason = await self.check_robots_txt(path)
+        else:
+            allowed, _blocked = parse_robots_txt(self._robots_txt, self._user_agent, path)
+        if not allowed:
+            raise CollectionNotAllowedError("robots_disallowed")
+
+    async def _request(self, method: str, url: str, *, check_robots: bool = True) -> CollectedPage:
+        if check_robots and not self.validate_url(url):
+            raise CollectionNotAllowedError("url_not_allowed")
+        await self._throttle()
+        last_error: Exception | None = None
+        for attempt in range(self._settings.price_intelligence_max_retries):
+            try:
+                response = await self._http.request(
+                    method,
+                    url,
+                    headers={"User-Agent": self._user_agent},
+                    follow_redirects=True,
+                    timeout=self._settings.price_intelligence_timeout_seconds,
+                )
+                if not self.validate_url(str(response.url)):
+                    raise CollectionNotAllowedError("redirect_not_allowed")
+                response.raise_for_status()
+                content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
+                if (
+                    content_type
+                    and content_type not in HTML_TYPES
+                    and not url.endswith("/robots.txt")
+                ):
+                    raise CollectionNotAllowedError("unexpected_content_type")
+                content = response.text
+                if len(response.content) > self._settings.price_intelligence_max_response_bytes:
+                    raise CollectionNotAllowedError("response_too_large")
+                return CollectedPage(str(response.url), content, utc_now().isoformat())
+            except (httpx.HTTPError, CollectionNotAllowedError) as exc:
+                last_error = exc
+                if isinstance(exc, CollectionNotAllowedError):
+                    raise
+                await asyncio.sleep(min(2**attempt, 8))
+        raise RobotsTxtError("request_failed") from last_error
+
+    async def _throttle(self) -> None:
+        now = asyncio.get_running_loop().time()
+        if self._last_request_monotonic is not None:
+            elapsed = now - self._last_request_monotonic
+            if elapsed < self._delay:
+                await asyncio.sleep(self._delay - elapsed)
+        self._last_request_monotonic = asyncio.get_running_loop().time()
+
+
+def petmall_url(path: str) -> str:
+    return urljoin(PetmallAmCollector.BASE_URL, path)

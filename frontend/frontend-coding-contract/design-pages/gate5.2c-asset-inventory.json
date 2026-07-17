@@ -1,0 +1,24 @@
+{
+  "revision": "G5.2C-R2 (FINAL for this gate)",
+  "note": "All entries are pending real asset drops — no hand-drawn SVG stands in as final art. Placeholders in prototypes use striped monospace-labeled boxes only.",
+  "icons": [
+    { "key": "nav-today", "use": "Bottom nav — امروز", "status": "pending" },
+    { "key": "nav-inventory", "use": "Bottom nav — انبار خانه", "status": "pending" },
+    { "key": "nav-diary", "use": "Bottom nav — دفترچه", "status": "pending" },
+    { "key": "nav-shop", "use": "Bottom nav — فروشگاه", "status": "pending" },
+    { "key": "nav-account", "use": "Bottom nav — حساب", "status": "pending" },
+    { "key": "status-positive", "use": "StatusChip glyph ●", "status": "using Unicode glyph, no icon needed" },
+    { "key": "status-info", "use": "StatusChip glyph ◐", "status": "using Unicode glyph, no icon needed" },
+    { "key": "status-warning", "use": "StatusChip glyph ⚠", "status": "using Unicode glyph, no icon needed" },
+    { "key": "chevron-back", "use": "Back navigation, RTL-mirrored", "status": "pending" },
+    { "key": "support-contact", "use": "Support/concierge entry point", "status": "pending" }
+  ],
+  "garden_objects": [
+    { "key": "garden-object-generic", "use": "Placeholder Garden reward silhouette pre-reveal", "status": "pending, server-issued memoryId drives real art" },
+    { "key": "garden-slot-marker", "use": "Empty quadrant slot indicator", "status": "pending" }
+  ],
+  "product_media": {
+    "source": "OfferDetailResponse.media (ordered public references)",
+    "note": "Real product photography comes from the backend media array — never fabricated in the frontend."
+  }
+}

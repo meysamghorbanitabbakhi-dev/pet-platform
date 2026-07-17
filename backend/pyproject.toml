@@ -32,7 +32,7 @@ dev = [
 packages = ["app"]
 
 [tool.pytest.ini_options]
-addopts = "-q --ignore=tests/unit/test_price_intelligence.py"
+addopts = "-q"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 
@@ -40,14 +40,6 @@ testpaths = ["tests"]
 target-version = "py312"
 line-length = 100
 src = ["app", "tests"]
-extend-exclude = [
-  "app/api/routes/customer/price_intelligence.py",
-  "app/api/routes/operator/price_intelligence.py",
-  "app/integrations/price_intelligence",
-  "app/modules/price_intelligence",
-  "migrations/versions/20260716_0022_price_intelligence.py",
-  "tests/unit/test_price_intelligence.py",
-]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "ASYNC"]
@@ -59,13 +51,7 @@ select = ["E", "F", "I", "B", "UP", "ASYNC"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-exclude = [
-  "migrations",
-  "app/api/routes/customer/price_intelligence.py",
-  "app/api/routes/operator/price_intelligence.py",
-  "app/integrations/price_intelligence",
-  "app/modules/price_intelligence",
-]
+exclude = ["migrations"]
 
 [[tool.mypy.overrides]]
 module = ["bs4"]

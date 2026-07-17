@@ -50,6 +50,7 @@ def test_metadata_contains_foundation_and_transactional_commerce_tables() -> Non
         "price_intelligence_external_price_observations",
         "price_intelligence_external_price_sources",
         "price_intelligence_external_product_matches",
+        "price_intelligence_external_product_match_reviews",
         "price_intelligence_external_products",
         "price_intelligence_external_sellers",
         "pet_knowledge_releases",

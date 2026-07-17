@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:oklch(0.985 0.004 80);}*{box-sizing:border-box;}</style>
+</helmet>
+<div style="font-family:'IBM Plex Sans',system-ui,sans-serif;color:oklch(0.2 0.01 265);max-width:1500px;margin:0 auto;padding:40px 32px 100px;">
+  <div style="border-bottom:2px solid oklch(0.2 0.01 265);padding-bottom:18px;margin-bottom:20px;">
+    <div style="font-family:'IBM Plex Mono';font-size:11px;letter-spacing:0.08em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;margin-bottom:6px;">Gate 5.2C</div>
+    <h1 style="font-size:24px;font-weight:700;margin:0 0 6px;">Final component/state contract</h1>
+    <div style="font-size:13px;color:oklch(0.45 0.01 265);">Supersedes Gate 5.2B's contract: Button semantics corrected (midnight = pay/confirm/submit/save; brass = progress/eligibility/selection/active/Garden only), plus two care-journey components added.</div>
+  </div>
+  <div style="border:1px solid oklch(0.85 0.01 80);border-radius:12px;overflow:auto;background:#fff;">
+    <table style="border-collapse:collapse;width:100%;min-width:1200px;font-size:11.5px;">
+      <thead><tr style="background:oklch(0.97 0.006 80);text-align:left;">
+        <th style="padding:9px 10px;position:sticky;top:0;left:0;background:oklch(0.97 0.006 80);border-bottom:1px solid oklch(0.85 0.01 80);white-space:nowrap;z-index:1;">Component</th>
+        <th style="padding:9px 10px;position:sticky;top:0;background:oklch(0.97 0.006 80);border-bottom:1px solid oklch(0.85 0.01 80);white-space:nowrap;">Action color</th>
+        <th style="padding:9px 10px;position:sticky;top:0;background:oklch(0.97 0.006 80);border-bottom:1px solid oklch(0.85 0.01 80);white-space:nowrap;">Default/loading/disabled</th>
+        <th style="padding:9px 10px;position:sticky;top:0;background:oklch(0.97 0.006 80);border-bottom:1px solid oklch(0.85 0.01 80);white-space:nowrap;">RTL/keyboard/aria</th>
+        <th style="padding:9px 10px;position:sticky;top:0;background:oklch(0.97 0.006 80);border-bottom:1px solid oklch(0.85 0.01 80);white-space:nowrap;">Reduced motion</th>
+      </tr></thead>
+      <tbody>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="26">
+          <tr style="border-bottom:1px solid oklch(0.92 0.005 80);vertical-align:top;">
+            <td style="padding:8px 10px;font-weight:700;position:sticky;left:0;background:#fff;white-space:nowrap;">{{ r.name }}</td>
+            <td style="padding:8px 10px;min-width:220px;">{{ r.action }}</td>
+            <td style="padding:8px 10px;min-width:260px;">{{ r.states }}</td>
+            <td style="padding:8px 10px;min-width:260px;">{{ r.a11y }}</td>
+            <td style="padding:8px 10px;min-width:200px;">{{ r.motion }}</td>
+          </tr>
+        </sc-for>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const rows = [
+      { name: 'Button', action: 'midnight = pay/confirm/submit/save/open/start-complete-journey; brass = progress/eligibility/selection/active/Garden', states: 'loading = inline spinner, locked width; disabled = muted bg, 45% ink', a11y: 'RTL-mirrored icon order; Enter/Space activates; aria-busy on loading', motion: 'no press-scale, instant swap' },
+      { name: 'IconButton', action: 'inherits Button semantics for its function', states: '44×44 hit area; disabled = 35% opacity', a11y: 'required aria-label; directional icons mirrored', motion: 'no rotation/scale' },
+      { name: 'Money', action: 'n/a (display)', states: 'skeleton bar while loading, same width as final', a11y: 'aria-label reads full amount + تومان unit', motion: 'no count-up' },
+      { name: 'StatusChip', action: 'n/a — tone only, never action color', states: 'muted tone if inactive', a11y: 'glyph precedes label per RTL order', motion: 'no pulse' },
+      { name: 'PetSwitcher', action: 'brass active-chip tint (selection)', states: 'skeleton chips while loading', a11y: 'role=tablist, aria-selected; arrow-key nav', motion: 'instant crossfade, no slide' },
+      { name: 'MeterBand', action: 'brass fill = known progress; striped = unknown', states: 'skeleton bar while loading', a11y: 'aria-label states confidence word, never a raw score', motion: 'no animated sweep' },
+      { name: 'OrderTimeline', action: 'n/a — status tones only', states: 'skeleton rows while loading', a11y: 'ordered list, aria-current on active step', motion: 'no line-draw' },
+      { name: 'QuantityStepper', action: 'n/a (structural control)', states: 'disabled at min/max per CheckoutItemBody 1-100', a11y: 'aria-live polite on value change', motion: 'no bounce' },
+      { name: 'Sheet/Dialog', action: 'primary action inside follows Button rule', states: 'skeleton content + disabled actions while loading', a11y: 'role=dialog, aria-modal, focus trapped, Esc closes', motion: 'opacity-only, no slide-up' },
+      { name: 'GardenObject', action: 'brass glow accent only, never a commit action', states: 'placeholder silhouette until placement resolves', a11y: '44px invisible tap region + list fallback for dense areas', motion: 'no reveal glow, instant crossfade ≤200ms' },
+      { name: 'JourneyStepCard', action: 'midnight for start/complete confirm; brass for in-progress indicator', data: 'JourneyStepResponse {key, title_fa, body_fa, allowed_answers: JourneyAnswerOptionResponse[]{key,label_fa}} — typed, rendered directly', states: 'loading skeleton while GET /journeys/{journey_id} resolves; empty only if journey has 0 steps (should not occur)', a11y: 'aria-current on active step; step body read as plain text', motion: 'no reveal animation; static under reduced motion' },
+      { name: 'CheckInForm', action: 'midnight submit (POST .../check-ins)', data: 'JourneyCheckInBody {check_in_key, answer_key}; options come from the current step allowed_answers — no client-invented choices', states: 'validation failure = inline error if answer_key not in allowed_answers (422); replay = idempotent 200 no-op via Idempotency-Key', a11y: 'radiogroup semantics over answer chips; Enter/Space selects; aria-required', motion: 'n/a' }
+    ];
+    return { rows };
+  }
+}
+
+</script>
+</body>
+</html>

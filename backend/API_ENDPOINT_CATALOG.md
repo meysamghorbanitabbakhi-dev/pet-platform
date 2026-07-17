@@ -40,6 +40,7 @@ The checked OpenAPI contract contains 133 public operations. Routes use the `/ap
 | Household/Pet Life | Household/address/pet creation, external inventory, assignments, opening/correction/exhaust, wallet, notifications, journeys, diary and Garden |
 | Pet profile/health/assets | Profile, breed selection, measurements, reminders, consents, private assets, body assessments and approved care guidance |
 | Knowledge/privacy/system | Breed knowledge, pet knowledge, privacy export/request, policy read, health and metrics |
+| Operator price intelligence | Internal sources, robots checks, collection runs, observations, pending matches and match decisions; disabled-by-default collection |
 
 ## K9 operator endpoints
 

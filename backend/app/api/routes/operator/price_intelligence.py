@@ -1,333 +1,326 @@
-"""Operator API routes for price intelligence management."""
+"""Operator-only price-intelligence routes."""
+
 from __future__ import annotations
 
-from typing import Annotated
+from datetime import datetime
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
+import httpx
 from app.api.dependencies import CurrentOperator
+from app.api.middleware import request_id_context
 from app.common.time import utc_now
+from app.core.config import get_settings
 from app.db.session import get_db_session
-from app.integrations.price_intelligence.petmall_am import PetmallAmCollector
+from app.integrations.price_intelligence.petmall_am import PetmallAmCollector, RobotsTxtError
 from app.integrations.price_intelligence.service import PriceIntelligenceService
 from app.modules.price_intelligence.models import (
     ExternalPriceObservation,
     ExternalPriceSource,
-    ExternalSeller,
+    ExternalProduct,
 )
+from app.modules.system.audit import record_operator_action
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/operator/price-intelligence", tags=["operator", "price-intelligence"])
+SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
+
+
+class Page(BaseModel):
+    limit: int = Field(default=50, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
 
 
 class SourceResponse(BaseModel):
-    """Response model for price intelligence source."""
-    
     id: UUID
     code: str
     name: str
     base_url: str
     country_code: str
-    currency_code: str
+    default_currency: str
     collection_enabled: bool
-    robots_txt_allowed: bool | None
-    robots_txt_checked_at: str | None
+    robots_status: str
+    robots_checked_at: datetime | None
     terms_status: str
-    terms_checked_at: str | None
-    last_successful_collection_at: str | None
-    total_pages_collected: int
-    total_observations_stored: int
+    terms_checked_at: datetime | None
+    terms_evidence_url: str | None
+    last_successful_collection_at: datetime | None
+
+
+class SourcePolicyUpdate(BaseModel):
+    collection_enabled: bool | None = None
+    terms_status: Literal["unchecked", "accepted", "rejected", "failed"] | None = None
+    terms_evidence_url: str | None = Field(default=None, max_length=1000)
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+class RobotsCheckResponse(BaseModel):
+    robots_status: str
+    robots_checked_at: datetime
+    reason: str | None
+
+
+class CollectionRunResponse(BaseModel):
+    id: UUID
+    source_id: UUID
+    started_at: datetime
+    completed_at: datetime | None
+    status: str
+    pages_succeeded: int
+    products_seen: int
+    prices_inserted: int
+    errors_count: int
 
 
 class ObservationResponse(BaseModel):
-    """Response model for price observation."""
-    
     id: UUID
-    source_code: str
-    product_name: str
-    product_url: str
-    external_sku: str | None
-    price_amount: int
-    price_currency: str
-    stock_status: str
-    observation_timestamp: str
-    matched_offer_id: UUID | None
-    match_confidence: int
-    approved_by_admin: bool
+    external_product_id: UUID
+    seller_id: UUID | None
+    currency: str
+    currency_exponent: int
+    price_minor: int
+    availability: str
+    observed_at: datetime
+    raw_price_text: str | None
 
 
-class ApproveObservationRequest(BaseModel):
-    """Request model for approving an observation."""
-    
-    approved: bool = Field(..., description="Whether to approve the observation")
-    match_confidence_override: int | None = Field(
-        None, 
-        ge=0, 
-        le=100,
-        description="Override match confidence score (0-100)"
-    )
+class MatchResponse(BaseModel):
+    id: UUID
+    external_product_id: UUID
+    canonical_product_id: UUID | None
+    canonical_variant_id: UUID | None
+    match_method: str
+    match_status: str
+    match_confidence: float
+    match_reasons_json: dict[str, object] | None
+    reviewed_at: datetime | None
 
 
-class UpdateSourceRequest(BaseModel):
-    """Request model for updating source configuration."""
-    
-    collection_enabled: bool = Field(..., description="Whether collection is enabled")
+class MatchDecisionBody(BaseModel):
+    reason: str = Field(min_length=5, max_length=1000)
 
 
-class CheckRobotsTxtResponse(BaseModel):
-    """Response model for robots.txt check."""
-    
-    robots_txt_allowed: bool
-    robots_txt_checked_at: str
-    robots_txt_disallowed_reason: str | None
+class MatchRemapBody(MatchDecisionBody):
+    canonical_product_id: UUID
+    canonical_variant_id: UUID | None = None
 
 
 @router.get("/sources", response_model=list[SourceResponse])
-async def list_price_intelligence_sources(
-    session: Annotated[AsyncSession, Depends(get_db_session)],
+async def list_sources(
+    session: SessionDep,
     operator: CurrentOperator,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ) -> list[SourceResponse]:
-    """List all price intelligence sources."""
-    from sqlalchemy import select
-    
-    result = await session.execute(select(ExternalPriceSource))
-    sources = result.scalars().all()
-    
+    del operator
+    result = await session.execute(select(ExternalPriceSource).offset(offset).limit(limit))
     return [
-        SourceResponse(
-            id=source.id,
-            code=source.code,
-            name=source.name,
-            base_url=source.base_url,
-            country_code=source.country_code,
-            currency_code=source.currency_code,
-            collection_enabled=source.collection_enabled,
-            robots_txt_allowed=source.robots_txt_allowed,
-            robots_txt_checked_at=source.robots_txt_checked_at.isoformat() if source.robots_txt_checked_at else None,
-            terms_status=source.terms_status,
-            terms_checked_at=source.terms_checked_at.isoformat() if source.terms_checked_at else None,
-            last_successful_collection_at=source.last_successful_collection_at.isoformat() if source.last_successful_collection_at else None,
-            total_pages_collected=source.total_pages_collected,
-            total_observations_stored=source.total_observations_stored,
-        )
-        for source in sources
+        SourceResponse.model_validate(source, from_attributes=True)
+        for source in result.scalars()
     ]
 
 
 @router.get("/sources/{source_id}", response_model=SourceResponse)
-async def get_price_intelligence_source(
-    source_id: UUID,
-    session: Annotated[AsyncSession, Depends(get_db_session)],
-    operator: CurrentOperator,
+async def get_source(
+    source_id: UUID, session: SessionDep, operator: CurrentOperator
 ) -> SourceResponse:
-    """Get a specific price intelligence source."""
+    del operator
     source = await session.get(ExternalPriceSource, source_id)
     if source is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Price intelligence source not found"
-        )
-    
-    return SourceResponse(
-        id=source.id,
-        code=source.code,
-        name=source.name,
-        base_url=source.base_url,
-        country_code=source.country_code,
-        currency_code=source.currency_code,
-        collection_enabled=source.collection_enabled,
-        robots_txt_allowed=source.robots_txt_allowed,
-        robots_txt_checked_at=source.robots_txt_checked_at.isoformat() if source.robots_txt_checked_at else None,
-        terms_status=source.terms_status,
-        terms_checked_at=source.terms_checked_at.isoformat() if source.terms_checked_at else None,
-        last_successful_collection_at=source.last_successful_collection_at.isoformat() if source.last_successful_collection_at else None,
-        total_pages_collected=source.total_pages_collected,
-        total_observations_stored=source.total_observations_stored,
-    )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "not_found")
+    return SourceResponse.model_validate(source, from_attributes=True)
 
 
 @router.patch("/sources/{source_id}", response_model=SourceResponse)
-async def update_price_intelligence_source(
+async def update_source(
     source_id: UUID,
-    request: UpdateSourceRequest,
-    session: Annotated[AsyncSession, Depends(get_db_session)],
+    body: SourcePolicyUpdate,
+    session: SessionDep,
     operator: CurrentOperator,
 ) -> SourceResponse:
-    """Update a price intelligence source configuration."""
-    source = await session.get(ExternalPriceSource, source_id)
-    if source is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Price intelligence source not found"
+    service = PriceIntelligenceService(session)
+    try:
+        source = await service.update_source_policy(
+            source_id,
+            collection_enabled=body.collection_enabled,
+            terms_status=body.terms_status,
+            terms_checked_at=utc_now() if body.terms_status else None,
+            terms_evidence_url=body.terms_evidence_url,
         )
-    
-    source.collection_enabled = request.collection_enabled
-    await session.commit()
-    
-    return SourceResponse(
-        id=source.id,
-        code=source.code,
-        name=source.name,
-        base_url=source.base_url,
-        country_code=source.country_code,
-        currency_code=source.currency_code,
-        collection_enabled=source.collection_enabled,
-        robots_txt_allowed=source.robots_txt_allowed,
-        robots_txt_checked_at=source.robots_txt_checked_at.isoformat() if source.robots_txt_checked_at else None,
-        terms_status=source.terms_status,
-        terms_checked_at=source.terms_checked_at.isoformat() if source.terms_checked_at else None,
-        last_successful_collection_at=source.last_successful_collection_at.isoformat() if source.last_successful_collection_at else None,
-        total_pages_collected=source.total_pages_collected,
-        total_observations_stored=source.total_observations_stored,
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    if source is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "not_found")
+    record_operator_action(
+        session,
+        operator_identity_id=operator.id,
+        action="price_intelligence_source_policy_updated",
+        resource_type="price_intelligence_source",
+        resource_id=str(source.id),
+        request_id=request_id_context.get() or "unknown",
+        reason=body.reason,
+        before_facts=None,
+        after_facts={"collection_enabled": source.collection_enabled},
+        source_ip=None,
     )
+    await session.commit()
+    return SourceResponse.model_validate(source, from_attributes=True)
 
 
-@router.post("/sources/{source_id}/check-robots", response_model=CheckRobotsTxtResponse)
-async def check_robots_txt(
+@router.post("/sources/{source_id}/check-robots", response_model=RobotsCheckResponse)
+async def check_robots(
     source_id: UUID,
-    session: Annotated[AsyncSession, Depends(get_db_session)],
+    session: SessionDep,
     operator: CurrentOperator,
-) -> CheckRobotsTxtResponse:
-    """Manually trigger robots.txt check for a source."""
+) -> RobotsCheckResponse:
     source = await session.get(ExternalPriceSource, source_id)
     if source is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Price intelligence source not found"
-        )
-    
-    if source.code != "petsmall_am":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Robots.txt check only supported for petsmall_am"
-        )
-    
-    # Perform robots.txt check
-    import httpx
-    from app.core.config import get_settings
-    
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "not_found")
     settings = get_settings()
-    async with httpx.AsyncClient(
-        timeout=30.0,
-        headers={"User-Agent": settings.price_intelligence_user_agent}
-    ) as client:
-        collector = PetmallAmCollector(
-            client=client,
-            request_delay_seconds=settings.price_intelligence_request_delay_seconds,
-            max_retries=settings.price_intelligence_max_retries,
-        )
-        
-        allowed, reason = await collector.check_robots_txt()
-    
-    # Update source
-    source.robots_txt_allowed = allowed
-    source.robots_txt_checked_at = utc_now()
-    await session.commit()
-    
-    return CheckRobotsTxtResponse(
-        robots_txt_allowed=allowed,
-        robots_txt_checked_at=source.robots_txt_checked_at.isoformat(),
-        robots_txt_disallowed_reason=reason,
+    status_value = "failed"
+    robots_reason: str | None = "robots_fetch_failed"
+    async with httpx.AsyncClient() as client:
+        collector = PetmallAmCollector(client, settings=settings)
+        try:
+            allowed, robots_reason = await collector.check_robots_txt()
+            status_value = "allowed" if allowed else "disallowed"
+        except RobotsTxtError:
+            status_value = "failed"
+    source.robots_status = status_value
+    source.robots_checked_at = utc_now()
+    record_operator_action(
+        session,
+        operator_identity_id=operator.id,
+        action="price_intelligence_robots_checked",
+        resource_type="price_intelligence_source",
+        resource_id=str(source.id),
+        request_id=request_id_context.get() or "unknown",
+        reason=status_value,
+        before_facts=None,
+        after_facts={"robots_status": status_value},
+        source_ip=None,
     )
+    await session.commit()
+    return RobotsCheckResponse(
+        robots_status=status_value,
+        robots_checked_at=source.robots_checked_at,
+        reason=robots_reason,
+    )
+
+
+@router.get("/collection-runs", response_model=list[CollectionRunResponse])
+async def list_runs(
+    session: SessionDep,
+    operator: CurrentOperator,
+    source_id: UUID | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+) -> list[CollectionRunResponse]:
+    del operator
+    runs = await PriceIntelligenceService(session).list_collection_runs(source_id, limit)
+    return [CollectionRunResponse.model_validate(run, from_attributes=True) for run in runs]
 
 
 @router.get("/observations", response_model=list[ObservationResponse])
-async def list_price_observations(
-    session: Annotated[AsyncSession, Depends(get_db_session)],
+async def list_observations(
+    session: SessionDep,
     operator: CurrentOperator,
-    source_code: str | None = None,
-    approved_only: bool = False,
-    limit: int = 100,
+    external_product_id: UUID | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
 ) -> list[ObservationResponse]:
-    """List price observations with optional filters."""
-    from sqlalchemy import select
-    
-    query = select(ExternalPriceObservation).limit(limit)
-    
-    if source_code:
-        query = query.where(ExternalPriceObservation.source_code == source_code)
-    
-    if approved_only:
-        query = query.where(ExternalPriceObservation.approved_by_admin == True)
-    
-    query = query.order_by(ExternalPriceObservation.observation_timestamp.desc())
-    
-    result = await session.execute(query)
-    observations = result.scalars().all()
-    
+    del operator
+    stmt = select(ExternalPriceObservation).order_by(ExternalPriceObservation.observed_at.desc())
+    if external_product_id:
+        stmt = stmt.where(ExternalPriceObservation.external_product_id == external_product_id)
+    result = await session.execute(stmt.limit(limit))
     return [
-        ObservationResponse(
-            id=obs.id,
-            source_code=obs.source_code,
-            product_name=obs.product_name,
-            product_url=obs.product_url,
-            external_sku=obs.external_sku,
-            price_amount=obs.price_amount,
-            price_currency=obs.price_currency,
-            stock_status=obs.stock_status,
-            observation_timestamp=obs.observation_timestamp.isoformat(),
-            matched_offer_id=obs.matched_offer_id,
-            match_confidence=obs.match_confidence,
-            approved_by_admin=obs.approved_by_admin,
-        )
-        for obs in observations
+        ObservationResponse.model_validate(obs, from_attributes=True)
+        for obs in result.scalars()
     ]
 
 
-@router.post("/observations/{observation_id}/approve", response_model=ObservationResponse)
-async def approve_observation(
-    observation_id: UUID,
-    request: ApproveObservationRequest,
-    session: Annotated[AsyncSession, Depends(get_db_session)],
+@router.get("/matches/pending", response_model=list[MatchResponse])
+async def list_pending_matches(
+    session: SessionDep,
     operator: CurrentOperator,
-) -> ObservationResponse:
-    """Approve or reject a price observation."""
-    observation = await session.get(ExternalPriceObservation, observation_id)
-    if observation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Price observation not found"
-        )
-    
-    observation.approved_by_admin = request.approved
-    if request.match_confidence_override is not None:
-        observation.match_confidence = request.match_confidence_override
-    
-    await session.commit()
-    
-    return ObservationResponse(
-        id=observation.id,
-        source_code=observation.source_code,
-        product_name=observation.product_name,
-        product_url=observation.product_url,
-        external_sku=observation.external_sku,
-        price_amount=observation.price_amount,
-        price_currency=observation.price_currency,
-        stock_status=observation.stock_status,
-        observation_timestamp=observation.observation_timestamp.isoformat(),
-        matched_offer_id=observation.matched_offer_id,
-        match_confidence=observation.match_confidence,
-        approved_by_admin=observation.approved_by_admin,
+    limit: int = Query(default=50, ge=1, le=100),
+) -> list[MatchResponse]:
+    del operator
+    matches = await PriceIntelligenceService(session).list_pending_matches(limit)
+    return [MatchResponse.model_validate(match, from_attributes=True) for match in matches]
+
+
+@router.post("/matches/{match_id}/approve", response_model=MatchResponse)
+async def approve_match(
+    match_id: UUID,
+    body: MatchDecisionBody,
+    session: SessionDep,
+    operator: CurrentOperator,
+) -> MatchResponse:
+    match = await PriceIntelligenceService(session).approve_match(
+        match_id, operator.id, reason=body.reason
     )
-
-
-@router.delete("/observations/{observation_id}")
-async def delete_observation(
-    observation_id: UUID,
-    session: Annotated[AsyncSession, Depends(get_db_session)],
-    operator: CurrentOperator,
-) -> dict[str, str]:
-    """Delete a price observation."""
-    observation = await session.get(ExternalPriceObservation, observation_id)
-    if observation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Price observation not found"
-        )
-    
-    await session.delete(observation)
+    if match is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "not_found")
     await session.commit()
-    
-    return {"status": "deleted", "id": str(observation_id)}
+    return MatchResponse.model_validate(match, from_attributes=True)
+
+
+@router.post("/matches/{match_id}/reject", response_model=MatchResponse)
+async def reject_match(
+    match_id: UUID,
+    body: MatchDecisionBody,
+    session: SessionDep,
+    operator: CurrentOperator,
+) -> MatchResponse:
+    match = await PriceIntelligenceService(session).reject_match(
+        match_id, operator.id, reason=body.reason
+    )
+    if match is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "not_found")
+    await session.commit()
+    return MatchResponse.model_validate(match, from_attributes=True)
+
+
+@router.post("/matches/{match_id}/remap", response_model=MatchResponse)
+async def remap_match(
+    match_id: UUID,
+    body: MatchRemapBody,
+    session: SessionDep,
+    operator: CurrentOperator,
+) -> MatchResponse:
+    try:
+        match = await PriceIntelligenceService(session).remap_match(
+            match_id,
+            operator.id,
+            canonical_product_id=body.canonical_product_id,
+            canonical_variant_id=body.canonical_variant_id,
+            reason=body.reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    if match is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "not_found")
+    await session.commit()
+    return MatchResponse.model_validate(match, from_attributes=True)
+
+
+@router.get(
+    "/external-products/{external_product_id}/price-history",
+    response_model=list[ObservationResponse],
+)
+async def price_history(
+    external_product_id: UUID,
+    session: SessionDep,
+    operator: CurrentOperator,
+    limit: int = Query(default=100, ge=1, le=200),
+) -> list[ObservationResponse]:
+    del operator
+    if await session.get(ExternalProduct, external_product_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "not_found")
+    history = await PriceIntelligenceService(session).get_product_price_history(
+        external_product_id, limit
+    )
+    return [ObservationResponse.model_validate(obs, from_attributes=True) for obs in history]

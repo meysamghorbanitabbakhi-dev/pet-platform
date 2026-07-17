@@ -10,6 +10,7 @@ from app.core.logging import configure_logging
 from app.core.redis import close_redis, get_redis
 from app.db.session import SessionFactory, close_database
 from app.integrations.otp.factory import OtpProviderNotConfiguredError, build_otp_provider
+from app.integrations.price_intelligence.scheduler import run_price_intelligence_collection
 from app.modules.notifications.service import deliver_pending_sms
 from app.modules.pet_knowledge.jobs import process_knowledge_review_lifecycle
 from app.modules.wallet.jobs import process_overdue_orders
@@ -45,6 +46,7 @@ async def run() -> None:
     scheduler = Scheduler()
     if settings.late_credit_enabled:
         scheduler.register(lambda: _run_overdue_credit_job())
+    scheduler.register(lambda: _run_price_intelligence_job())
     scheduler.register(lambda: _run_pending_sms_job())
     scheduler.register(lambda: _run_knowledge_review_job())
     redis = get_redis()
@@ -104,6 +106,12 @@ async def _run_knowledge_review_job() -> None:
     counts = await process_knowledge_review_lifecycle(SessionFactory)
     if any(counts.values()):
         logger.info("processed knowledge review lifecycle: %s", counts)
+
+
+async def _run_price_intelligence_job() -> None:
+    result = await run_price_intelligence_collection()
+    if result.get("status") not in {"disabled", "policy_blocked"}:
+        logger.info("price intelligence collection result: %s", result)
 
 
 def utc_heartbeat() -> str:

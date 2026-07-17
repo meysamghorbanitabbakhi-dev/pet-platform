@@ -1,78 +1,53 @@
-"""Price intelligence service layer.
-
-Business logic for external product ingestion, matching, and price observations.
-Keeps all operations idempotent and auditable. Never mutates canonical catalog.
-"""
+"""Canonical price-intelligence service."""
 
 from __future__ import annotations
 
 import hashlib
 import json
-import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.time import utc_now
-from app.core.config import get_settings
 from app.integrations.price_intelligence.matcher import (
     CandidateMatch,
     MatchMethod,
-    MatchReason,
     MatchResult,
     run_matching_pipeline,
 )
+from app.integrations.price_intelligence.petmall_am_parser import ParsedExternalProduct
 from app.modules.catalog.models import Offer, Product
 from app.modules.price_intelligence.models import (
+    ExchangeRateSnapshot,
     ExternalCollectionRun,
     ExternalPriceObservation,
     ExternalPriceSource,
     ExternalProduct,
     ExternalProductMatch,
+    ExternalProductMatchReview,
     ExternalSeller,
 )
 
-logger = logging.getLogger(__name__)
 
-
-@dataclass(slots=True)
-class IngestProductResult:
-    """Result of ingesting a single external product."""
-
-    external_product_id: UUID
-    created: bool
-    updated: bool
-    match_result: MatchResult | None = None
-    observation_id: UUID | None = None
-
-
-@dataclass(slots=True)
-class IngestRunResult:
-    """Aggregate result of a full collection run."""
-
-    run_id: UUID
-    products_seen: int = 0
-    products_created: int = 0
-    products_updated: int = 0
-    prices_inserted: int = 0
-    warnings: list[str] = field(default_factory=list)
-    errors: list[str] = field(default_factory=list)
+@dataclass(frozen=True, slots=True)
+class FxConversionResult:
+    amount_minor: int
+    source_currency: str
+    target_currency: str
+    rate: Decimal
+    provider: str
+    observed_at: datetime
+    policy_blocked: bool = False
 
 
 class PriceIntelligenceService:
-    """Stateless service for price intelligence operations."""
-
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
-        self._settings = get_settings()
-
-    # ------------------------------------------------------------------
-    # Source management
-    # ------------------------------------------------------------------
 
     async def get_or_create_source(
         self,
@@ -84,14 +59,12 @@ class PriceIntelligenceService:
         default_currency: str,
         source_type: str = "marketplace",
     ) -> ExternalPriceSource:
-        """Idempotently fetch or create an external price source."""
         result = await self._session.execute(
             select(ExternalPriceSource).where(ExternalPriceSource.code == code)
         )
         source = result.scalar_one_or_none()
-        if source is not None:
+        if source:
             return source
-
         source = ExternalPriceSource(
             id=uuid4(),
             code=code,
@@ -100,18 +73,11 @@ class PriceIntelligenceService:
             country_code=country_code,
             default_currency=default_currency,
             source_type=source_type,
-            collection_enabled=False,  # Feature-flagged, gated by default.
+            collection_enabled=False,
         )
         self._session.add(source)
         await self._session.flush()
-        logger.info("Created external price source code=%s", code)
         return source
-
-    async def get_source(self, code: str) -> ExternalPriceSource | None:
-        result = await self._session.execute(
-            select(ExternalPriceSource).where(ExternalPriceSource.code == code)
-        )
-        return result.scalar_one_or_none()
 
     async def update_source_policy(
         self,
@@ -124,12 +90,9 @@ class PriceIntelligenceService:
         terms_checked_at: datetime | None = None,
         terms_evidence_url: str | None = None,
     ) -> ExternalPriceSource | None:
-        """Update source policy fields (robots/terms/enabled)."""
         source = await self._session.get(ExternalPriceSource, source_id)
         if source is None:
             return None
-        if collection_enabled is not None:
-            source.collection_enabled = collection_enabled
         if robots_status is not None:
             source.robots_status = robots_status
         if robots_checked_at is not None:
@@ -140,12 +103,15 @@ class PriceIntelligenceService:
             source.terms_checked_at = terms_checked_at
         if terms_evidence_url is not None:
             source.terms_evidence_url = terms_evidence_url
+        if collection_enabled is not None:
+            if collection_enabled and not self.source_policy_allows_collection(source):
+                raise ValueError("source_policy_not_approved")
+            source.collection_enabled = collection_enabled
         await self._session.flush()
         return source
 
-    # ------------------------------------------------------------------
-    # Seller management
-    # ------------------------------------------------------------------
+    def source_policy_allows_collection(self, source: ExternalPriceSource) -> bool:
+        return source.robots_status == "allowed" and source.terms_status == "accepted"
 
     async def get_or_create_seller(
         self,
@@ -155,27 +121,18 @@ class PriceIntelligenceService:
         external_seller_id: str | None = None,
         seller_url: str | None = None,
     ) -> ExternalSeller:
-        """Idempotently ensure a seller exists for a source."""
-        now = utc_now()
-        # Lookup by external_seller_id first, then by seller_name
-        stmt = select(ExternalSeller).where(
-            and_(
-                ExternalSeller.source_id == source_id,
-                or_(
-                    ExternalSeller.external_seller_id == external_seller_id
-                    if external_seller_id
-                    else False,
-                    ExternalSeller.seller_name == seller_name,
-                ),
-            )
-        )
-        result = await self._session.execute(stmt)
+        conditions = [ExternalSeller.source_id == source_id]
+        if external_seller_id:
+            conditions.append(ExternalSeller.external_seller_id == external_seller_id)
+        else:
+            conditions.append(ExternalSeller.seller_name == seller_name)
+        result = await self._session.execute(select(ExternalSeller).where(and_(*conditions)))
         seller = result.scalar_one_or_none()
-        if seller is not None:
+        now = utc_now()
+        if seller:
             seller.last_seen_at = now
             await self._session.flush()
             return seller
-
         seller = ExternalSeller(
             id=uuid4(),
             source_id=source_id,
@@ -187,12 +144,7 @@ class PriceIntelligenceService:
         )
         self._session.add(seller)
         await self._session.flush()
-        logger.info("Created external seller seller_name=%s source_id=%s", seller_name, source_id)
         return seller
-
-    # ------------------------------------------------------------------
-    # External product management (upsert)
-    # ------------------------------------------------------------------
 
     async def upsert_external_product(
         self,
@@ -214,23 +166,17 @@ class PriceIntelligenceService:
         raw_pack_text: str | None = None,
         availability: str = "unknown",
         seller_id: UUID | None = None,
-        raw_payload_json: dict[str, Any] | None = None,
+        raw_payload_json: dict[str, object] | None = None,
     ) -> tuple[ExternalProduct, bool]:
-        """
-        Upsert an external product. Returns (product, created).
-        Idempotent by (source_id, external_product_id).
-        """
-        now = utc_now()
         result = await self._session.execute(
             select(ExternalProduct).where(
-                and_(
-                    ExternalProduct.source_id == source_id,
-                    ExternalProduct.external_product_id == external_product_id,
-                )
+                ExternalProduct.source_id == source_id,
+                ExternalProduct.external_product_id == external_product_id,
             )
         )
         product = result.scalar_one_or_none()
-
+        now = utc_now()
+        created = product is None
         if product is None:
             product = ExternalProduct(
                 id=uuid4(),
@@ -239,11 +185,6 @@ class PriceIntelligenceService:
                 first_seen_at=now,
             )
             self._session.add(product)
-            created = True
-        else:
-            created = False
-
-        # Always update volatile fields
         product.source_url = source_url
         product.source_title = source_title
         product.brand_name = brand_name
@@ -260,29 +201,65 @@ class PriceIntelligenceService:
         product.availability = availability
         product.seller_id = seller_id
         product.last_seen_at = now
-        if raw_payload_json is not None:
-            product.raw_payload_json = raw_payload_json
-
+        product.raw_payload_json = raw_payload_json
         await self._session.flush()
         return product, created
 
-    # ------------------------------------------------------------------
-    # Match management
-    # ------------------------------------------------------------------
+    async def ingest_parsed_product(
+        self,
+        source: ExternalPriceSource,
+        parsed: ParsedExternalProduct,
+        *,
+        collection_run_id: UUID | None,
+    ) -> tuple[ExternalProduct, ExternalPriceObservation | None]:
+        seller = await self.get_or_create_seller(
+            source.id,
+            seller_name=parsed.seller_name or source.name,
+        )
+        product, _created = await self.upsert_external_product(
+            source.id,
+            parsed.external_product_id,
+            source_url=parsed.url,
+            source_title=parsed.title,
+            brand_name=parsed.brand,
+            declared_pack_count=parsed.packaging.pack_count,
+            declared_unit_weight_g=parsed.packaging.unit_weight_g,
+            declared_total_weight_g=parsed.packaging.total_weight_g,
+            raw_pack_text=parsed.packaging.raw_text,
+            availability=parsed.availability,
+            seller_id=seller.id,
+            raw_payload_json=parsed.raw_data,
+        )
+        observation = await self.insert_observation(
+            product.id,
+            seller_id=seller.id,
+            currency=parsed.price.currency,
+            currency_exponent=parsed.price.currency_exponent,
+            price_minor=parsed.price.amount_minor,
+            compare_at_price_minor=None,
+            pack_count=parsed.packaging.pack_count,
+            unit_weight_g=parsed.packaging.unit_weight_g,
+            total_weight_g=parsed.packaging.total_weight_g,
+            availability=parsed.availability,
+            observed_at=parsed.collected_at,
+            collection_run_id=collection_run_id,
+            raw_price_text=parsed.price.raw_text,
+        )
+        await self.run_match_for_product(product, external_sku=parsed.sku)
+        return product, observation
 
     async def run_match_for_product(
         self,
         external_product: ExternalProduct,
+        *,
+        external_sku: str | None = None,
     ) -> MatchResult:
-        """
-        Run the multi-tier matching pipeline against canonical catalog.
-        Creates/updates an ExternalProductMatch row with full reasoning.
-        """
-        # Build candidate from external product
         candidate = CandidateMatch(
             external_product_id=external_product.id,
             external_source_id=external_product.source_id,
             brand_name=external_product.brand_name,
+            source_title=external_product.source_title,
+            external_sku=external_sku,
             species=external_product.species,
             food_type=external_product.food_type,
             life_stage=external_product.life_stage,
@@ -292,112 +269,35 @@ class PriceIntelligenceService:
             declared_pack_count=external_product.declared_pack_count,
             declared_unit_weight_g=external_product.declared_unit_weight_g,
             declared_total_weight_g=external_product.declared_total_weight_g,
-            source_title=external_product.source_title,
         )
-
-        # Fetch canonical catalog items to match against
-        canon_query = select(Product).where(Product.status == "active")
-        canon_result = await self._session.execute(canon_query)
-        canon_products = list(canon_result.scalars().all())
-
-        # Run pipeline (deterministic, no side effects)
-        match_result = run_matching_pipeline(candidate, canon_products)
-
-        # Upsert match row
-        match_query = select(ExternalProductMatch).where(
-            ExternalProductMatch.external_product_id == external_product.id
+        products = list(
+            (
+                await self._session.execute(select(Product).where(Product.status == "active"))
+            ).scalars()
         )
-        existing = (await self._session.execute(match_query)).scalar_one_or_none()
-
-        if existing is not None:
-            existing.canonical_product_id = match_result.canonical_product_id
-            existing.canonical_variant_id = match_result.canonical_variant_id
-            existing.canonical_ean = match_result.canonical_ean
-            existing.match_method = match_result.method.value
-            existing.match_confidence = match_result.confidence
-            existing.match_status = match_result.status
-            existing.match_reasons_json = {
-                "reasons": [r.value for r in match_result.reasons],
-                "warnings": list(match_result.warnings),
-            }
-        else:
-            new_match = ExternalProductMatch(
-                id=uuid4(),
-                external_product_id=external_product.id,
-                canonical_product_id=match_result.canonical_product_id,
-                canonical_variant_id=match_result.canonical_variant_id,
-                canonical_ean=match_result.canonical_ean,
-                match_method=match_result.method.value,
-                match_confidence=match_result.confidence,
-                match_status=match_result.status,
-                match_reasons_json={
-                    "reasons": [r.value for r in match_result.reasons],
-                    "warnings": list(match_result.warnings),
-                },
+        result = run_matching_pipeline(candidate, products)
+        match = (
+            await self._session.execute(
+                select(ExternalProductMatch).where(
+                    ExternalProductMatch.external_product_id == external_product.id
+                )
             )
-            self._session.add(new_match)
-
-        await self._session.flush()
-        return match_result
-
-    async def approve_match(
-        self,
-        match_id: UUID,
-        reviewed_by: UUID,
-    ) -> ExternalProductMatch | None:
-        """Operator approves a match (idempotent)."""
-        match = await self._session.get(ExternalProductMatch, match_id)
+        ).scalar_one_or_none()
         if match is None:
-            return None
-        match.match_status = "approved"
-        match.reviewed_by = reviewed_by
-        match.reviewed_at = utc_now()
+            match = ExternalProductMatch(id=uuid4(), external_product_id=external_product.id)
+            self._session.add(match)
+        match.canonical_product_id = result.canonical_product_id
+        match.canonical_variant_id = result.canonical_variant_id
+        match.canonical_ean = result.canonical_ean
+        match.match_method = result.method.value
+        match.match_status = result.status
+        match.match_confidence = result.confidence
+        match.match_reasons_json = {
+            "reasons": [reason.value for reason in result.reasons],
+            "warnings": result.warnings,
+        }
         await self._session.flush()
-        logger.info("Approved match %s by operator %s", match_id, reviewed_by)
-        return match
-
-    async def reject_match(
-        self,
-        match_id: UUID,
-        reviewed_by: UUID,
-    ) -> ExternalProductMatch | None:
-        """Operator rejects a match (idempotent)."""
-        match = await self._session.get(ExternalProductMatch, match_id)
-        if match is None:
-            return None
-        match.match_status = "rejected"
-        match.reviewed_by = reviewed_by
-        match.reviewed_at = utc_now()
-        await self._session.flush()
-        logger.info("Rejected match %s by operator %s", match_id, reviewed_by)
-        return match
-
-    async def remap_match(
-        self,
-        match_id: UUID,
-        reviewed_by: UUID,
-        *,
-        canonical_product_id: UUID,
-        canonical_variant_id: UUID | None = None,
-    ) -> ExternalProductMatch | None:
-        """Operator manually remaps a match to a different canonical product."""
-        match = await self._session.get(ExternalProductMatch, match_id)
-        if match is None:
-            return None
-        match.canonical_product_id = canonical_product_id
-        match.canonical_variant_id = canonical_variant_id
-        match.match_method = "manual"
-        match.match_status = "approved"
-        match.match_confidence = 1.0
-        match.reviewed_by = reviewed_by
-        match.reviewed_at = utc_now()
-        await self._session.flush()
-        logger.info("Remapped match %s to product %s by operator %s", match_id, canonical_product_id, reviewed_by)
-        return match
-
-    # ------------------------------------------------------------------
-    # Price observations (immutable append-only)
-    # ------------------------------------------------------------------
+        return result
 
     async def insert_observation(
         self,
@@ -405,95 +305,175 @@ class PriceIntelligenceService:
         *,
         seller_id: UUID | None,
         currency: str,
+        currency_exponent: int,
         price_minor: int,
-        compare_at_price_minor: int | None,
-        pack_count: int | None,
-        unit_weight_g: int | None,
-        total_weight_g: int | None,
+        compare_at_price_minor: int | None = None,
+        pack_count: int | None = None,
+        unit_weight_g: int | None = None,
+        total_weight_g: int | None = None,
         availability: str,
         observed_at: datetime,
-        collection_run_id: UUID | None,
-        raw_price_text: str | None,
+        collection_run_id: UUID | None = None,
+        raw_price_text: str | None = None,
     ) -> ExternalPriceObservation | None:
-        """
-        Insert a single price observation. Deduplicates by content_hash.
-        Never overwrites historical observations; returns None if duplicate.
-        """
-        # Build content hash from the core pricing payload
-        content_payload = {
+        if price_minor <= 0:
+            raise ValueError("price_minor_must_be_positive")
+        payload = {
+            "currency": currency,
+            "currency_exponent": currency_exponent,
             "price_minor": price_minor,
             "compare_at_price_minor": compare_at_price_minor,
+            "availability": availability,
             "pack_count": pack_count,
             "unit_weight_g": unit_weight_g,
             "total_weight_g": total_weight_g,
-            "availability": availability,
-            "currency": currency,
+            "raw_price_text": raw_price_text,
         }
-        content_hash = hashlib.sha256(json.dumps(content_payload, sort_keys=True).encode()).hexdigest()
-
-        # Check for exact dedup (same product + seller + observed_at)
-        existing = await self._session.execute(
-            select(ExternalPriceObservation).where(
-                and_(
-                    ExternalPriceObservation.external_product_id == external_product_id,
-                    ExternalPriceObservation.seller_id == seller_id,
-                    ExternalPriceObservation.observed_at == observed_at,
+        content_hash = hashlib.sha256(
+            json.dumps(payload, sort_keys=True, default=str).encode()
+        ).hexdigest()
+        seller_part = str(seller_id) if seller_id else "no-seller"
+        ingestion_key = hashlib.sha256(
+            f"{external_product_id}:{seller_part}:{observed_at.isoformat()}:{content_hash}".encode()
+        ).hexdigest()
+        existing = (
+            await self._session.execute(
+                select(ExternalPriceObservation).where(
+                    ExternalPriceObservation.ingestion_key == ingestion_key
                 )
             )
-        )
-        if existing.scalar_one_or_none() is not None:
-            return None  # Idempotent: already recorded.
-
-        # Derive unit_price_per_kg_minor only from reliable weights
-        unit_price_per_kg_minor: int | None = None
-        if total_weight_g and total_weight_g > 0 and price_minor and price_minor > 0:
-            unit_price_per_kg_minor = (price_minor * 1000) // total_weight_g
-
-        obs = ExternalPriceObservation(
+        ).scalar_one_or_none()
+        if existing:
+            return existing
+        unit_price = (price_minor * 1000) // total_weight_g if total_weight_g else None
+        observation = ExternalPriceObservation(
             id=uuid4(),
             external_product_id=external_product_id,
             seller_id=seller_id,
             currency=currency,
+            currency_exponent=currency_exponent,
             price_minor=price_minor,
             compare_at_price_minor=compare_at_price_minor,
             pack_count=pack_count,
             unit_weight_g=unit_weight_g,
             total_weight_g=total_weight_g,
-            unit_price_per_kg_minor=unit_price_per_kg_minor,
+            unit_price_per_kg_minor=unit_price,
             availability=availability,
             observed_at=observed_at,
             collection_run_id=collection_run_id,
             content_hash=content_hash,
+            ingestion_key=ingestion_key,
             raw_price_text=raw_price_text,
         )
-        self._session.add(obs)
-        await self._session.flush()
-        return obs
+        self._session.add(observation)
+        try:
+            await self._session.flush()
+        except IntegrityError:
+            await self._session.rollback()
+            return (
+                await self._session.execute(
+                    select(ExternalPriceObservation).where(
+                        ExternalPriceObservation.ingestion_key == ingestion_key
+                    )
+                )
+            ).scalar_one()
+        return observation
 
-    # ------------------------------------------------------------------
-    # Collection runs
-    # ------------------------------------------------------------------
+    async def approve_match(
+        self,
+        match_id: UUID,
+        reviewed_by: UUID,
+        *,
+        reason: str,
+    ) -> ExternalProductMatch | None:
+        return await self._review_match(match_id, reviewed_by, "approved", reason=reason)
+
+    async def reject_match(
+        self,
+        match_id: UUID,
+        reviewed_by: UUID,
+        *,
+        reason: str,
+    ) -> ExternalProductMatch | None:
+        return await self._review_match(match_id, reviewed_by, "rejected", reason=reason)
+
+    async def remap_match(
+        self,
+        match_id: UUID,
+        reviewed_by: UUID,
+        *,
+        canonical_product_id: UUID,
+        canonical_variant_id: UUID | None,
+        reason: str,
+    ) -> ExternalProductMatch | None:
+        if await self._session.get(Product, canonical_product_id) is None:
+            raise ValueError("canonical_product_not_found")
+        if (
+            canonical_variant_id is not None
+            and await self._session.get(Offer, canonical_variant_id) is None
+        ):
+            raise ValueError("canonical_offer_not_found")
+        return await self._review_match(
+            match_id,
+            reviewed_by,
+            "remapped",
+            reason=reason,
+            canonical_product_id=canonical_product_id,
+            canonical_variant_id=canonical_variant_id,
+        )
+
+    async def _review_match(
+        self,
+        match_id: UUID,
+        reviewed_by: UUID,
+        decision: str,
+        *,
+        reason: str,
+        canonical_product_id: UUID | None = None,
+        canonical_variant_id: UUID | None = None,
+    ) -> ExternalProductMatch | None:
+        match = await self._session.get(ExternalProductMatch, match_id)
+        if match is None:
+            return None
+        previous_status = match.match_status
+        previous_product = str(match.canonical_product_id) if match.canonical_product_id else None
+        if decision == "remapped":
+            match.canonical_product_id = canonical_product_id
+            match.canonical_variant_id = canonical_variant_id
+            match.match_method = MatchMethod.MANUAL.value
+            match.match_confidence = 1.0
+            match.match_status = "approved"
+        else:
+            match.match_status = decision
+        match.reviewed_by = reviewed_by
+        match.reviewed_at = utc_now()
+        self._session.add(
+            ExternalProductMatchReview(
+                id=uuid4(),
+                match_id=match.id,
+                operator_id=reviewed_by,
+                decision=decision,
+                previous_status=previous_status,
+                previous_canonical_product_id=previous_product,
+                new_canonical_product_id=str(match.canonical_product_id)
+                if match.canonical_product_id
+                else None,
+                reason=reason,
+                decided_at=utc_now(),
+            )
+        )
+        await self._session.flush()
+        return match
 
     async def create_collection_run(
-        self,
-        source_id: UUID,
-        *,
-        pages_requested: int | None = None,
+        self, source_id: UUID, *, pages_requested: int | None = None
     ) -> ExternalCollectionRun:
-        """Start a new collection run."""
         run = ExternalCollectionRun(
             id=uuid4(),
             source_id=source_id,
             started_at=utc_now(),
             status="running",
             pages_requested=pages_requested,
-            pages_succeeded=0,
-            products_seen=0,
-            products_created=0,
-            products_updated=0,
-            prices_inserted=0,
-            warnings_count=0,
-            errors_count=0,
         )
         self._session.add(run)
         await self._session.flush()
@@ -503,7 +483,7 @@ class PriceIntelligenceService:
         self,
         run_id: UUID,
         *,
-        status: str = "completed",
+        status: str,
         products_seen: int = 0,
         products_created: int = 0,
         products_updated: int = 0,
@@ -511,110 +491,125 @@ class PriceIntelligenceService:
         pages_succeeded: int = 0,
         warnings_count: int = 0,
         errors_count: int = 0,
-        error_summary_json: dict[str, Any] | None = None,
+        error_summary_json: dict[str, object] | None = None,
     ) -> ExternalCollectionRun | None:
-        """Finalize a collection run."""
         run = await self._session.get(ExternalCollectionRun, run_id)
         if run is None:
             return None
         run.status = status
         run.completed_at = utc_now()
-        run.products_seen = products_seen
-        run.products_created = products_created
-        run.products_updated = products_updated
-        run.prices_inserted = prices_inserted
-        run.pages_succeeded = pages_succeeded
-        run.warnings_count = warnings_count
-        run.errors_count = errors_count
+        run.products_seen = max(0, products_seen)
+        run.products_created = max(0, products_created)
+        run.products_updated = max(0, products_updated)
+        run.prices_inserted = max(0, prices_inserted)
+        run.pages_succeeded = max(0, pages_succeeded)
+        run.warnings_count = max(0, warnings_count)
+        run.errors_count = max(0, errors_count)
         run.error_summary_json = error_summary_json
         await self._session.flush()
         return run
 
-    # ------------------------------------------------------------------
-    # Query helpers
-    # ------------------------------------------------------------------
-
     async def list_pending_matches(self, limit: int = 50) -> list[ExternalProductMatch]:
-        stmt = (
+        result = await self._session.execute(
             select(ExternalProductMatch)
-            .where(
-                ExternalProductMatch.match_status.in_(("suggested", "needs_review"))
-            )
+            .where(ExternalProductMatch.match_status.in_(("suggested", "needs_review")))
             .order_by(ExternalProductMatch.match_confidence.desc())
-            .limit(limit)
+            .limit(min(limit, 100))
         )
-        result = await self._session.execute(stmt)
-        return list(result.scalars().all())
+        return list(result.scalars())
 
     async def get_product_price_history(
-        self,
-        external_product_id: UUID,
-        limit: int = 100,
+        self, external_product_id: UUID, limit: int = 100
     ) -> list[ExternalPriceObservation]:
-        stmt = (
+        result = await self._session.execute(
             select(ExternalPriceObservation)
             .where(ExternalPriceObservation.external_product_id == external_product_id)
             .order_by(ExternalPriceObservation.observed_at.desc())
-            .limit(limit)
+            .limit(min(limit, 200))
         )
-        result = await self._session.execute(stmt)
-        return list(result.scalars().all())
+        return list(result.scalars())
 
     async def get_canonical_product_market_prices(
-        self,
-        canonical_product_id: UUID,
-        limit: int = 20,
-    ) -> list[dict[str, Any]]:
-        """Latest approved prices for all external products mapped to a canonical product."""
-        stmt = (
+        self, canonical_product_id: UUID, limit: int = 20
+    ) -> list[dict[str, object]]:
+        latest = (
             select(
-                ExternalProductMatch,
-                ExternalProduct,
+                ExternalPriceObservation.external_product_id.label("external_product_id"),
                 func.max(ExternalPriceObservation.observed_at).label("latest_observed_at"),
             )
+            .group_by(ExternalPriceObservation.external_product_id)
+            .subquery()
+        )
+        result = await self._session.execute(
+            select(ExternalProductMatch, ExternalProduct, ExternalPriceObservation)
+            .join(ExternalProduct, ExternalProduct.id == ExternalProductMatch.external_product_id)
+            .join(latest, latest.c.external_product_id == ExternalProduct.id)
             .join(
-                ExternalProduct,
-                ExternalProduct.id == ExternalProductMatch.external_product_id,
-            )
-            .outerjoin(
                 ExternalPriceObservation,
-                ExternalPriceObservation.external_product_id == ExternalProduct.id,
+                and_(
+                    ExternalPriceObservation.external_product_id == ExternalProduct.id,
+                    ExternalPriceObservation.observed_at == latest.c.latest_observed_at,
+                ),
             )
             .where(
-                and_(
-                    ExternalProductMatch.canonical_product_id == canonical_product_id,
-                    ExternalProductMatch.match_status == "approved",
-                )
+                ExternalProductMatch.canonical_product_id == canonical_product_id,
+                ExternalProductMatch.match_status == "approved",
             )
-            .group_by(ExternalProductMatch.id, ExternalProduct.id)
-            .order_by(func.max(ExternalPriceObservation.observed_at).desc())
-            .limit(limit)
+            .order_by(ExternalPriceObservation.observed_at.desc())
+            .limit(min(limit, 100))
         )
-        result = await self._session.execute(stmt)
-        rows = result.all()
-        out: list[dict[str, Any]] = []
-        for match_row, product_row, latest_ts in rows:
-            out.append(
-                {
-                    "match_id": match_row.id,
-                    "external_product_id": product_row.id,
-                    "external_product_title": product_row.source_title,
-                    "source_url": product_row.source_url,
-                    "latest_observed_at": latest_ts,
-                    "match_method": match_row.match_method,
-                    "match_confidence": match_row.match_confidence,
-                }
-            )
-        return out
+        return [
+            {
+                "match_id": match.id,
+                "external_product_id": product.id,
+                "external_product_title": product.source_title,
+                "source_url": product.source_url,
+                "price_minor": observation.price_minor,
+                "currency": observation.currency,
+                "availability": observation.availability,
+                "latest_observed_at": observation.observed_at,
+                "match_method": match.match_method,
+                "match_confidence": match.match_confidence,
+            }
+            for match, product, observation in result.all()
+        ]
 
     async def list_collection_runs(
         self, source_id: UUID | None = None, limit: int = 20
     ) -> list[ExternalCollectionRun]:
-        stmt = select(ExternalCollectionRun).order_by(
-            ExternalCollectionRun.started_at.desc()
-        )
-        if source_id is not None:
+        stmt = select(ExternalCollectionRun).order_by(ExternalCollectionRun.started_at.desc())
+        if source_id:
             stmt = stmt.where(ExternalCollectionRun.source_id == source_id)
-        stmt = stmt.limit(limit)
-        result = await self._session.execute(stmt)
-        return list(result.scalars().all())
+        result = await self._session.execute(stmt.limit(min(limit, 100)))
+        return list(result.scalars())
+
+    async def convert_with_fx(
+        self,
+        *,
+        amount_minor: int,
+        source_currency: str,
+        target_currency: str,
+    ) -> FxConversionResult | None:
+        snapshot = (
+            await self._session.execute(
+                select(ExchangeRateSnapshot)
+                .where(
+                    ExchangeRateSnapshot.base_currency == source_currency,
+                    ExchangeRateSnapshot.quote_currency == target_currency,
+                )
+                .order_by(ExchangeRateSnapshot.observed_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if snapshot is None:
+            return None
+        amount = (Decimal(amount_minor) * snapshot.rate).quantize(Decimal("1"), ROUND_HALF_UP)
+        return FxConversionResult(
+            amount_minor=int(amount),
+            source_currency=source_currency,
+            target_currency=target_currency,
+            rate=snapshot.rate,
+            provider=snapshot.provider,
+            observed_at=snapshot.observed_at,
+            policy_blocked=True,
+        )

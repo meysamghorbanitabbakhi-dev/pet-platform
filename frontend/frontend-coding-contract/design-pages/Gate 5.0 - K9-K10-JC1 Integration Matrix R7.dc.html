@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="./gate5.2c-screen-data.v3.1.js"></script>
+<style>body{margin:0;background:oklch(0.985 0.004 80);}*{box-sizing:border-box;}</style>
+</helmet>
+<div style="font-family:'IBM Plex Sans',system-ui,sans-serif;color:oklch(0.2 0.01 265);max-width:1500px;margin:0 auto;padding:40px 32px 100px;">
+  <div style="border:1.5px solid oklch(0.6 0.14 145);background:oklch(0.96 0.03 145);border-radius:10px;padding:14px 18px;margin-bottom:22px;">
+    <div style="font-weight:700;font-size:13px;color:oklch(0.3 0.1 145);">✓ Reconciled against verified openapi.json</div>
+    <div style="font-size:12.5px;color:oklch(0.3 0.08 145);margin-top:4px;">SHA-256 01fd47b7502efcee57f27f2cdc89fa646decac5ac5495e108ce56194a9fcaaa2 · 133 operations · 27 PolicyResponse fields · Alembic head 20260716_0023 · care_journey_delivery_enabled=true. Journey discovery moved to GET /api/v1/pet-life/pets/{pet_id}/journey-offers. All four previously-untyped structures (JourneyDefinitionResponse.content, JourneyDetailResponse.steps[], JourneyCheckInBody, ReorderAssessmentResponse.options) are now typed and rendered — no more generic CONTRACT BLOCKED shells.</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;border-bottom:2px solid oklch(0.2 0.01 265);padding-bottom:20px;margin-bottom:24px;flex-wrap:wrap;">
+    <div>
+      <div style="font-family:'IBM Plex Mono';font-size:11px;letter-spacing:0.08em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;margin-bottom:6px;">Gate 5.2C-R3</div>
+      <h1 style="font-size:26px;font-weight:700;margin:0 0 6px;">K9–K10/JC1 Integration Matrix R7</h1>
+    </div>
+    <div style="font-family:'IBM Plex Mono';font-size:11px;color:oklch(0.45 0.01 265);text-align:right;line-height:1.9;white-space:nowrap;">
+      <div>Revision {{ revision }}</div>
+      <div>{{ totalScreens }} screens · {{ totalScreens }} matrix rows (1:1)</div>
+      <div>Audit: {{ auditSummary }}</div>
+    </div>
+  </div>
+  <section style="margin-bottom:22px;">
+    <h2 style="font-size:14px;font-weight:700;">Genuine residual gaps (only 3 remain)</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;">
+      <sc-for list="{{ residual }}" as="r" hint-placeholder-count="3">
+        <div style="border:1px solid oklch(0.85 0.01 80);border-radius:8px;padding:10px 12px;background:#fff;">
+          <div style="font-weight:700;font-size:12.5px;">{{ r.n }}. {{ r.title }}</div>
+          <div style="font-size:11.5px;color:oklch(0.45 0.01 265);line-height:1.6;">{{ r.detail }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+  <section>
+    <h2 style="font-size:15px;font-weight:700;margin:0 0 4px;">Screen matrix</h2>
+    <div style="font-size:13px;color:oklch(0.45 0.01 265);margin-bottom:14px;">{{ filteredCount }} of {{ totalScreens }} rows shown.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+      <input placeholder="Search…" value="{{ search }}" onInput="{{ onSearch }}" style="flex:1;min-width:220px;padding:9px 12px;border:1px solid oklch(0.8 0.01 80);border-radius:8px;font-size:13px;font-family:inherit;"/>
+      <select value="{{ flowFilter }}" onChange="{{ onFlowChange }}" style="padding:9px 12px;border:1px solid oklch(0.8 0.01 80);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;">
+        <sc-for list="{{ flowOptions }}" as="opt" hint-placeholder-count="8"><option value="{{ opt }}">{{ opt }}</option></sc-for>
+      </select>
+    </div>
+    <div style="border:1px solid oklch(0.85 0.01 80);border-radius:12px;overflow:auto;background:#fff;">
+      <table style="border-collapse:collapse;width:100%;min-width:1500px;font-size:12px;">
+        <thead><tr style="background:oklch(0.97 0.006 80);text-align:left;">
+          <th style="padding:10px 12px;position:sticky;top:0;background:oklch(0.97 0.006 80);border-bottom:1px solid oklch(0.85 0.01 80);white-space:nowrap;">Screen</th>
+          <th style="padding:10px 12px;position:sticky;top:0;background:oklch(0.97 0.006 80);border-bottom:1px solid oklch(0.85 0.01 80);white-space:nowrap;">Command</th>
+          <th style="padding:10px 12px;position:sticky;top:0;background:oklch(0.97 0.006 80);border-bottom:1px solid oklch(0.85 0.01 80);white-space:nowrap;">Full endpoint (exact params)</th>
+          <th style="padding:10px 12px;position:sticky;top:0;background:oklch(0.97 0.006 80);border-bottom:1px solid oklch(0.85 0.01 80);white-space:nowrap;">Disposition</th>
+        </tr></thead>
+        <tbody>
+          <sc-for list="{{ rows }}" as="row" hint-placeholder-count="20">
+            <tr style="border-bottom:1px solid oklch(0.92 0.005 80);vertical-align:top;">
+              <td style="padding:9px 12px;min-width:190px;"><div style="font-family:'IBM Plex Mono';font-size:10.5px;color:oklch(0.72 0.13 75);">{{ row.id }}</div><div style="font-weight:600;">{{ row.titleEn }}</div></td>
+              <td style="padding:9px 12px;font-family:'IBM Plex Mono';font-size:11px;min-width:140px;">{{ row.command }}</td>
+              <td style="padding:9px 12px;min-width:360px;color:oklch(0.35 0.01 265);font-size:11px;">{{ row.backendOp }}</td>
+              <td style="padding:9px 12px;white-space:nowrap;">{{ row.disposition }}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { search: '', flowFilter: 'All flows' };
+  componentDidMount() { if (!window.GATE52C_SCREENS) { const c = () => { if (window.GATE52C_SCREENS) this.forceUpdate(); else setTimeout(c, 30); }; c(); } }
+  renderVals() {
+    const screens = window.GATE52C_SCREENS || [];
+    const residual = window.GATE52C_RESIDUAL || [];
+    const search = this.state.search.toLowerCase();
+    const rows = screens.filter(s => {
+      if (this.state.flowFilter !== 'All flows' && s.flow !== this.state.flowFilter) return false;
+      if (search) { const hay = [s.id, s.titleEn, s.command, s.backendOp].join(' ').toLowerCase(); if (!hay.includes(search)) return false; }
+      return true;
+    });
+    const ids = screens.map(s => s.id); const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+    return {
+      revision: 'G5.2C-R3', totalScreens: screens.length, residual,
+      rows, filteredCount: rows.length,
+      search: this.state.search, onSearch: (e) => this.setState({ search: e.target.value }),
+      flowFilter: this.state.flowFilter, onFlowChange: (e) => this.setState({ flowFilter: e.target.value }),
+      flowOptions: ['All flows', ...Array.from(new Set(screens.map(s => s.flow)))],
+      auditSummary: dupes.length === 0 ? '0 issues' : dupes.length + ' dupes'
+    };
+  }
+}
+
+</script>
+</body>
+</html>
