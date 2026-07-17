@@ -91,12 +91,25 @@ export function FoodStatusCard({
 }
 
 export function NextEventCard({ today }: { today: TodayResponse }) {
+  const attention = today.primary_attention;
+  if (attention?.type === "active_journey") {
+    return (
+      <Link className="card stack" href={`/journeys/active/${attention.journey_id}`}>
+        <div className="eyebrow">رویداد بعدی</div>
+        <h2 className="title">یک مسیر مراقبتی فعال دارید</h2>
+        <p className="caption">
+          این بخش فقط وضعیت فعلی را نشان می‌دهد و کار روزانه اجباری ایجاد
+          نمی‌کند.
+        </p>
+      </Link>
+    );
+  }
   const label =
-    today.primary_attention?.type === "delivery_delayed"
+    attention?.type === "delivery_delayed"
       ? "تحویل با تاخیر ثبت شده است"
-      : today.primary_attention?.type === "delivery_overdue"
+      : attention?.type === "delivery_overdue"
         ? "تحویل از زمان تعهد گذشته است"
-        : today.primary_attention?.type === "sourcing_failed"
+        : attention?.type === "sourcing_failed"
           ? "تامین سفارش ناموفق شده است"
           : today.next_action === "confirm_opening"
             ? "تایید باز شدن بسته"

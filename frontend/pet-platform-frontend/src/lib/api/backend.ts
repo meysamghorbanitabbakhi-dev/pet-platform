@@ -20,6 +20,14 @@ import type {
   OtpRequestBody,
   OtpRequestResponse,
   InventoryListItem,
+  JourneyCheckInBody,
+  JourneyCheckInResponse,
+  JourneyCompleteBody,
+  JourneyCompletionResponse,
+  JourneyDefinitionResponse,
+  JourneyDetailResponse,
+  JourneyStartBody,
+  JourneyStopBody,
   OtpVerifyBody,
   OtpVerifyResponse,
   PaymentCallbackResponse,
@@ -344,6 +352,120 @@ export async function snoozeReorderBackend(
   return withAuthVoid((headers) =>
     backendClient.PUT("/api/v1/pet-life/inventory/{unit_id}/reorder-snooze", {
       params: { path: { unit_id: unitId } },
+      body,
+      headers,
+    }),
+  );
+}
+
+export async function getJourneyDefinitionBackend(
+  definitionId: string,
+): Promise<JourneyDefinitionResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getJourneyDefinition(definitionId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/journey-definitions/{definition_id}", {
+      params: { path: { definition_id: definitionId } },
+      headers,
+    }),
+  );
+}
+
+export async function startJourneyBackend(
+  petId: string,
+  body: JourneyStartBody,
+) {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.startJourney(petId, body);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/pet-life/pets/{pet_id}/journeys", {
+      params: { path: { pet_id: petId } },
+      body,
+      headers,
+    }),
+  );
+}
+
+export async function getJourneyBackend(
+  journeyId: string,
+): Promise<JourneyDetailResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getJourney(journeyId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/journeys/{journey_id}", {
+      params: { path: { journey_id: journeyId } },
+      headers,
+    }),
+  );
+}
+
+export async function submitCheckInBackend(
+  journeyId: string,
+  body: JourneyCheckInBody,
+  idempotencyKey: string,
+): Promise<JourneyCheckInResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.submitCheckIn(journeyId, body, idempotencyKey);
+  }
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/pet-life/journeys/{journey_id}/check-ins", {
+      params: {
+        header: { "Idempotency-Key": idempotencyKey },
+        path: { journey_id: journeyId },
+      },
+      body,
+      headers,
+    }),
+  );
+}
+
+export async function pauseJourneyBackend(journeyId: string): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.pauseJourney(journeyId);
+  return withAuthVoid((headers) =>
+    backendClient.POST("/api/v1/pet-life/journeys/{journey_id}/pause", {
+      params: { path: { journey_id: journeyId } },
+      headers,
+    }),
+  );
+}
+
+export async function resumeJourneyBackend(journeyId: string): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.resumeJourney(journeyId);
+  return withAuthVoid((headers) =>
+    backendClient.POST("/api/v1/pet-life/journeys/{journey_id}/resume", {
+      params: { path: { journey_id: journeyId } },
+      headers,
+    }),
+  );
+}
+
+export async function stopJourneyBackend(
+  journeyId: string,
+  body: JourneyStopBody,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.stopJourney(journeyId, body);
+  return withAuthVoid((headers) =>
+    backendClient.POST("/api/v1/pet-life/journeys/{journey_id}/stop", {
+      params: { path: { journey_id: journeyId } },
+      body,
+      headers,
+    }),
+  );
+}
+
+export async function completeJourneyBackend(
+  journeyId: string,
+  body: JourneyCompleteBody,
+): Promise<JourneyCompletionResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.completeJourney(journeyId, body);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/pet-life/journeys/{journey_id}/complete", {
+      params: { path: { journey_id: journeyId } },
       body,
       headers,
     }),

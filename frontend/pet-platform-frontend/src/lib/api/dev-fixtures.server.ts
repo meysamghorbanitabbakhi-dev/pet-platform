@@ -5,6 +5,10 @@ import type {
   AddressBody,
   CheckoutBody,
   HouseholdBody,
+  JourneyCheckInBody,
+  JourneyCompleteBody,
+  JourneyStartBody,
+  JourneyStopBody,
   OpenInventoryBody,
   OrderPetPlanBody,
   OtpVerifyBody,
@@ -81,6 +85,57 @@ export async function loadDevelopmentApi() {
       void _unitId;
       void _body;
       return undefined;
+    },
+    getJourneyDefinition: async (_definitionId: string) => {
+      void _definitionId;
+      return fixtures.journeyDefinitionFixture;
+    },
+    startJourney: async (_petId: string, _body: JourneyStartBody) => {
+      void _petId;
+      void _body;
+      return { id: fixtures.ids.journey };
+    },
+    getJourney: async (_journeyId: string) => {
+      void _journeyId;
+      return fixtures.journeyDetailFixture;
+    },
+    submitCheckIn: async (
+      journeyId: string,
+      body: JourneyCheckInBody,
+      _idempotencyKey: string,
+    ) => {
+      void _idempotencyKey;
+      return {
+        answer_key: body.answer_key,
+        check_in_key: body.check_in_key,
+        completed: false,
+        diary_entry_id: null,
+        garden_reward_id: null,
+        id: fixtures.ids.journey,
+        journey_id: journeyId,
+        submitted_at: "2026-07-17T09:00:00Z",
+      };
+    },
+    pauseJourney: async (_journeyId: string) => {
+      void _journeyId;
+      return undefined;
+    },
+    resumeJourney: async (_journeyId: string) => {
+      void _journeyId;
+      return undefined;
+    },
+    stopJourney: async (_journeyId: string, _body: JourneyStopBody) => {
+      void _journeyId;
+      void _body;
+      return undefined;
+    },
+    completeJourney: async (_journeyId: string, _body: JourneyCompleteBody) => {
+      void _journeyId;
+      void _body;
+      return {
+        diary_entry_id: fixtures.ids.journey,
+        garden_reward_id: fixtures.ids.journey,
+      };
     },
     getJourneyOffers: async (_petId: string) => {
       void _petId;

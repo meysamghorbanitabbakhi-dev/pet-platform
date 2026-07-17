@@ -9,7 +9,15 @@ import type {
   IdResponse,
   InventoryDetailResponse,
   InventoryListItem,
+  JourneyCheckInBody,
+  JourneyCheckInResponse,
+  JourneyCompleteBody,
+  JourneyCompletionResponse,
+  JourneyDefinitionResponse,
+  JourneyDetailResponse,
   JourneyOfferResponse,
+  JourneyStartBody,
+  JourneyStopBody,
   MeContextResponse,
   OfferDetailResponse,
   OpenInventoryBody,
@@ -178,6 +186,58 @@ export function snoozeReorder(unitId: string, body: ReorderSnoozeBody) {
     method: "PUT",
     body,
   });
+}
+
+export function getJourneyDefinition(definitionId: string) {
+  return bff<JourneyDefinitionResponse>(
+    `/api/bff/journey-definitions/${definitionId}`,
+  );
+}
+
+export function startJourney(petId: string, body: JourneyStartBody) {
+  return bff<IdResponse>(`/api/bff/pets/${petId}/journeys`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function getJourney(journeyId: string) {
+  return bff<JourneyDetailResponse>(`/api/bff/journeys/${journeyId}`);
+}
+
+export function submitCheckIn(
+  journeyId: string,
+  body: JourneyCheckInBody,
+  idempotencyKey: string,
+) {
+  return bff<JourneyCheckInResponse>(
+    `/api/bff/journeys/${journeyId}/check-ins`,
+    { method: "POST", body: { body, idempotencyKey } },
+  );
+}
+
+export function pauseJourney(journeyId: string) {
+  return bff<void>(`/api/bff/journeys/${journeyId}/pause`, { method: "POST" });
+}
+
+export function resumeJourney(journeyId: string) {
+  return bff<void>(`/api/bff/journeys/${journeyId}/resume`, {
+    method: "POST",
+  });
+}
+
+export function stopJourney(journeyId: string, body: JourneyStopBody) {
+  return bff<void>(`/api/bff/journeys/${journeyId}/stop`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function completeJourney(journeyId: string, body: JourneyCompleteBody) {
+  return bff<JourneyCompletionResponse>(
+    `/api/bff/journeys/${journeyId}/complete`,
+    { method: "POST", body },
+  );
 }
 
 export function getOfferDetail(offerId: string) {

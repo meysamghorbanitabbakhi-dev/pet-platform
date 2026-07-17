@@ -3,6 +3,8 @@ import type {
   FoodEstimateResponse,
   InventoryDetailResponse,
   InventoryListItem,
+  JourneyDefinitionResponse,
+  JourneyDetailResponse,
   JourneyOfferResponse,
   MeContextResponse,
   OfferDetailResponse,
@@ -425,6 +427,61 @@ export const reorderAssessmentFixture: ReorderAssessmentResponse = {
   risk_gap_days: null,
   safety_buffer_days: 3,
   snoozed_until: null,
+};
+
+export const journeyDefinitionFixture: JourneyDefinitionResponse = {
+  approved_at: "2026-06-01T00:00:00Z",
+  content: {
+    active_window: { active_from: null, active_until: null },
+    completion_requirements: { required_step_keys: ["week1", "week2"] },
+    duration_days: 28,
+    eligibility: { eligible_species: ["dog", "cat"] },
+    exception_behavior: {
+      behavior: "non_diagnostic",
+      message_fa:
+        "این مسیر جایگزین مراجعه به دامپزشک نیست و تشخیص یا درمان ارائه نمی‌دهد.",
+    },
+    garden_object_key: "watering_can",
+    professional_approval_ref: "vet-ref-001",
+    steps: [
+      {
+        allowed_answers: [
+          { key: "on_track", label_fa: "روند طبیعی است" },
+          { key: "concerned", label_fa: "نگران هستم" },
+        ],
+        body_fa: "وزن پت خود را این هفته بررسی و ثبت کنید.",
+        key: "week1",
+        title_fa: "هفته اول: بررسی وزن",
+      },
+      {
+        allowed_answers: [
+          { key: "on_track", label_fa: "روند طبیعی است" },
+          { key: "concerned", label_fa: "نگران هستم" },
+        ],
+        body_fa: "دوباره وزن پت را بررسی و مقایسه کنید.",
+        key: "week2",
+        title_fa: "هفته دوم: بررسی وزن",
+      },
+    ],
+  },
+  id: ids.journeyDefinition,
+  key: "weekly_weight_watch",
+  summary_fa: "مسیر تأییدشده برای پیگیری منظم، بدون تشخیص یا درمان در کلاینت.",
+  title_fa: "پایش هفتگی وزن",
+  version: 1,
+};
+
+export const journeyDetailFixture: JourneyDetailResponse = {
+  check_ins: [],
+  definition_id: ids.journeyDefinition,
+  definition_version: 1,
+  ended_at: null,
+  id: ids.journey,
+  pet_id: ids.petBishi,
+  started_at: "2026-07-10T00:00:00Z",
+  status: "active",
+  steps: journeyDefinitionFixture.content.steps,
+  title_fa: "پایش هفتگی وزن",
 };
 
 export const journeyOffersFixture: JourneyOfferResponse[] = [

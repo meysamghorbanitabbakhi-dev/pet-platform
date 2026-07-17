@@ -289,6 +289,11 @@ export function Sheet({
 
 function useFocusTrap(onClose: () => void) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     const previous = document.activeElement;
@@ -314,7 +319,7 @@ function useFocusTrap(onClose: () => void) {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -345,7 +350,11 @@ function useFocusTrap(onClose: () => void) {
       document.removeEventListener("keydown", onKeyDown);
       if (previous instanceof HTMLElement) previous.focus();
     };
-  }, [onClose]);
+    // Intentionally run once per mount: re-running on every onClose identity
+    // change (e.g. an inline arrow function re-created on parent re-render)
+    // would re-steal focus to the first focusable element on every keystroke
+    // inside the trap. onCloseRef always holds the latest callback.
+  }, []);
 
   return containerRef;
 }

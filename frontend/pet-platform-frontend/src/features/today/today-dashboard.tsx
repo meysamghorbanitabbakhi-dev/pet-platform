@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   Banner,
@@ -161,14 +162,14 @@ function HouseholdInventoryBoundary({ today }: { today: TodayResponse }) {
 
 function CareJourneyPreview({ offers }: { offers: JourneyOfferResponse[] }) {
   return (
-    <Card className="stack" data-testid="care-journeys">
+    <Link className="card stack" data-testid="care-journeys" href="/journeys">
       <div className="eyebrow">مسیر مراقبتی</div>
       <h2 className="title">{offers[0]?.title_fa}</h2>
       <p className="caption">
         فقط مسیرهایی نمایش داده می‌شوند که سرویس به عنوان فعال، تاییدشده و واجد
         شرایط برگردانده است.
       </p>
-    </Card>
+    </Link>
   );
 }
 
