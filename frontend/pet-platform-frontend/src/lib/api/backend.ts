@@ -30,6 +30,10 @@ import type {
   GardenStateResponse,
   InventoryListItem,
   JourneyCheckInBody,
+  NotificationPage,
+  PrivacyRequestBody,
+  PrivacyRequestResponse,
+  WalletSummaryResponse,
   JourneyCheckInResponse,
   JourneyCompleteBody,
   JourneyCompletionResponse,
@@ -618,6 +622,58 @@ export async function getCustomerRequestBackend(
       params: { path: { request_id: requestId } },
       headers,
     }),
+  );
+}
+
+export async function getWalletBackend(
+  householdId: string,
+): Promise<WalletSummaryResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getWallet(householdId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/households/{household_id}/wallet", {
+      params: { path: { household_id: householdId } },
+      headers,
+    }),
+  );
+}
+
+export async function listNotificationsBackend(): Promise<NotificationPage> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listNotifications();
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/notifications", { headers }),
+  );
+}
+
+export async function markNotificationReadBackend(
+  notificationId: string,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.markNotificationRead(notificationId);
+  return withAuthVoid((headers) =>
+    backendClient.POST("/api/v1/pet-life/notifications/{notification_id}/read", {
+      params: { path: { notification_id: notificationId } },
+      headers,
+    }),
+  );
+}
+
+export async function requestPrivacyActionBackend(
+  body: PrivacyRequestBody,
+): Promise<PrivacyRequestResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.requestPrivacyAction(body);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/privacy/requests", { body, headers }),
+  );
+}
+
+export async function exportMyDataBackend(): Promise<Record<string, unknown>> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.exportMyData();
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/privacy/export", { headers }),
   );
 }
 

@@ -36,6 +36,19 @@ these wait on backend ownership.
 
 ---
 
+## G5-ACC-16 — Customer-facing privacy-request status read-back
+
+- **user_goal**: Come back to the privacy/account screen later and see whether a previously submitted disable/anonymize request is still pending, in review, or has been actioned, instead of only ever seeing the one-time creation response.
+- **missing_operation**: `GET /api/v1/privacy/requests` (customer-scoped) or `GET /api/v1/privacy/requests/{request_id}`. Only `POST /api/v1/privacy/requests` (customer, returns `PrivacyRequestResponse{id, status}` once) and `GET /api/v1/operator/privacy/requests` + `POST /api/v1/operator/privacy/requests/{request_id}/disable` (operator-only) exist today.
+- **required_request_shape**: none (GET) or `request_id` path param for the single-request variant.
+- **required_response_shape**: `PrivacyRequestResponse` (already defined: `{ id: string, status: string }`) or a page of them — the shape already exists, it's just not exposed to the customer identity.
+- **authorization_scope**: customer identity scope, restricted to requests the caller's own identity created (must not enumerate other households' requests).
+- **idempotency_requirement**: none (read-only).
+- **policy_requirement**: none.
+- **recommended_backend_owner**: privacy module — the operator-facing list/detail already exists on the same underlying table; this is a thin customer-scoped read exposure of data the backend already tracks, not a new product decision. Until this exists, the frontend shows the immediate creation response only (`frontend/src/features/privacy/privacy-center.tsx`) and cannot show status after a page reload or on a later visit.
+
+---
+
 ## G5-AUTH-11 — OTP SMS delivery-failure state
 
 - **user_goal**: Know when an OTP code was requested successfully but the SMS provider (Payamak) failed to deliver it, so the user isn't left waiting on a code that will never arrive.

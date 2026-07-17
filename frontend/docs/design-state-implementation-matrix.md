@@ -14,9 +14,9 @@ Generated: 2026-07-17. Covers all 152 accepted design states from `gate5.2c-scre
 
 | status | count | meaning |
 |---|---|---|
-| IMPLEMENTED | 109 | Reachable through the real intended flow, backed by a real, non-fixture backend call, and the specific discriminated state is distinctly rendered. |
-| PARTIAL | 18 | Route/component/backend call exists, but the exact design-state distinction (a specific tone, a specific field, a specific sub-state) is not yet rendered — see notes per row. |
-| MISSING | 22 | No implementation reachable at all. In every one of these 152 states, the backend operation already exists (verified against `openapi.json`), so these are pure frontend build gaps, not backend blockers, unless noted otherwise. |
+| IMPLEMENTED | 115 | Reachable through the real intended flow, backed by a real, non-fixture backend call, and the specific discriminated state is distinctly rendered. |
+| PARTIAL | 19 | Route/component/backend call exists, but the exact design-state distinction (a specific tone, a specific field, a specific sub-state) is not yet rendered — see notes per row. |
+| MISSING | 15 | No implementation reachable at all. In every one of these 152 states, the backend operation already exists (verified against `openapi.json`), so these are pure frontend build gaps, not backend blockers, unless noted otherwise. |
 | BACKEND_BLOCKED | 3 | Backend does not expose a required read/response shape yet. See `frontend/docs/backend-contract-blockers.md`. |
 | POLICY_HIDDEN | 0 | Intentionally absent because a runtime policy flag disables the capability (fail-closed, correct). |
 | OBSOLETE_BY_CONTRACT | 0 | Superseded by a newer authoritative contract; none found in this pass. |
@@ -30,7 +30,7 @@ Generated: 2026-07-17. Covers all 152 accepted design states from `gate5.2c-scre
 | SHOP | 20 | 14 | 0 | 6 | 0 |
 | CHK | 18 | 14 | 4 | 0 | 0 |
 | ORD | 13 | 2 | 6 | 5 | 0 |
-| ACC | 16 | 3 | 1 | 10 | 2 |
+| ACC | 16 | 9 | 2 | 3 | 2 |
 | BRIDGE | 37 | 33 | 3 | 1 | 0 |
 | JOURNEY | 20 | 20 | 0 | 0 | 0 |
 | SUPPORT | 4 | 4 | 0 | 0 | 0 |
@@ -46,7 +46,7 @@ Journey completeness is derived from whether every state on that journey's `main
 | T10 | فروشگاه → سبد → آدرس → پرداخت → تأیید سفارش | G5-SHOP-01, G5-SHOP-04, G5-CHK-01, G5-CHK-05, G5-CHK-07, G5-CHK-10, G5-CHK-12, G5-CHK-18, G5-ORD-05 | END-TO-END WORKING |
 | T11 | بازگشت از پرداخت: لغو/ناموفق/نامشخص → تلاش مجدد | G5-CHK-11, G5-CHK-13, G5-CHK-16, G5-CHK-09 | DEGRADED (partial state on path) |
 | T12 | تاریخچه → جزئیات → تأمین → انقضا → حمل → تأخیر/تحویل | G5-ORD-01, G5-ORD-05, G5-ORD-07, G5-ORD-09, G5-ORD-10, G5-ORD-12 | BROKEN (missing state on path) |
-| T13 | حساب → اعلان‌ها → پیامک/سکوت → خروجی → غیرفعال‌سازی | G5-ACC-01, G5-ACC-10, G5-ACC-11, G5-ACC-06, G5-ACC-14, G5-ACC-15, G5-ACC-16 | BROKEN (missing state on path) |
+| T13 | حساب → اعلان‌ها → پیامک/سکوت → خروجی → غیرفعال‌سازی | G5-ACC-01, G5-ACC-10, G5-ACC-11, G5-ACC-06, G5-ACC-14, G5-ACC-15, G5-ACC-16 | DEGRADED (partial state on path) |
 | T14 | تحویل → واحد انبار → باز کردن → سهم دانسته/نادانسته → امروز | G5-ORD-12, G5-BRIDGE-14, G5-BRIDGE-07, G5-BRIDGE-08, G5-BRIDGE-01 | DEGRADED (partial state on path) |
 | T15 | امروز -> ارزیابی تجدید سفارش -> فروشگاه یا به‌خواب بردن | G5-BRIDGE-01, G5-BRIDGE-25, G5-SHOP-01 | END-TO-END WORKING |
 | T16 | محصول/سفارش/حساب -> درخواست پشتیبانی -> تأیید -> تاریخچه/جزئیات | G5-SUPPORT-01, G5-SUPPORT-02, G5-SUPPORT-03, G5-SUPPORT-04 | END-TO-END WORKING |
@@ -165,16 +165,16 @@ Journey completeness is derived from whether every state on that journey's `main
 | G5-ACC-04 | - | /account | inline state | design-contract | Card, Button | - | frontend navigation | MISSING | none | none | - | Depends on /account page (absent); no order-list page either. |
 | G5-ACC-05 | - | /account | inline state | design-contract | Card, Button | - | frontend navigation | MISSING | none | none | - | Nav entry depends on /account page (absent). |
 | G5-ACC-06 | T13 | /account/notifications/preferences | page | K9 openapi.json (confirmed no read endpoint) | Card, Button | push_notifications_enabled=false (SMS quiet-hours read-back has no GET contract) | PUT preferences/{event_key}/sms writes quiet_start_local/quiet_end_local; no GET in K9 openapi.json - launch-hidden/deferred, excluded from Account nav, never customer-renderable from guesses/localStorage | BACKEND_BLOCKED | none | none | See frontend/docs/backend-contract-blockers.md#g5-acc-06 | openapi.json has only PUT notifications/preferences/{event_key}/sms (write); no GET to read back current state. |
-| G5-ACC-07 | - | /account/wallet | page | openapi.json | Money, Card | late_credit_customer_visible=false (wallet has no late-credit field) | GET /api/v1/pet-life/households/{household_id}/wallet | MISSING | none | none | - | Backend GET households/{id}/wallet exists and is unused; no BFF route, client fn, or page. |
+| G5-ACC-07 | - | /account/wallet | page | openapi.json | Money, Card | late_credit_customer_visible=false (wallet has no late-credit field) | GET /api/v1/pet-life/households/{household_id}/wallet | IMPLEMENTED | src/features/account/account-overview.tsx; src/app/api/bff/households/[householdId]/wallet/route.ts | none | - | Wave 5: real balance-only wallet card wired to GET households/{id}/wallet; no ledger truth recalculated client-side. |
 | G5-ACC-08 | - | /account/privacy | inline state | design-contract | Card, Button | - | frontend navigation | MISSING | none | none | - | Nav entry depends on /account page (absent); no /account/privacy page. |
 | G5-ACC-09 | - | /account | sheet | openapi.json | Sheet, Button | - | POST /api/v1/auth/session/logout | IMPLEMENTED | src/features/account/account-overview.tsx; src/app/api/bff/auth/logout/route.ts | none | - | Wave 0: confirmation Sheet built, calls logout() then redirects to /auth/mobile. |
-| G5-ACC-10 | T13 | /account/notifications | page | openapi.json | StatusChip, EmptyState | push_notifications_enabled=false | GET /api/v1/pet-life/notifications · /feed | MISSING | none | none | - | Backend GET notifications and /feed both exist; no BFF route, client fn, or page. |
-| G5-ACC-11 | T13 | /account/notifications | inline state | openapi.json | StatusChip, EmptyState | push_notifications_enabled=false | POST /api/v1/pet-life/notifications/{notification_id}/read | MISSING | none | none | - | Backend POST notifications/{id}/read exists; depends on inbox (ACC-10) which isn't built. |
-| G5-ACC-12 | - | /account/notifications | empty state | openapi.json | StatusChip, EmptyState | push_notifications_enabled=false | GET /api/v1/pet-life/notifications | MISSING | none | none | - | Same root cause as ACC-10; no inbox implementation. |
+| G5-ACC-10 | T13 | /account/notifications | page | openapi.json | StatusChip, EmptyState | push_notifications_enabled=false | GET /api/v1/pet-life/notifications · /feed | IMPLEMENTED | src/app/notifications/page.tsx; src/features/notifications/notification-inbox.tsx; src/app/api/bff/notifications/route.ts | none | - | Wave 5: real inbox wired to GET .../notifications (offset list); push-disabled and quiet-hours-deferred banners shown per accepted qualifications. |
+| G5-ACC-11 | T13 | /account/notifications | inline state | openapi.json | StatusChip, EmptyState | push_notifications_enabled=false | POST /api/v1/pet-life/notifications/{notification_id}/read | IMPLEMENTED | src/features/notifications/notification-inbox.tsx; src/app/api/bff/notifications/[notificationId]/read/route.ts | none | - | Wave 5: real POST .../read call, invalidates the inbox query so the row flips to read. |
+| G5-ACC-12 | - | /account/notifications | empty state | openapi.json | StatusChip, EmptyState | push_notifications_enabled=false | GET /api/v1/pet-life/notifications | IMPLEMENTED | src/features/notifications/notification-inbox.tsx | none | - | Wave 5: real EmptyState "صندوق اعلان‌ها خالی است" when items=[]. |
 | G5-ACC-13 | - | /account/notifications | transition | design-contract | StatusChip, EmptyState | push_notifications_enabled=false | destination-route field unconfirmed | BACKEND_BLOCKED | none | none | See frontend/docs/backend-contract-blockers.md#g5-acc-13 | NotificationListItem schema has no destination/route field. |
-| G5-ACC-14 | T13 | /account/privacy | page | openapi.json | Card, Button | - | GET /api/v1/privacy/export | MISSING | none | none | - | Backend GET /api/v1/privacy/export exists and is unused. |
-| G5-ACC-15 | T13 | /account/privacy | sheet | openapi.json | Sheet, Button | - | POST /api/v1/privacy/requests → operator /operator/privacy/requests/{request_id}/disable | MISSING | none | none | - | Backend POST /api/v1/privacy/requests exists; no frontend/BFF implementation at all. |
-| G5-ACC-16 | T13 | /account/privacy | sheet | openapi.json | Sheet, Button | - | operator-executed, pending until disabled | MISSING | none | none | - | Depends entirely on ACC-15 flow (unimplemented). |
+| G5-ACC-14 | T13 | /account/privacy | page | openapi.json | Card, Button | - | GET /api/v1/privacy/export | IMPLEMENTED | src/app/privacy/page.tsx; src/features/privacy/privacy-center.tsx; src/app/api/bff/privacy/export/route.ts | none | - | Wave 5: real GET /api/v1/privacy/export triggers a browser download of the backend's own export payload. |
+| G5-ACC-15 | T13 | /account/privacy | sheet | openapi.json | Sheet, Button | - | POST /api/v1/privacy/requests → operator /operator/privacy/requests/{request_id}/disable | IMPLEMENTED | src/features/privacy/privacy-center.tsx; src/app/api/bff/privacy/requests/route.ts | none | - | Wave 5: separate disable/anonymize confirmation sheets, both requiring explicit confirm; real POST /api/v1/privacy/requests. |
+| G5-ACC-16 | T13 | /account/privacy | sheet | openapi.json | Sheet, Button | - | operator-executed, pending until disabled | PARTIAL | src/features/privacy/privacy-center.tsx | none | - | Wave 5: confirmation + immediate pending-status ack shown from the create response (id, status); no customer-facing GET exists to check status later after leaving the page - recorded in backend-contract-blockers.md. |
 
 ### Today, Inventory, Reorder, Garden (37 states)
 

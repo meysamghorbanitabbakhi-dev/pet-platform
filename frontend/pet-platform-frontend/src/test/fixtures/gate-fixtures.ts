@@ -6,6 +6,9 @@ import type {
   CustomerRequestResponse,
   DiaryEntryDetailResponse,
   DiaryListItem,
+  NotificationPage,
+  PrivacyRequestResponse,
+  WalletSummaryResponse,
   FoodEstimateResponse,
   GardenStateResponse,
   InventoryDetailResponse,
@@ -580,6 +583,34 @@ export const customerRequestFixture: CustomerRequestResponse = {
 export const customerRequestPageFixture: CustomerRequestPage = {
   items: [customerRequestFixture],
   page: { has_more: false, limit: 25, offset: 0, total: 1 },
+};
+
+export const walletFixture: WalletSummaryResponse = {
+  available_balance_irr: 0,
+};
+
+export const notificationPageFixture: NotificationPage = {
+  items: [
+    {
+      created_at: "2026-07-17T08:00:00Z",
+      event_key: "catalog.offer_available",
+      id: "cccc3333-cccc-4ccc-8ccc-ccccccccccc3",
+      payload: { offer_id: ids.offerUnavailable },
+      read_at: null,
+    },
+  ],
+  page: { has_more: false, limit: 25, offset: 0, total: 1 },
+};
+
+export const privacyRequestFixture: PrivacyRequestResponse = {
+  id: "dddd4444-dddd-4ddd-8ddd-ddddddddddd4",
+  status: "pending",
+};
+
+export const privacyExportFixture: Record<string, unknown> = {
+  generated_at: "2026-07-17T08:00:00Z",
+  households: [],
+  identity: { mobile_e164: "+989121234567" },
 };
 
 export const journeyOffersFixture: JourneyOfferResponse[] = [

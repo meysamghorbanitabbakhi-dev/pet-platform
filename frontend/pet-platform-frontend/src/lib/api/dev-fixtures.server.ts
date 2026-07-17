@@ -17,6 +17,7 @@ import type {
   PaymentRequestBody,
   PetBody,
   PetProfilePatch,
+  PrivacyRequestBody,
   ReorderSnoozeBody,
 } from "@/lib/api-types";
 
@@ -188,6 +189,20 @@ export async function loadDevelopmentApi() {
       void _requestId;
       return fixtures.customerRequestFixture;
     },
+    getWallet: async (_householdId: string) => {
+      void _householdId;
+      return fixtures.walletFixture;
+    },
+    listNotifications: async () => fixtures.notificationPageFixture,
+    markNotificationRead: async (_notificationId: string) => {
+      void _notificationId;
+      return undefined;
+    },
+    requestPrivacyAction: async (_body: PrivacyRequestBody) => {
+      void _body;
+      return fixtures.privacyRequestFixture;
+    },
+    exportMyData: async () => fixtures.privacyExportFixture,
     getJourneyOffers: async (_petId: string) => {
       void _petId;
       return fixtures.journeyOffersFixture;

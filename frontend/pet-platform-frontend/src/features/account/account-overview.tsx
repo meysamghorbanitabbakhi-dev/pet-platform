@@ -10,12 +10,14 @@ import {
   Button,
   Card,
   ErrorState,
+  Money,
   Sheet,
   Skeleton,
   StatusChip,
 } from "@/components/primitives";
 import {
   getMeContext,
+  getWallet,
   listAddresses,
   listHouseholdPets,
   logout,
@@ -52,6 +54,12 @@ export function AccountOverview() {
   const addressesQuery = useQuery({
     queryKey: ["households", householdId, "addresses"],
     queryFn: () => listAddresses(householdId as string),
+    enabled: Boolean(householdId),
+  });
+
+  const walletQuery = useQuery({
+    queryKey: ["households", householdId, "wallet"],
+    queryFn: () => getWallet(householdId as string),
     enabled: Boolean(householdId),
   });
 
@@ -193,10 +201,33 @@ export function AccountOverview() {
         </Card>
 
         <Card className="stack">
+          <h2 className="title">کیف پول</h2>
+          {walletQuery.isLoading ? <Skeleton /> : null}
+          {walletQuery.isError ? (
+            <Banner tone="error">موجودی کیف پول در دسترس نیست.</Banner>
+          ) : null}
+          {walletQuery.data ? (
+            <Money irr={walletQuery.data.available_balance_irr} />
+          ) : null}
+        </Card>
+
+        <Card className="stack">
           <h2 className="title">پشتیبانی</h2>
           <Link className="button button--secondary" href="/support">
             درخواست‌های پشتیبانی من
           </Link>
+        </Card>
+
+        <Card className="stack">
+          <h2 className="title">اعلان‌ها و حریم خصوصی</h2>
+          <div className="cluster">
+            <Link className="button button--secondary" href="/notifications">
+              اعلان‌ها
+            </Link>
+            <Link className="button button--secondary" href="/privacy">
+              حریم خصوصی
+            </Link>
+          </div>
         </Card>
 
         <Card className="stack">

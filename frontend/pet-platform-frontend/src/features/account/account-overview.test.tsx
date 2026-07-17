@@ -5,12 +5,13 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getMeContext,
+  getWallet,
   listAddresses,
   listHouseholdPets,
   logout,
 } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
-import { addressFixture, meContextFixture } from "@/test/fixtures/gate-fixtures";
+import { addressFixture, meContextFixture, walletFixture } from "@/test/fixtures/gate-fixtures";
 import { AccountOverview } from "./account-overview";
 
 const replace = vi.fn();
@@ -22,6 +23,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/api/client", () => ({
   getMeContext: vi.fn(),
+  getWallet: vi.fn(),
   listAddresses: vi.fn(),
   listHouseholdPets: vi.fn(),
   logout: vi.fn(),
@@ -42,6 +44,7 @@ describe("AccountOverview", () => {
     vi.mocked(getMeContext).mockResolvedValue(meContextFixture);
     vi.mocked(listHouseholdPets).mockResolvedValue(meContextFixture.pets);
     vi.mocked(listAddresses).mockResolvedValue([addressFixture]);
+    vi.mocked(getWallet).mockResolvedValue(walletFixture);
   });
 
   it("shows the household's real pets and addresses, not fixtures invented by the client", async () => {
@@ -52,6 +55,14 @@ describe("AccountOverview", () => {
     expect(listHouseholdPets).toHaveBeenCalledWith(
       meContextFixture.default_household_id,
     );
+  });
+
+  it("shows the real wallet balance from the backend", async () => {
+    renderWithQuery(<AccountOverview />);
+
+    await screen.findByText(meContextFixture.pets[0].name);
+    expect(getWallet).toHaveBeenCalledWith(meContextFixture.default_household_id);
+    expect(await screen.findByText("۰ تومان")).toBeInTheDocument();
   });
 
   it("confirms before logging out and clears the session on confirm", async () => {

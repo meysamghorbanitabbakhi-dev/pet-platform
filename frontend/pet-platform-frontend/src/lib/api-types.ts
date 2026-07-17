@@ -61,6 +61,11 @@ export type AvailabilitySubscriptionResponse =
 export type CustomerRequestBody = Schema<"CustomerRequestBody">;
 export type CustomerRequestResponse = Schema<"CustomerRequestResponse">;
 export type OffsetPageMetadata = Schema<"OffsetPageMetadata">;
+export type WalletSummaryResponse = Schema<"WalletSummaryResponse">;
+export type NotificationListItem = Schema<"NotificationListItem">;
+export type NotificationPage = Schema<"OffsetPage_NotificationListItem_">;
+export type PrivacyRequestBody = Schema<"PrivacyRequestBody">;
+export type PrivacyRequestResponse = Schema<"PrivacyRequestResponse">;
 export type AvailabilitySubscriptionPage =
   Schema<"OffsetPage_AvailabilitySubscriptionResponse_">;
 export type CustomerRequestPage = Schema<"OffsetPage_CustomerRequestResponse_">;

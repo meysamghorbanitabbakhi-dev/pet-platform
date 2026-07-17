@@ -28,6 +28,7 @@ import type {
   JourneyStartBody,
   JourneyStopBody,
   MeContextResponse,
+  NotificationPage,
   OfferDetailResponse,
   OpenInventoryBody,
   OrderDetailResponse,
@@ -45,9 +46,12 @@ import type {
   PetProfilePatch,
   PetSummary,
   PolicyResponse,
+  PrivacyRequestBody,
+  PrivacyRequestResponse,
   ReorderAssessmentResponse,
   ReorderSnoozeBody,
   TodayResponse,
+  WalletSummaryResponse,
 } from "@/lib/api-types";
 import { csrfHeaders } from "@/lib/session";
 import { mapApiError } from "./errors";
@@ -258,6 +262,31 @@ export function listCustomerRequests() {
 
 export function getCustomerRequest(requestId: string) {
   return bff<CustomerRequestResponse>(`/api/bff/customer-requests/${requestId}`);
+}
+
+export function getWallet(householdId: string) {
+  return bff<WalletSummaryResponse>(`/api/bff/households/${householdId}/wallet`);
+}
+
+export function listNotifications() {
+  return bff<NotificationPage>("/api/bff/notifications");
+}
+
+export function markNotificationRead(notificationId: string) {
+  return bff<void>(`/api/bff/notifications/${notificationId}/read`, {
+    method: "POST",
+  });
+}
+
+export function requestPrivacyAction(body: PrivacyRequestBody) {
+  return bff<PrivacyRequestResponse>("/api/bff/privacy/requests", {
+    method: "POST",
+    body,
+  });
+}
+
+export function exportMyData() {
+  return bff<Record<string, unknown>>("/api/bff/privacy/export");
 }
 
 export function getJourneyDefinition(definitionId: string) {
