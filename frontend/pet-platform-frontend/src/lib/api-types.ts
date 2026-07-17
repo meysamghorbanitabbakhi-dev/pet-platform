@@ -56,3 +56,11 @@ export type DiaryEntryDetailResponse = Schema<"DiaryEntryDetailResponse">;
 export type GardenStateResponse = Schema<"GardenStateResponse">;
 export type GardenObjectResponse = Schema<"GardenObjectResponse">;
 export type GardenPlacementBody = Schema<"GardenPlacementBody">;
+export type AvailabilitySubscriptionResponse =
+  Schema<"AvailabilitySubscriptionResponse">;
+export type CustomerRequestBody = Schema<"CustomerRequestBody">;
+export type CustomerRequestResponse = Schema<"CustomerRequestResponse">;
+export type OffsetPageMetadata = Schema<"OffsetPageMetadata">;
+export type AvailabilitySubscriptionPage =
+  Schema<"OffsetPage_AvailabilitySubscriptionResponse_">;
+export type CustomerRequestPage = Schema<"OffsetPage_CustomerRequestResponse_">;

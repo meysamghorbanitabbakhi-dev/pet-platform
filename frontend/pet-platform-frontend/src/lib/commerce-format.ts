@@ -15,6 +15,11 @@ export function supplierCountryLabel(value: string | null | undefined) {
   return countries[normalized] ?? value;
 }
 
+export function authenticityLabel(value: string) {
+  if (value === "supplier_verified") return "تاییدشده توسط تامین‌کننده";
+  return value;
+}
+
 export function availabilityLabel(value: string) {
   if (value === "available") return "موجود برای پرداخت کامل";
   if (value === "temporarily_unavailable") return "فعلا ناموجود";

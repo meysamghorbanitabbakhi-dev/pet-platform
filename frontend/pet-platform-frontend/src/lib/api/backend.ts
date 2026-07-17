@@ -19,6 +19,11 @@ import type {
   OrderResponse,
   OtpRequestBody,
   OtpRequestResponse,
+  AvailabilitySubscriptionPage,
+  AvailabilitySubscriptionResponse,
+  CustomerRequestBody,
+  CustomerRequestPage,
+  CustomerRequestResponse,
   DiaryEntryDetailResponse,
   DiaryListItem,
   GardenPlacementBody,
@@ -537,6 +542,80 @@ export async function returnGardenObjectBackend(
   return withAuthVoid((headers) =>
     backendClient.DELETE("/api/v1/pet-life/garden/{reward_id}/placement", {
       params: { path: { reward_id: rewardId } },
+      headers,
+    }),
+  );
+}
+
+export async function subscribeAvailabilityBackend(
+  offerId: string,
+): Promise<AvailabilitySubscriptionResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.subscribeAvailability(offerId);
+  return withAuth((headers) =>
+    backendClient.POST(
+      "/api/v1/catalog/offers/{offer_id}/availability-subscriptions",
+      { params: { path: { offer_id: offerId } }, headers },
+    ),
+  );
+}
+
+export async function cancelAvailabilitySubscriptionBackend(
+  offerId: string,
+): Promise<AvailabilitySubscriptionResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.cancelAvailabilitySubscription(offerId);
+  }
+  return withAuth((headers) =>
+    backendClient.DELETE(
+      "/api/v1/catalog/offers/{offer_id}/availability-subscriptions",
+      { params: { path: { offer_id: offerId } }, headers },
+    ),
+  );
+}
+
+export async function listAvailabilitySubscriptionsBackend(): Promise<AvailabilitySubscriptionPage> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listAvailabilitySubscriptions();
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/me/availability-subscriptions", { headers }),
+  );
+}
+
+export async function createCustomerRequestBackend(
+  body: CustomerRequestBody,
+  idempotencyKey: string,
+): Promise<CustomerRequestResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.createCustomerRequest(body, idempotencyKey);
+  }
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/customer-requests", {
+      body,
+      headers,
+      params: { header: { "Idempotency-Key": idempotencyKey } },
+    }),
+  );
+}
+
+export async function listCustomerRequestsBackend(): Promise<CustomerRequestPage> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listCustomerRequests();
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/customer-requests", { headers }),
+  );
+}
+
+export async function getCustomerRequestBackend(
+  requestId: string,
+): Promise<CustomerRequestResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getCustomerRequest(requestId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/customer-requests/{request_id}", {
+      params: { path: { request_id: requestId } },
       headers,
     }),
   );

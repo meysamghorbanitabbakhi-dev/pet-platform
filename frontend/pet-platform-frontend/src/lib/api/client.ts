@@ -3,7 +3,12 @@
 import type {
   AddressResponse,
   AddressBody,
+  AvailabilitySubscriptionPage,
+  AvailabilitySubscriptionResponse,
   CheckoutBody,
+  CustomerRequestBody,
+  CustomerRequestPage,
+  CustomerRequestResponse,
   DiaryEntryDetailResponse,
   DiaryListItem,
   FoodEstimateResponse,
@@ -217,6 +222,42 @@ export function returnGardenObject(rewardId: string) {
   return bff<void>(`/api/bff/garden/${rewardId}/placement`, {
     method: "DELETE",
   });
+}
+
+export function subscribeAvailability(offerId: string) {
+  return bff<AvailabilitySubscriptionResponse>(
+    `/api/bff/catalog/offers/${offerId}/availability-subscriptions`,
+    { method: "POST" },
+  );
+}
+
+export function cancelAvailabilitySubscription(offerId: string) {
+  return bff<AvailabilitySubscriptionResponse>(
+    `/api/bff/catalog/offers/${offerId}/availability-subscriptions`,
+    { method: "DELETE" },
+  );
+}
+
+export function listAvailabilitySubscriptions() {
+  return bff<AvailabilitySubscriptionPage>("/api/bff/me/availability-subscriptions");
+}
+
+export function createCustomerRequest(
+  body: CustomerRequestBody,
+  idempotencyKey: string,
+) {
+  return bff<CustomerRequestResponse>("/api/bff/customer-requests", {
+    method: "POST",
+    body: { body, idempotencyKey },
+  });
+}
+
+export function listCustomerRequests() {
+  return bff<CustomerRequestPage>("/api/bff/customer-requests");
+}
+
+export function getCustomerRequest(requestId: string) {
+  return bff<CustomerRequestResponse>(`/api/bff/customer-requests/${requestId}`);
 }
 
 export function getJourneyDefinition(definitionId: string) {

@@ -14,9 +14,9 @@ Generated: 2026-07-17. Covers all 152 accepted design states from `gate5.2c-scre
 
 | status | count | meaning |
 |---|---|---|
-| IMPLEMENTED | 100 | Reachable through the real intended flow, backed by a real, non-fixture backend call, and the specific discriminated state is distinctly rendered. |
-| PARTIAL | 19 | Route/component/backend call exists, but the exact design-state distinction (a specific tone, a specific field, a specific sub-state) is not yet rendered — see notes per row. |
-| MISSING | 30 | No implementation reachable at all. In every one of these 152 states, the backend operation already exists (verified against `openapi.json`), so these are pure frontend build gaps, not backend blockers, unless noted otherwise. |
+| IMPLEMENTED | 109 | Reachable through the real intended flow, backed by a real, non-fixture backend call, and the specific discriminated state is distinctly rendered. |
+| PARTIAL | 18 | Route/component/backend call exists, but the exact design-state distinction (a specific tone, a specific field, a specific sub-state) is not yet rendered — see notes per row. |
+| MISSING | 22 | No implementation reachable at all. In every one of these 152 states, the backend operation already exists (verified against `openapi.json`), so these are pure frontend build gaps, not backend blockers, unless noted otherwise. |
 | BACKEND_BLOCKED | 3 | Backend does not expose a required read/response shape yet. See `frontend/docs/backend-contract-blockers.md`. |
 | POLICY_HIDDEN | 0 | Intentionally absent because a runtime policy flag disables the capability (fail-closed, correct). |
 | OBSOLETE_BY_CONTRACT | 0 | Superseded by a newer authoritative contract; none found in this pass. |
@@ -27,13 +27,13 @@ Generated: 2026-07-17. Covers all 152 accepted design states from `gate5.2c-scre
 |---|---|---|---|---|---|
 | AUTH | 14 | 11 | 2 | 0 | 1 |
 | ONB | 10 | 8 | 2 | 0 | 0 |
-| SHOP | 20 | 9 | 1 | 10 | 0 |
+| SHOP | 20 | 14 | 0 | 6 | 0 |
 | CHK | 18 | 14 | 4 | 0 | 0 |
 | ORD | 13 | 2 | 6 | 5 | 0 |
 | ACC | 16 | 3 | 1 | 10 | 2 |
 | BRIDGE | 37 | 33 | 3 | 1 | 0 |
 | JOURNEY | 20 | 20 | 0 | 0 | 0 |
-| SUPPORT | 4 | 0 | 0 | 4 | 0 |
+| SUPPORT | 4 | 4 | 0 | 0 | 0 |
 
 ## Journey coverage (11 accepted journeys)
 
@@ -49,7 +49,7 @@ Journey completeness is derived from whether every state on that journey's `main
 | T13 | حساب → اعلان‌ها → پیامک/سکوت → خروجی → غیرفعال‌سازی | G5-ACC-01, G5-ACC-10, G5-ACC-11, G5-ACC-06, G5-ACC-14, G5-ACC-15, G5-ACC-16 | BROKEN (missing state on path) |
 | T14 | تحویل → واحد انبار → باز کردن → سهم دانسته/نادانسته → امروز | G5-ORD-12, G5-BRIDGE-14, G5-BRIDGE-07, G5-BRIDGE-08, G5-BRIDGE-01 | DEGRADED (partial state on path) |
 | T15 | امروز -> ارزیابی تجدید سفارش -> فروشگاه یا به‌خواب بردن | G5-BRIDGE-01, G5-BRIDGE-25, G5-SHOP-01 | END-TO-END WORKING |
-| T16 | محصول/سفارش/حساب -> درخواست پشتیبانی -> تأیید -> تاریخچه/جزئیات | G5-SUPPORT-01, G5-SUPPORT-02, G5-SUPPORT-03, G5-SUPPORT-04 | BROKEN (missing state on path) |
+| T16 | محصول/سفارش/حساب -> درخواست پشتیبانی -> تأیید -> تاریخچه/جزئیات | G5-SUPPORT-01, G5-SUPPORT-02, G5-SUPPORT-03, G5-SUPPORT-04 | END-TO-END WORKING |
 | T17 | نوار باغ در امروز -> باغ -> جای‌گذاری/جابه‌جایی/بازگشت به انبار | G5-BRIDGE-01, G5-BRIDGE-31, G5-BRIDGE-33, G5-BRIDGE-34, G5-BRIDGE-35 | END-TO-END WORKING |
 | T18 | مسیر مراقبتی: پیشنهاد -> شروع -> چک-این -> تکمیل -> خاطره -> جایزه باغ | G5-JOURNEY-03, G5-JOURNEY-05, G5-JOURNEY-06, G5-JOURNEY-07, G5-JOURNEY-08, G5-JOURNEY-09, G5-JOURNEY-10, G5-JOURNEY-11, G5-JOURNEY-12, G5-JOURNEY-18, G5-JOURNEY-19, G5-JOURNEY-20 | END-TO-END WORKING |
 
@@ -101,7 +101,7 @@ Journey completeness is derived from whether every state on that journey's `main
 | G5-SHOP-04 | T10 | /shop/offer/:offerId | page | K9 frontend-integration.md | Card, Money, StatusChip | - | GET /api/v1/catalog/offers/{offer_id} (media, saving_percent field now backend-provided, availability enum available\|temporarily_unavailable) | IMPLEMENTED | src/app/shop/offer/[offerId]/page.tsx; src/features/commerce/offer-detail.tsx | none | - | Media/availability/saving_percent backend-sourced. |
 | G5-SHOP-05 | - | /shop/offer/:offerId/compare | page | design-contract | Card, Money, StatusChip | - | client-side only | MISSING | none | none | - | No /shop/offer/:offerId/compare route or component exists. |
 | G5-SHOP-06 | - | /shop/offer/:offerId | inline state | K9 frontend-integration.md | Card, Money, StatusChip | - | GET /api/v1/catalog/offers/{offer_id} - availability strictly available\|temporarily_unavailable (corrected enum) | IMPLEMENTED | src/features/commerce/offer-detail.tsx | none | - | availabilityLabel(offer.availability) matches enum. |
-| G5-SHOP-07 | - | /shop/offer/:offerId | inline state | openapi.json | Card, Money, StatusChip | - | OfferResponse.authenticity | PARTIAL | src/features/commerce/offer-detail.tsx | none | - | Authenticity Fact hardcoded string, never reads offer.authenticity field. |
+| G5-SHOP-07 | - | /shop/offer/:offerId | inline state | openapi.json | Card, Money, StatusChip | - | OfferResponse.authenticity | IMPLEMENTED | src/features/commerce/offer-detail.tsx; src/lib/commerce-format.ts (authenticityLabel) | none | - | Wave 4: fixed the hardcoded string; now binds to the real offer.authenticity field. |
 | G5-SHOP-08 | - | /shop/offer/:offerId | inline state | openapi.json | Card, Money, StatusChip | - | OfferResponse.supplier_country | IMPLEMENTED | src/features/commerce/offer-detail.tsx; src/lib/commerce-format.ts | none | - | supplierCountryLabel(offer.supplier_country_code). |
 | G5-SHOP-09 | - | /shop/offer/:offerId | inline state | openapi.json | Card, Money, StatusChip | - | OfferDetailResponse.saving_percent is backend-computed (integer floor percent) - corrected from prior "computed client-side" note | IMPLEMENTED | src/features/commerce/offer-detail.tsx; src/lib/format.ts | src/lib/format.test.ts | - | saving_percent/reference_price_reviewed_at backend-sourced, no client math. |
 | G5-SHOP-10 | - | /shop/offer/:offerId | inline state | openapi.json | Card, Money, StatusChip | - | OfferResponse.minimum_shelf_life_months | IMPLEMENTED | src/features/commerce/offer-detail.tsx | none | - | minimum_shelf_life_months_at_delivery Fact. |
@@ -109,10 +109,10 @@ Journey completeness is derived from whether every state on that journey's `main
 | G5-SHOP-12 | - | /shop/offer/:offerId | sheet | openapi.json | Sheet, QuantityStepper, Button | - | server-enforced 1–100 at checkout | MISSING | src/features/commerce/add-to-cart-button.tsx; cart-view.tsx | none | - | No sheet component; add-to-cart always qty=1. |
 | G5-SHOP-13 | - | /shop | inline state/list | design-contract | Card, Money, StatusChip | - | no alternatives relation | MISSING | none | none | - | Disposition deferred in design source; not built. |
 | G5-SHOP-14 | - | /shop/search | empty state | openapi.json | EmptyState | - | client-side search only | MISSING | none | none | - | No /shop/search route/component. |
-| G5-SHOP-15 | - | /shop/offer/:offerId | modal/inline | K9 frontend-integration.md | Dialog/Banner, Button | availability_subscriptions_enabled=true | POST /api/v1/catalog/offers/{offer_id}/availability-subscriptions - order_created=false always | MISSING | none | none | - | Backend POST .../availability-subscriptions exists & enabled by default; zero frontend call/UI. |
-| G5-SHOP-16 | - | /shop/offer/:offerId | inline state | K9 frontend-integration.md | Dialog/Banner, Button | availability_subscriptions_enabled=true | GET /api/v1/me/availability-subscriptions | MISSING | none | none | - | GET /api/v1/me/availability-subscriptions unused in frontend. |
-| G5-SHOP-17 | - | /shop/offer/:offerId | inline state | K9 frontend-integration.md | Dialog/Banner, Button | availability_subscriptions_enabled=true | DELETE /api/v1/catalog/offers/{offer_id}/availability-subscriptions | MISSING | none | none | - | DELETE .../availability-subscriptions unused. |
-| G5-SHOP-18 | - | /shop/offer/:offerId | error state | K9 frontend-integration.md | Dialog/Banner, Button | availability_subscriptions_enabled=true | POST /api/v1/catalog/offers/{offer_id}/availability-subscriptions (4xx) | MISSING | none | none | - | Unreachable, subscribe flow doesn't exist. |
+| G5-SHOP-15 | - | /shop/offer/:offerId | modal/inline | K9 frontend-integration.md | Dialog/Banner, Button | availability_subscriptions_enabled=true | POST /api/v1/catalog/offers/{offer_id}/availability-subscriptions - order_created=false always | IMPLEMENTED | src/features/commerce/availability-subscribe.tsx; src/app/api/bff/catalog/offers/[offerId]/availability-subscriptions/route.ts | none | - | Wave 4: real subscribe button on unavailable offers, wired to POST .../availability-subscriptions. |
+| G5-SHOP-16 | - | /shop/offer/:offerId | inline state | K9 frontend-integration.md | Dialog/Banner, Button | availability_subscriptions_enabled=true | GET /api/v1/me/availability-subscriptions | IMPLEMENTED | src/features/commerce/availability-subscribe.tsx | none | - | Wave 4: fetches GET /api/v1/me/availability-subscriptions and renders the active-subscription state distinctly from the initial prompt. |
+| G5-SHOP-17 | - | /shop/offer/:offerId | inline state | K9 frontend-integration.md | Dialog/Banner, Button | availability_subscriptions_enabled=true | DELETE /api/v1/catalog/offers/{offer_id}/availability-subscriptions | IMPLEMENTED | src/features/commerce/availability-subscribe.tsx; src/lib/api/client.ts (cancelAvailabilitySubscription) | none | - | Wave 4: real DELETE call from the active-subscription state. |
+| G5-SHOP-18 | - | /shop/offer/:offerId | error state | K9 frontend-integration.md | Dialog/Banner, Button | availability_subscriptions_enabled=true | POST /api/v1/catalog/offers/{offer_id}/availability-subscriptions (4xx) | IMPLEMENTED | src/features/commerce/availability-subscribe.tsx | none | - | Wave 4: 409 (availability_subscriptions_disabled) mapped to a specific message distinct from generic connectivity errors; duplicate submissions blocked by mutation-pending disabling the button. |
 
 ### Cart & Checkout (18 states)
 
@@ -247,7 +247,7 @@ Journey completeness is derived from whether every state on that journey's `main
 
 | state_id | journey_id | route | ui_shape | design_source | component_contract | required_policy | backend_operations | current_status | implementation_files | tests | blocker | notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| G5-SUPPORT-01 | T16 | /support/new | page/form | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | POST /api/v1/customer-requests (Idempotency-Key; type=support\|concierge_sourcing) | MISSING | none | none | - | Route /support/new absent; no BFF proxy for POST /api/v1/customer-requests. |
-| G5-SUPPORT-02 | T16 | /support/new | inline | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | response.acknowledgement_fa rendered verbatim; explicit false promises for availability/price/response-time/sourcing | MISSING | none | none | - | No component renders acknowledgement_fa or the false-promise flags; fully specified server-side, zero frontend consumer. |
-| G5-SUPPORT-03 | T16 | /support | page/list | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | GET /api/v1/customer-requests | MISSING | none | none | - | Route /support absent; no BFF proxy for GET /api/v1/customer-requests. |
-| G5-SUPPORT-04 | T16 | /support/:requestId | page/detail | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | GET /api/v1/customer-requests/{request_id} | MISSING | none | none | - | Route /support/:requestId absent; no BFF proxy for GET /api/v1/customer-requests/{request_id}. |
+| G5-SUPPORT-01 | T16 | /support/new | page/form | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | POST /api/v1/customer-requests (Idempotency-Key; type=support\|concierge_sourcing) | IMPLEMENTED | src/app/support/new/page.tsx; src/features/support/concierge-new-request.tsx; src/app/api/bff/customer-requests/route.ts (POST) | none | - | Wave 4: request-type selector (support/concierge_sourcing), message, contact preference; policy-hidden EmptyState when concierge_requests_enabled=false. |
+| G5-SUPPORT-02 | T16 | /support/new | inline | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | response.acknowledgement_fa rendered verbatim; explicit false promises for availability/price/response-time/sourcing | IMPLEMENTED | src/features/support/concierge-new-request.tsx | none | - | Wave 4: renders policy.customer_request_acknowledgement_fa verbatim before submission, and the response's own acknowledgement_fa + unmet promises on the detail page after. |
+| G5-SUPPORT-03 | T16 | /support | page/list | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | GET /api/v1/customer-requests | IMPLEMENTED | src/app/support/page.tsx; src/features/support/concierge-request-list.tsx; src/app/api/bff/customer-requests/route.ts (GET) | none | - | Wave 4: real request history with customer-safe status labels, linking to each request's detail page. |
+| G5-SUPPORT-04 | T16 | /support/:requestId | page/detail | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | GET /api/v1/customer-requests/{request_id} | IMPLEMENTED | src/app/support/[requestId]/page.tsx; src/features/support/concierge-request-detail.tsx; src/app/api/bff/customer-requests/[requestId]/route.ts | none | - | Wave 4: shows message, status, and unmet promises; never exposes internal operator notes (not present in CustomerRequestResponse). |

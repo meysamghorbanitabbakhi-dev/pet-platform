@@ -1,5 +1,9 @@
 import type {
   AddressResponse,
+  AvailabilitySubscriptionPage,
+  AvailabilitySubscriptionResponse,
+  CustomerRequestPage,
+  CustomerRequestResponse,
   DiaryEntryDetailResponse,
   DiaryListItem,
   FoodEstimateResponse,
@@ -533,6 +537,49 @@ export const gardenStateFixture: GardenStateResponse = {
   slot_rules: { decay_enabled: false, source: "server_milestone_rules", xp_enabled: false },
   unlocked_quadrants: [1],
   visible_slot_count: 12,
+};
+
+export const availabilitySubscriptionFixture: AvailabilitySubscriptionResponse = {
+  cancelled_at: null,
+  created_at: "2026-07-17T08:00:00Z",
+  id: "aaaa1111-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+  notified_at: null,
+  offer_id: ids.offerUnavailable,
+  order_created: false,
+  status: "active",
+};
+
+export const availabilitySubscriptionPageFixture: AvailabilitySubscriptionPage = {
+  items: [],
+  page: { has_more: false, limit: 25, offset: 0, total: 0 },
+};
+
+export const customerRequestFixture: CustomerRequestResponse = {
+  acknowledgement_fa:
+    "درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست.",
+  contact_preference: "in_app",
+  created_at: "2026-07-17T08:00:00Z",
+  household_id: ids.household,
+  id: "bbbb2222-bbbb-4bbb-8bbb-bbbbbbbbbbb2",
+  message_fa: "آیا این محصول برای نژاد پرشین مناسب است؟",
+  offer_id: null,
+  order_id: null,
+  product_query_fa: null,
+  promises: {
+    availability: false,
+    refund: false,
+    replacement: false,
+    response_time: false,
+    sourcing_success: false,
+  },
+  request_type: "support",
+  status: "submitted",
+  updated_at: "2026-07-17T08:00:00Z",
+};
+
+export const customerRequestPageFixture: CustomerRequestPage = {
+  items: [customerRequestFixture],
+  page: { has_more: false, limit: 25, offset: 0, total: 1 },
 };
 
 export const journeyOffersFixture: JourneyOfferResponse[] = [

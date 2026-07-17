@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import type {
   AddressBody,
   CheckoutBody,
+  CustomerRequestBody,
   GardenPlacementBody,
   HouseholdBody,
   JourneyCheckInBody,
@@ -159,6 +160,33 @@ export async function loadDevelopmentApi() {
     returnGardenObject: async (_rewardId: string) => {
       void _rewardId;
       return undefined;
+    },
+    subscribeAvailability: async (_offerId: string) => {
+      void _offerId;
+      return fixtures.availabilitySubscriptionFixture;
+    },
+    cancelAvailabilitySubscription: async (_offerId: string) => {
+      void _offerId;
+      return {
+        ...fixtures.availabilitySubscriptionFixture,
+        cancelled_at: "2026-07-17T09:00:00Z",
+        status: "cancelled" as const,
+      };
+    },
+    listAvailabilitySubscriptions: async () =>
+      fixtures.availabilitySubscriptionPageFixture,
+    createCustomerRequest: async (
+      _body: CustomerRequestBody,
+      _idempotencyKey: string,
+    ) => {
+      void _body;
+      void _idempotencyKey;
+      return fixtures.customerRequestFixture;
+    },
+    listCustomerRequests: async () => fixtures.customerRequestPageFixture,
+    getCustomerRequest: async (_requestId: string) => {
+      void _requestId;
+      return fixtures.customerRequestFixture;
     },
     getJourneyOffers: async (_petId: string) => {
       void _petId;

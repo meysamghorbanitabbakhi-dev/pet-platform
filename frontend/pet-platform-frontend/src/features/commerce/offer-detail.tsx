@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Banner, Card } from "@/components/primitives";
 import type { OfferDetailResponse, PolicyResponse } from "@/lib/api-types";
-import { availabilityLabel, supplierCountryLabel } from "@/lib/commerce-format";
+import {
+  authenticityLabel,
+  availabilityLabel,
+  supplierCountryLabel,
+} from "@/lib/commerce-format";
 import {
   formatIranDate,
   formatPercent,
@@ -9,6 +13,7 @@ import {
   formatTomanFromIrr,
 } from "@/lib/format";
 import { AddToCartButton } from "./add-to-cart-button";
+import { AvailabilitySubscribe } from "./availability-subscribe";
 
 export function OfferDetail({
   offer,
@@ -62,10 +67,13 @@ export function OfferDetail({
 
         <Card className="stack">
           {unavailable ? (
-            <Banner tone="warning">
-              این محصول فعلا برای پرداخت کامل در دسترس نیست و وارد فرآیند پرداخت
-              نمی‌شود.
-            </Banner>
+            <>
+              <Banner tone="warning">
+                این محصول فعلا برای پرداخت کامل در دسترس نیست و وارد فرآیند
+                پرداخت نمی‌شود.
+              </Banner>
+              <AvailabilitySubscribe offerId={offer.id} />
+            </>
           ) : null}
           <div>
             <div className="money">
@@ -82,7 +90,7 @@ export function OfferDetail({
               label="کشور تامین‌کننده"
               value={supplierCountryLabel(offer.supplier_country_code)}
             />
-            <Fact label="اصالت" value="اصالت: تاییدشده توسط تامین‌کننده" />
+            <Fact label="اصالت" value={authenticityLabel(offer.authenticity)} />
             <Fact
               label="حداقل ماندگاری تحویل"
               value={`${formatPersianNumber(

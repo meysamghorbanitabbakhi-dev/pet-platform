@@ -193,6 +193,13 @@ export function AccountOverview() {
         </Card>
 
         <Card className="stack">
+          <h2 className="title">پشتیبانی</h2>
+          <Link className="button button--secondary" href="/support">
+            درخواست‌های پشتیبانی من
+          </Link>
+        </Card>
+
+        <Card className="stack">
           <h2 className="title">نشست</h2>
           <Button variant="secondary" onClick={() => setShowLogoutSheet(true)}>
             خروج از حساب
