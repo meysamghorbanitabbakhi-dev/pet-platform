@@ -25,6 +25,7 @@ import type {
   PaymentRequestBody,
   PetBody,
   PetProfilePatch,
+  PetSummary,
   PolicyResponse,
   TodayResponse,
 } from "@/lib/api-types";
@@ -120,6 +121,10 @@ export function createAddress(householdId: string, body: AddressBody) {
 
 export function listAddresses(householdId: string) {
   return bff<AddressResponse[]>(`/api/bff/households/${householdId}/addresses`);
+}
+
+export function listHouseholdPets(householdId: string) {
+  return bff<PetSummary[]>(`/api/bff/households/${householdId}/pets`);
 }
 
 export function getToday(petId: string) {

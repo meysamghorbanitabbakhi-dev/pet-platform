@@ -20,6 +20,7 @@ import type {
 } from "react";
 import { forwardRef, useEffect, useRef } from "react";
 import type { ContextPetSummary } from "@/lib/api-types";
+import { formatTomanFromIrr } from "@/lib/format";
 
 export const Button = forwardRef<
   HTMLButtonElement,
@@ -413,6 +414,167 @@ export function PetSwitcher({
   );
 }
 
+export function Money({
+  irr,
+  loading,
+}: {
+  irr: number | null | undefined;
+  loading?: boolean;
+}) {
+  if (loading || irr === null || irr === undefined) {
+    return <Skeleton className="money-skeleton" label="در حال محاسبه مبلغ" />;
+  }
+  const label = formatTomanFromIrr(irr);
+  return (
+    <span className="money" aria-label={`${label.replace(" تومان", "")} تومان`}>
+      {label}
+    </span>
+  );
+}
+
+const statusChipTone: Record<
+  "positive" | "info" | "warning" | "error" | "muted",
+  string
+> = {
+  positive: "chip--positive",
+  info: "chip--info",
+  warning: "chip--warning",
+  error: "chip--error",
+  muted: "chip--muted",
+};
+
+export function StatusChip({
+  tone = "muted",
+  glyph,
+  children,
+}: {
+  tone?: "positive" | "info" | "warning" | "error" | "muted";
+  glyph?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <span className={clsx("chip", statusChipTone[tone])}>
+      {glyph}
+      {children}
+    </span>
+  );
+}
+
+const confidenceFill: Record<"low" | "medium" | "high", number> = {
+  low: 33,
+  medium: 66,
+  high: 100,
+};
+
+const confidenceLabelFa: Record<"low" | "medium" | "high", string> = {
+  low: "اطمینان کم",
+  medium: "اطمینان متوسط",
+  high: "اطمینان زیاد",
+};
+
+export function MeterBand({
+  confidence,
+  loading,
+}: {
+  confidence: "low" | "medium" | "high" | null;
+  loading?: boolean;
+}) {
+  if (loading) return <Skeleton className="meter" label="در حال بارگذاری برآورد" />;
+  const known = confidence !== null;
+  return (
+    <div
+      className={clsx("meter", !known && "meter--unknown")}
+      role={known ? "progressbar" : "img"}
+      aria-label={known ? confidenceLabelFa[confidence] : "برآورد هنوز نامشخص است"}
+      aria-valuemin={known ? 0 : undefined}
+      aria-valuemax={known ? 100 : undefined}
+      aria-valuenow={known ? confidenceFill[confidence] : undefined}
+    >
+      {known ? (
+        <div
+          className="meter__fill"
+          style={{ inlineSize: `${confidenceFill[confidence]}%` }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+export type OrderTimelineStep = {
+  key: string;
+  label: string;
+  timestamp?: string | null;
+  tone?: "positive" | "info" | "warning" | "error" | "muted";
+  current?: boolean;
+};
+
+export function OrderTimeline({ steps }: { steps: OrderTimelineStep[] }) {
+  return (
+    <ol className="order-timeline">
+      {steps.map((step) => (
+        <li
+          key={step.key}
+          className={clsx(
+            "order-timeline__step",
+            step.tone && `order-timeline__step--${step.tone}`,
+          )}
+          aria-current={step.current ? "step" : undefined}
+        >
+          <span className="order-timeline__marker" aria-hidden="true" />
+          <div>
+            <div className="order-timeline__label">{step.label}</div>
+            {step.timestamp ? (
+              <div className="caption">{step.timestamp}</div>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function QuantityStepper({
+  value,
+  min = 1,
+  max = 100,
+  onChange,
+  label = "تعداد",
+}: {
+  value: number;
+  min?: number;
+  max?: number;
+  onChange: (value: number) => void;
+  label?: string;
+}) {
+  return (
+    <div className="quantity-stepper" role="group" aria-label={label}>
+      <IconButton
+        label="کاهش تعداد"
+        disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+      >
+        −
+      </IconButton>
+      <span aria-live="polite" className="quantity-stepper__value">
+        {formatPersianNumberInline(value)}
+      </span>
+      <IconButton
+        label="افزایش تعداد"
+        disabled={value >= max}
+        onClick={() => onChange(Math.min(max, value + 1))}
+      >
+        +
+      </IconButton>
+    </div>
+  );
+}
+
+function formatPersianNumberInline(value: number) {
+  return new Intl.NumberFormat("fa-IR", { numberingSystem: "arabext" }).format(
+    value,
+  );
+}
+
 export function BottomNav() {
   const pathname = usePathname();
   const items = [
@@ -420,7 +582,7 @@ export function BottomNav() {
     { href: "/inventory/open", label: "انبار", icon: PackageOpen },
     { href: "/today#garden", label: "باغ", icon: Leaf },
     { href: "/shop", label: "فروشگاه", icon: ShoppingBag },
-    { href: "/onboarding/bootstrap", label: "حساب", icon: UserRound },
+    { href: "/account", label: "حساب", icon: UserRound },
   ];
   return (
     <nav className="bottom-nav" aria-label="ناوبری اصلی">

@@ -26,6 +26,7 @@ import type {
   PaymentRequestBody,
   PetBody,
   PetProfilePatch,
+  PetSummary,
   PolicyResponse,
   TodayResponse,
 } from "@/lib/api-types";
@@ -224,6 +225,19 @@ export async function createAddressBackend(
     backendClient.POST("/api/v1/pet-life/households/{household_id}/addresses", {
       params: { path: { household_id: householdId } },
       body,
+      headers,
+    }),
+  );
+}
+
+export async function listHouseholdPetsBackend(
+  householdId: string,
+): Promise<PetSummary[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listHouseholdPets(householdId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/households/{household_id}/pets", {
+      params: { path: { household_id: householdId } },
       headers,
     }),
   );

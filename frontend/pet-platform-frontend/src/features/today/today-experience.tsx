@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button, ErrorState, Skeleton } from "@/components/primitives";
 import {
@@ -10,36 +11,52 @@ import {
   getPolicies,
   getToday,
 } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 import { TodayDashboard, usePersistedSelectedPet } from "./today-dashboard";
 
+function isSessionExpired(error: unknown) {
+  return error instanceof ApiError && error.status === 401;
+}
+
 export function TodayExperience() {
+  const router = useRouter();
   const policyQuery = useQuery({ queryKey: ["policy"], queryFn: getPolicies });
   const contextQuery = useQuery({
     queryKey: ["me", "context"],
     queryFn: getMeContext,
   });
 
+  const sessionExpired =
+    isSessionExpired(policyQuery.error) || isSessionExpired(contextQuery.error);
+
+  useEffect(() => {
+    if (sessionExpired) router.replace("/auth/session-expired");
+  }, [sessionExpired, router]);
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
+
   if (policyQuery.isError || contextQuery.isError) {
     return (
       <AppShell>
         <ErrorState
           title="خطا در دریافت امروز"
-          body="اتصال یا نشست را بررسی کنید و دوباره تلاش کنید."
+          body="اتصال را بررسی کنید و دوباره تلاش کنید."
           action={
-            <div className="cluster">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  void policyQuery.refetch();
-                  void contextQuery.refetch();
-                }}
-              >
-                تلاش دوباره
-              </Button>
-              <Link className="button button--ghost" href="/auth/mobile">
-                ورود دوباره
-              </Link>
-            </div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void policyQuery.refetch();
+                void contextQuery.refetch();
+              }}
+            >
+              تلاش دوباره
+            </Button>
           }
         />
       </AppShell>

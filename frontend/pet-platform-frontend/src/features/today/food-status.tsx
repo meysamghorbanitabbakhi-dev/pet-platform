@@ -1,8 +1,12 @@
 import Link from "next/link";
-import { Banner, Card } from "@/components/primitives";
+import { Banner, Card, MeterBand } from "@/components/primitives";
 import type { PolicyResponse, TodayFood, TodayResponse } from "@/lib/api-types";
 import { formatPersianNumber } from "@/lib/format";
 import { enabled } from "@/lib/policy";
+
+function isKnownConfidence(value: string): value is "low" | "medium" | "high" {
+  return value === "low" || value === "medium" || value === "high";
+}
 
 export function foodStatusText(
   food: TodayFood,
@@ -42,6 +46,12 @@ export function FoodStatusCard({
   const hasKnownProgress =
     food.state === "estimated" &&
     enabled(policy, "semantic_level_estimation_enabled");
+  const confidence =
+    hasKnownProgress && food.state === "estimated"
+      ? isKnownConfidence(food.confidence)
+        ? food.confidence
+        : null
+      : null;
 
   return (
     <Card className="stack">
@@ -54,22 +64,7 @@ export function FoodStatusCard({
           {food.state === "estimated" ? "تخمین فعال" : "وضعیت فعلی"}
         </span>
       </div>
-      <div
-        className={hasKnownProgress ? "meter" : "meter meter--unknown"}
-        role={hasKnownProgress ? "progressbar" : "img"}
-        aria-label={
-          hasKnownProgress
-            ? "برآورد غذا با اطمینان متوسط"
-            : "تخمین روز غذا هنوز شروع نشده است"
-        }
-        aria-valuemin={hasKnownProgress ? 0 : undefined}
-        aria-valuemax={hasKnownProgress ? 100 : undefined}
-        aria-valuenow={hasKnownProgress ? 64 : undefined}
-      >
-        {hasKnownProgress ? (
-          <div className="meter__fill" style={{ inlineSize: "64%" }} />
-        ) : null}
-      </div>
+      <MeterBand confidence={confidence} />
       <p>{foodStatusText(food, policy)}</p>
       {food.state === "incoming" ? (
         <Banner tone="info">

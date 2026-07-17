@@ -59,8 +59,8 @@ const generatedPath = resolve(root, "src/generated/openapi.ts");
 const tempDir = mkdtempSync(join(tmpdir(), "pet-openapi-"));
 const tempOut = join(tempDir, "openapi.ts");
 try {
-  execFileSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm",
-    ["exec", "openapi-typescript", openApiPath, "-o", tempOut], { cwd: root, stdio: "pipe" });
+  execFileSync("pnpm", ["exec", "openapi-typescript", openApiPath, "-o", tempOut],
+    { cwd: root, stdio: "pipe", shell: process.platform === "win32" });
   const current = readFileSync(generatedPath, "utf8").replace(/\r\n/g, "\n");
   const fresh = readFileSync(tempOut, "utf8").replace(/\r\n/g, "\n");
   if (current !== fresh) throw new Error("generated OpenAPI types drifted; run pnpm generate:api");

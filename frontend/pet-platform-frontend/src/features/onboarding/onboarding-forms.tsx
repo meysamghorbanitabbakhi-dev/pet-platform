@@ -89,6 +89,7 @@ async function resolvePetId() {
 export function AuthMobileForm() {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
   const form = useForm<z.infer<typeof mobileSchema>>({
     resolver: zodResolver(mobileSchema),
     defaultValues: { mobile: "" },
@@ -96,6 +97,7 @@ export function AuthMobileForm() {
 
   async function onSubmit(values: z.infer<typeof mobileSchema>) {
     setSubmitError(null);
+    setRateLimited(false);
     try {
       storeReturnTo(currentReturnTo());
       const response = await requestOtp({
@@ -105,6 +107,9 @@ export function AuthMobileForm() {
       mergeOnboardingProgress({ challengeId: response.challenge_id });
       router.push("/auth/otp");
     } catch (error) {
+      if (error instanceof ApiError && error.status === 429) {
+        setRateLimited(true);
+      }
       setSubmitError(errorText(error));
     }
   }
@@ -126,7 +131,11 @@ export function AuthMobileForm() {
               {...form.register("mobile")}
               error={form.formState.errors.mobile?.message}
             />
-            {submitError ? <Banner tone="error">{submitError}</Banner> : null}
+            {submitError ? (
+              <Banner tone={rateLimited ? "warning" : "error"}>
+                {submitError}
+              </Banner>
+            ) : null}
             <Button
               type="submit"
               loading={form.formState.isSubmitting}
@@ -166,6 +175,14 @@ export function AuthOtpForm() {
       setState(response.state);
       if (response.state === "verified") {
         router.push(consumeReturnTo() ?? "/onboarding/bootstrap");
+        return;
+      }
+      if (response.state === "locked") {
+        router.push("/auth/locked");
+        return;
+      }
+      if (response.state === "not_found") {
+        router.push("/auth/mobile");
       }
     } catch (error) {
       setSubmitError(errorText(error));
@@ -190,7 +207,6 @@ export function AuthOtpForm() {
     );
   }
 
-  const locked = state === "locked";
   return (
     <AppShell>
       <div className="stack">
@@ -205,20 +221,25 @@ export function AuthOtpForm() {
             onChange={setOtp}
             invalid={state === "invalid"}
           />
-          {state === "locked" ? (
+          {state === "invalid" ? (
             <Banner tone="error">
-              تایید کد به دلیل تلاش‌های ناموفق موقتاً قفل شده است.
+              کد وارد شده نادرست است. دوباره وارد کنید.
             </Banner>
           ) : null}
-          {["expired", "consumed", "not_found"].includes(state ?? "") ? (
+          {state === "expired" ? (
             <Banner tone="warning">
-              این کد قابل استفاده نیست. کد تازه درخواست کنید.
+              این کد منقضی شده است. کد تازه درخواست کنید.
+            </Banner>
+          ) : null}
+          {state === "consumed" ? (
+            <Banner tone="warning">
+              این کد قبلاً استفاده شده است. کد تازه درخواست کنید.
             </Banner>
           ) : null}
           {submitError ? <Banner tone="error">{submitError}</Banner> : null}
           <Button
             onClick={submitOtp}
-            disabled={otp.length !== 6 || locked || busy}
+            disabled={otp.length !== 6 || busy}
             loading={busy}
           >
             تایید و ادامه

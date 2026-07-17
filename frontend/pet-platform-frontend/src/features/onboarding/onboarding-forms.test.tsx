@@ -10,6 +10,7 @@ import {
   updatePetProfile,
   verifyOtp,
 } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 import { mergeOnboardingProgress } from "@/lib/onboarding-progress";
 import { meContextFixture } from "@/test/fixtures/gate-fixtures";
 import {
@@ -61,18 +62,51 @@ describe("canonical T8 onboarding forms", () => {
     ).toContain("challenge-1");
   });
 
+  it("shows rate-limit as a warning, not an error, and does not advance", async () => {
+    vi.mocked(requestOtp).mockRejectedValue(
+      new ApiError("تعداد درخواست‌ها بیش از حد مجاز است.", 429),
+    );
+    const user = userEvent.setup();
+
+    render(<AuthMobileForm />);
+    await user.type(screen.getByLabelText("شماره موبایل"), "09121234567");
+    await user.click(screen.getByRole("button", { name: "درخواست کد" }));
+
+    const banner = await screen.findByText("تعداد درخواست‌ها بیش از حد مجاز است.");
+    expect(banner.closest(".banner")).toHaveClass("banner--warning");
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it.each([
-    ["invalid", "کد وارد شده معتبر نیست"],
-    ["expired", "این کد قابل استفاده نیست"],
-    ["consumed", "این کد قابل استفاده نیست"],
-    ["not_found", "این کد قابل استفاده نیست"],
-    ["locked", "قفل شده است"],
-  ] as const)("shows OTP %s without exposing tokens", async (state, text) => {
+    ["invalid", "کد وارد شده نادرست است"],
+    ["expired", "این کد منقضی شده است"],
+    ["consumed", "این کد قبلاً استفاده شده است"],
+  ] as const)(
+    "shows a distinct inline banner for OTP %s without exposing tokens",
+    async (state, text) => {
+      mergeOnboardingProgress({ challengeId: "challenge-1" });
+      vi.mocked(verifyOtp).mockResolvedValue({
+        attempts_remaining: 2,
+        expires_in_seconds: 0,
+        state,
+      });
+      const user = userEvent.setup();
+
+      render(<AuthOtpForm />);
+      await user.type(await screen.findByLabelText("کد تایید"), "123456");
+      await user.click(screen.getByRole("button", { name: "تایید و ادامه" }));
+
+      expect(await screen.findByText(new RegExp(text))).toBeInTheDocument();
+      expect(push).not.toHaveBeenCalledWith("/onboarding/bootstrap");
+    },
+  );
+
+  it("routes a locked OTP challenge to the dedicated lock screen", async () => {
     mergeOnboardingProgress({ challengeId: "challenge-1" });
     vi.mocked(verifyOtp).mockResolvedValue({
-      attempts_remaining: state === "invalid" ? 2 : 0,
-      expires_in_seconds: state === "locked" ? 900 : 0,
-      state,
+      attempts_remaining: 0,
+      expires_in_seconds: 900,
+      state: "locked",
     });
     const user = userEvent.setup();
 
@@ -80,8 +114,23 @@ describe("canonical T8 onboarding forms", () => {
     await user.type(await screen.findByLabelText("کد تایید"), "123456");
     await user.click(screen.getByRole("button", { name: "تایید و ادامه" }));
 
-    expect(await screen.findByText(new RegExp(text))).toBeInTheDocument();
-    expect(push).not.toHaveBeenCalledWith("/onboarding/bootstrap");
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/auth/locked"));
+  });
+
+  it("routes a not-found OTP challenge back to mobile entry", async () => {
+    mergeOnboardingProgress({ challengeId: "challenge-1" });
+    vi.mocked(verifyOtp).mockResolvedValue({
+      attempts_remaining: 0,
+      expires_in_seconds: 0,
+      state: "not_found",
+    });
+    const user = userEvent.setup();
+
+    render(<AuthOtpForm />);
+    await user.type(await screen.findByLabelText("کد تایید"), "123456");
+    await user.click(screen.getByRole("button", { name: "تایید و ادامه" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/auth/mobile"));
   });
 
   it("routes verified OTP to bootstrap", async () => {

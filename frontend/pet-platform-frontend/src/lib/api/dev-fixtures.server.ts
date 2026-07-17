@@ -114,6 +114,10 @@ export async function loadDevelopmentApi() {
       const stage = await readDevStage();
       return stage === "complete" ? [fixtures.addressFixture] : [];
     },
+    listHouseholdPets: async (_householdId: string) => {
+      void _householdId;
+      return fixtures.meContextFixture.pets;
+    },
     getToday: async (petId: string) =>
       (await cookies()).get(devTodayStateCookie)?.value === "unopened"
         ? fixtures.unopenedTodayFixture
