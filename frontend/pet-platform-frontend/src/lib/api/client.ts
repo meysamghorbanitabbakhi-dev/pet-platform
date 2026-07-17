@@ -1,167 +1,128 @@
 "use client";
 
-import createClient from "openapi-fetch";
 import type {
   AddressBody,
-  ApiPaths,
+  FoodEstimateResponse,
   HouseholdBody,
+  IdResponse,
+  InventoryDetailResponse,
+  JourneyOfferResponse,
+  MeContextResponse,
   OpenInventoryBody,
   OtpRequestBody,
+  OtpRequestResponse,
   OtpVerifyBody,
+  OtpVerifyResponse,
   PetBody,
+  PetProfilePatch,
+  PolicyResponse,
+  TodayResponse,
 } from "@/lib/api-types";
-import {
-  ids,
-  incomingTodayFixture,
-  journeyOffersFixture,
-  meContextFixture,
-  openedEstimateFixture,
-  policyFixture,
-  rexTodayFixture,
-  returningTodayFixture,
-} from "@/lib/fixtures/gate-fixtures";
-import { authHeaders, setAccessToken } from "@/lib/session";
+import { csrfHeaders } from "@/lib/session";
 import { mapApiError } from "./errors";
 
-const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-const fixtureMode = process.env.NEXT_PUBLIC_GATE_FIXTURE_MODE === "1";
+export type PublicOtpVerifyResponse = Omit<
+  OtpVerifyResponse,
+  "access_token" | "refresh_token" | "token_type"
+>;
 
-export const apiClient = createClient<ApiPaths>({
-  baseUrl,
-  credentials: "include",
-});
-
-async function unwrap<T>(result: {
-  data?: T;
-  error?: unknown;
-  response: Response;
-}): Promise<T> {
-  if (result.error || !result.data) {
-    throw mapApiError(result.response.status, result.error);
+async function parseError(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return undefined;
   }
-  return result.data;
 }
 
-export async function requestOtp(body: OtpRequestBody) {
-  if (fixtureMode) {
-    return { challenge_id: ids.journey, expires_in_seconds: 90 };
+async function bff<T>(
+  path: string,
+  init: Omit<RequestInit, "body"> & { body?: unknown } = {},
+): Promise<T> {
+  const mutation = init.method && init.method !== "GET";
+  const response = await fetch(path, {
+    ...init,
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(mutation ? csrfHeaders() : {}),
+      ...init.headers,
+    },
+    body: init.body ? JSON.stringify(init.body) : undefined,
+  });
+  if (!response.ok) {
+    throw mapApiError(response.status, await parseError(response));
   }
-  return unwrap(await apiClient.POST("/api/v1/auth/otp/request", { body }));
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
 }
 
-export async function verifyOtp(body: OtpVerifyBody) {
-  if (fixtureMode) {
-    if (body.code === "000000")
-      return {
-        state: "invalid" as const,
-        attempts_remaining: 2,
-        expires_in_seconds: 60,
-      };
-    if (body.code === "999999")
-      return {
-        state: "locked" as const,
-        attempts_remaining: 0,
-        expires_in_seconds: 900,
-      };
-    const response = {
-      access_token: "fixture-access-token",
-      identity_id: "99999999-9999-4999-8999-999999999999",
-      refresh_token: "fixture-refresh-token",
-      state: "verified" as const,
-      token_type: "bearer" as const,
-    };
-    setAccessToken(response.access_token);
-    return response;
-  }
-  const response = await unwrap(
-    await apiClient.POST("/api/v1/auth/otp/verify", { body }),
-  );
-  setAccessToken(response.access_token);
-  return response;
+export function requestOtp(body: OtpRequestBody) {
+  return bff<OtpRequestResponse>("/api/bff/auth/otp/request", {
+    method: "POST",
+    body,
+  });
 }
 
-export async function getPolicies() {
-  if (fixtureMode) return policyFixture;
-  return unwrap(
-    await apiClient.GET("/api/v1/system/policies", { headers: authHeaders() }),
-  );
+export function verifyOtp(body: OtpVerifyBody) {
+  return bff<PublicOtpVerifyResponse>("/api/bff/auth/otp/verify", {
+    method: "POST",
+    body,
+  });
 }
 
-export async function getMeContext() {
-  if (fixtureMode) return meContextFixture;
-  return unwrap(
-    await apiClient.GET("/api/v1/me/context", { headers: authHeaders() }),
-  );
+export function logout() {
+  return bff<void>("/api/bff/auth/logout", { method: "POST" });
 }
 
-export async function createHousehold(body: HouseholdBody) {
-  if (fixtureMode) return { id: ids.household };
-  return unwrap(
-    await apiClient.POST("/api/v1/pet-life/households", {
-      body,
-      headers: authHeaders(),
-    }),
-  );
+export function getPolicies() {
+  return bff<PolicyResponse>("/api/bff/policies");
 }
 
-export async function createPet(householdId: string, body: PetBody) {
-  if (fixtureMode) return { id: ids.petBishi };
-  return unwrap(
-    await apiClient.POST("/api/v1/pet-life/households/{household_id}/pets", {
-      params: { path: { household_id: householdId } },
-      body,
-      headers: authHeaders(),
-    }),
-  );
+export function getMeContext() {
+  return bff<MeContextResponse>("/api/bff/me/context");
 }
 
-export async function createAddress(householdId: string, body: AddressBody) {
-  if (fixtureMode) return { id: "abababab-abab-4aba-8aba-abababababab" };
-  return unwrap(
-    await apiClient.POST(
-      "/api/v1/pet-life/households/{household_id}/addresses",
-      {
-        params: { path: { household_id: householdId } },
-        body,
-        headers: authHeaders(),
-      },
-    ),
-  );
+export function createHousehold(body: HouseholdBody) {
+  return bff<IdResponse>("/api/bff/households", { method: "POST", body });
 }
 
-export async function getToday(petId: string) {
-  if (fixtureMode)
-    return petId === ids.petRex ? rexTodayFixture : returningTodayFixture;
-  return unwrap(
-    await apiClient.GET("/api/v1/pet-life/pets/{pet_id}/today", {
-      params: { path: { pet_id: petId } },
-      headers: authHeaders(),
-    }),
-  );
+export function createPet(householdId: string, body: PetBody) {
+  return bff<IdResponse>(`/api/bff/households/${householdId}/pets`, {
+    method: "POST",
+    body,
+  });
 }
 
-export async function getIncomingToday() {
-  if (fixtureMode) return incomingTodayFixture;
-  return getToday(ids.petBishi);
+export function updatePetProfile(petId: string, body: PetProfilePatch) {
+  return bff<Record<string, unknown>>(`/api/bff/pets/${petId}/profile`, {
+    method: "PATCH",
+    body,
+  });
 }
 
-export async function getJourneyOffers(petId: string) {
-  if (fixtureMode) return journeyOffersFixture;
-  return unwrap(
-    await apiClient.GET("/api/v1/pet-life/pets/{pet_id}/journey-offers", {
-      params: { path: { pet_id: petId } },
-      headers: authHeaders(),
-    }),
-  );
+export function createAddress(householdId: string, body: AddressBody) {
+  return bff<IdResponse>(`/api/bff/households/${householdId}/addresses`, {
+    method: "POST",
+    body,
+  });
 }
 
-export async function openInventory(unitId: string, body: OpenInventoryBody) {
-  if (fixtureMode) return openedEstimateFixture;
-  return unwrap(
-    await apiClient.POST("/api/v1/pet-life/inventory/{unit_id}/open", {
-      params: { path: { unit_id: unitId } },
-      body,
-      headers: authHeaders(),
-    }),
-  );
+export function getToday(petId: string) {
+  return bff<TodayResponse>(`/api/bff/pets/${petId}/today`);
+}
+
+export function getJourneyOffers(petId: string) {
+  return bff<JourneyOfferResponse[]>(`/api/bff/pets/${petId}/journey-offers`);
+}
+
+export function getInventoryDetail(unitId: string) {
+  return bff<InventoryDetailResponse>(`/api/bff/inventory/${unitId}`);
+}
+
+export function openInventory(unitId: string, body: OpenInventoryBody) {
+  return bff<FoodEstimateResponse>(`/api/bff/inventory/${unitId}/open`, {
+    method: "POST",
+    body,
+  });
 }

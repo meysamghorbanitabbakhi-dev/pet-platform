@@ -22,3 +22,6 @@ export type HouseholdBody = Schema<"HouseholdBody">;
 export type PetBody = Schema<"PetBody">;
 export type AddressBody = Schema<"AddressBody">;
 export type IdResponse = Schema<"IdResponse">;
+export type RefreshBody = Schema<"RefreshBody">;
+export type TokenResponse = Schema<"TokenResponse">;
+export type PetProfilePatch = Schema<"PetProfilePatch">;

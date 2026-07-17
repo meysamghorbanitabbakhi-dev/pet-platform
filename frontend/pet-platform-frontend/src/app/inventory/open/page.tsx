@@ -1,5 +1,5 @@
-import { InventoryOpening } from "@/features/inventory/inventory-opening";
+import { redirect } from "next/navigation";
 
-export default function InventoryOpenPage() {
-  return <InventoryOpening />;
+export default function LegacyInventoryOpenPage() {
+  redirect("/today");
 }

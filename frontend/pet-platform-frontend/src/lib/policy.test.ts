@@ -3,7 +3,7 @@ import {
   journeyOffersFixture,
   policyDisabledFixture,
   policyFixture,
-} from "@/lib/fixtures/gate-fixtures";
+} from "@/test/fixtures/gate-fixtures";
 import {
   enabled,
   isPolicyCompatible,

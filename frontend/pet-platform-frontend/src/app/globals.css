@@ -425,6 +425,11 @@ button {
   box-shadow: 0 0 20px oklch(0.72 0.13 70 / 0.35);
 }
 
+.garden-preview__eyebrow,
+.garden-preview__caption {
+  color: oklch(0.92 0.02 150);
+}
+
 .skeleton {
   min-block-size: 14px;
   border-radius: 6px;

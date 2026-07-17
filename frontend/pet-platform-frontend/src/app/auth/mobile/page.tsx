@@ -1,5 +1,5 @@
-import { FirstOwnerFlow } from "@/features/auth/first-owner-flow";
+import { AuthMobileForm } from "@/features/onboarding/onboarding-forms";
 
 export default function AuthMobilePage() {
-  return <FirstOwnerFlow />;
+  return <AuthMobileForm />;
 }

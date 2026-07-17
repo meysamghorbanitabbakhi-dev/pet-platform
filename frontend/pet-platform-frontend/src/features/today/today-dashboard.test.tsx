@@ -9,7 +9,7 @@ import {
   returningTodayFixture,
   rexTodayFixture,
   unopenedTodayFixture,
-} from "@/lib/fixtures/gate-fixtures";
+} from "@/test/fixtures/gate-fixtures";
 import { TodayDashboard } from "./today-dashboard";
 
 describe("TodayDashboard", () => {
@@ -25,8 +25,14 @@ describe("TodayDashboard", () => {
       />,
     );
 
-    expect(screen.getByText(/هنوز باز شدن آن تأیید نشده/)).toBeInTheDocument();
+    expect(screen.getByText(/هنوز باز شدن آن تایید نشده/)).toBeInTheDocument();
     expect(screen.queryByText(/۱۲ تا ۱۸ روز/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "تایید باز شدن بسته" }),
+    ).toHaveAttribute(
+      "href",
+      `/inventory/${unopenedTodayFixture.food.state === "unopened" ? unopenedTodayFixture.food.inventory_unit_id : ""}`,
+    );
   });
 
   it("keeps household inventory separate from pet consumption", () => {
@@ -46,7 +52,7 @@ describe("TodayDashboard", () => {
     expect(within(boundary).getByText("مصرف پت")).toBeInTheDocument();
   });
 
-  it("switches active pets through an accessible tablist", async () => {
+  it("switches active pets through accessible tabs and arrow keys", async () => {
     const user = userEvent.setup();
     const onPetSelect = vi.fn();
     render(
@@ -61,6 +67,10 @@ describe("TodayDashboard", () => {
     );
 
     await user.click(screen.getByRole("tab", { name: /رکس/ }));
+    expect(onPetSelect).toHaveBeenCalledWith(meContextFixture.pets[1].id);
+
+    screen.getByRole("tab", { name: /بیشی/ }).focus();
+    await user.keyboard("{ArrowLeft}");
     expect(onPetSelect).toHaveBeenCalledWith(meContextFixture.pets[1].id);
   });
 

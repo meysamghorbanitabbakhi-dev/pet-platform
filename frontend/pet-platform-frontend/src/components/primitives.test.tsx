@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Button, Input, OtpInput, PetSwitcher } from "./primitives";
-import { meContextFixture } from "@/lib/fixtures/gate-fixtures";
+import { meContextFixture } from "@/test/fixtures/gate-fixtures";
 
 describe("accessible primitives", () => {
   it("labels inputs and keeps minimum interactive controls focusable", async () => {

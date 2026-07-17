@@ -1,20 +1,13 @@
-const tokenKey = "pet-platform.access-token";
+export const csrfHeaderName = "x-csrf-token";
+const csrfCookieNames = ["__Host-pet_csrf", "pet_csrf"];
 
-export function getAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(tokenKey);
-}
-
-export function setAccessToken(token: string | null | undefined) {
-  if (typeof window === "undefined") return;
-  if (!token) {
-    window.localStorage.removeItem(tokenKey);
-    return;
-  }
-  window.localStorage.setItem(tokenKey, token);
-}
-
-export function authHeaders(): HeadersInit {
-  const token = getAccessToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+export function csrfHeaders(): HeadersInit {
+  if (typeof document === "undefined") return {};
+  const csrf = document.cookie
+    .split("; ")
+    .find((entry) =>
+      csrfCookieNames.some((name) => entry.startsWith(`${name}=`)),
+    )
+    ?.split("=")[1];
+  return csrf ? { [csrfHeaderName]: decodeURIComponent(csrf) } : {};
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Banner, Card } from "@/components/primitives";
 import type { PolicyResponse, TodayFood, TodayResponse } from "@/lib/api-types";
 import { formatPersianNumber } from "@/lib/format";
@@ -9,14 +10,15 @@ export function foodStatusText(
 ): string {
   switch (food.state) {
     case "incoming":
-      return `سفارش پرداخت‌شده در مسیر تأمین و تحویل است: ${food.label}`;
+      return `سفارش پرداخت‌شده در مسیر تامین و تحویل است: ${food.label}`;
     case "unopened":
-      return `بسته تحویل شده و هنوز باز شدن آن تأیید نشده است: ${food.label}`;
+      return `بسته تحویل شده و هنوز باز شدن آن تایید نشده است: ${food.label}`;
     case "unknown_estimate":
       return `بسته باز شده، اما سهم مصرف هنوز برای تخمین روز کافی نیست: ${food.label}`;
     case "estimated": {
-      if (!enabled(policy, "semantic_level_estimation_enabled"))
+      if (!enabled(policy, "semantic_level_estimation_enabled")) {
         return `وضعیت غذا ثبت شده است: ${food.label}`;
+      }
       const high = food.remaining_high_days
         ? ` تا ${formatPersianNumber(food.remaining_high_days)}`
         : "";
@@ -40,6 +42,7 @@ export function FoodStatusCard({
   const hasKnownProgress =
     food.state === "estimated" &&
     enabled(policy, "semantic_level_estimation_enabled");
+
   return (
     <Card className="stack">
       <div className="split">
@@ -70,15 +73,23 @@ export function FoodStatusCard({
       <p>{foodStatusText(food, policy)}</p>
       {food.state === "incoming" ? (
         <Banner tone="info">
-          تأمین فقط پس از پرداخت کامل شروع می‌شود. زمان تعهد تحویل همین سفارش
-          ۳۶۶ ساعت است.
+          تامین فقط پس از پرداخت کامل شروع می‌شود. زمان تعهد تحویل همین سفارش
+          دقیقاً ۳۶۶ ساعت است.
         </Banner>
       ) : null}
       {food.state === "unopened" ? (
-        <Banner tone="warning">
-          تا وقتی باز شدن بسته را تأیید نکنید، عدد روز باقی‌مانده نمایش داده
-          نمی‌شود.
-        </Banner>
+        <>
+          <Banner tone="warning">
+            تا وقتی باز شدن بسته را تایید نکنید، عدد روز باقی‌مانده نمایش داده
+            نمی‌شود.
+          </Banner>
+          <Link
+            className="button button--selection"
+            href={`/inventory/${food.inventory_unit_id}`}
+          >
+            تایید باز شدن بسته
+          </Link>
+        </>
       ) : null}
     </Card>
   );
@@ -87,13 +98,13 @@ export function FoodStatusCard({
 export function NextEventCard({ today }: { today: TodayResponse }) {
   const label =
     today.primary_attention?.type === "delivery_delayed"
-      ? "تحویل با تأخیر ثبت شده است"
+      ? "تحویل با تاخیر ثبت شده است"
       : today.primary_attention?.type === "delivery_overdue"
         ? "تحویل از زمان تعهد گذشته است"
         : today.primary_attention?.type === "sourcing_failed"
-          ? "تأمین سفارش ناموفق شده است"
+          ? "تامین سفارش ناموفق شده است"
           : today.next_action === "confirm_opening"
-            ? "تأیید باز شدن بسته"
+            ? "تایید باز شدن بسته"
             : today.next_action === "improve_food_estimate"
               ? "بهبود تخمین مصرف"
               : "رویداد فوری ثبت نشده است";

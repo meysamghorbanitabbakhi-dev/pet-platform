@@ -4,7 +4,7 @@ import {
   policyFixture,
   returningTodayFixture,
   unopenedTodayFixture,
-} from "@/lib/fixtures/gate-fixtures";
+} from "@/test/fixtures/gate-fixtures";
 import { foodStatusText } from "./food-status";
 
 describe("Today food status", () => {

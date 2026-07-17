@@ -1,28 +1,83 @@
 "use client";
 
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
-import { Banner, Button, Card } from "@/components/primitives";
-import { openInventory } from "@/lib/api/client";
-import { ids, inventoryDetailFixture } from "@/lib/fixtures/gate-fixtures";
+import {
+  Banner,
+  Button,
+  Card,
+  ErrorState,
+  Skeleton,
+} from "@/components/primitives";
+import { getInventoryDetail, openInventory } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 
-export function InventoryOpening() {
-  const [state, setState] = useState<"ready" | "opened">("ready");
-  const [busy, setBusy] = useState(false);
-
-  async function confirmOpening() {
-    setBusy(true);
-    try {
-      await openInventory(ids.inventoryUnit, {
+export function InventoryOpening({ unitId }: { unitId: string }) {
+  const queryClient = useQueryClient();
+  const detailQuery = useQuery({
+    queryKey: ["pet-life", "inventory", unitId],
+    queryFn: () => getInventoryDetail(unitId),
+    enabled: Boolean(unitId),
+  });
+  const openMutation = useMutation({
+    mutationFn: () =>
+      openInventory(unitId, {
         feeding_context: "unknown",
         remaining: null,
         remaining_grams: null,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["pet-life", "inventory", unitId],
       });
-      setState("opened");
-    } finally {
-      setBusy(false);
-    }
+    },
+  });
+
+  if (detailQuery.isLoading) {
+    return (
+      <AppShell>
+        <div className="stack">
+          <h1 className="display">باز کردن بسته</h1>
+          <Card className="stack">
+            <Skeleton />
+            <Skeleton />
+            <Skeleton />
+          </Card>
+        </div>
+      </AppShell>
+    );
   }
+
+  if (detailQuery.isError) {
+    return (
+      <AppShell>
+        <ErrorState
+          title="واحد انبار دریافت نشد"
+          body={errorText(detailQuery.error)}
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => void detailQuery.refetch()}
+            >
+              تلاش دوباره
+            </Button>
+          }
+        />
+      </AppShell>
+    );
+  }
+
+  const detail = detailQuery.data;
+  if (!detail) {
+    return (
+      <AppShell>
+        <ErrorState title="واحد انبار در دسترس نیست" />
+      </AppShell>
+    );
+  }
+
+  const alreadyOpened = Boolean(detail.opened_at) || detail.state === "opened";
+  const unavailable = detail.state === "unavailable";
 
   return (
     <AppShell>
@@ -32,28 +87,54 @@ export function InventoryOpening() {
           <h1 className="display">باز کردن بسته</h1>
         </div>
         <Card className="stack">
-          <h2 className="title">{inventoryDetailFixture.label}</h2>
+          <div>
+            <div className="eyebrow">شناسه واحد</div>
+            <div className="ltr-data">{detail.id}</div>
+          </div>
+          <h2 className="title">{detail.label}</h2>
           <p className="caption">
-            این واحد فیزیکی متعلق به خانوار است. نسبت مصرف پت بعد از setup از آن
-            جدا ثبت می‌شود.
+            این واحد فیزیکی متعلق به خانوار است. مصرف پت پس از setup جدا ثبت
+            می‌شود.
           </p>
-          {state === "ready" ? (
+          {unavailable ? (
+            <Banner tone="error">
+              این واحد انبار برای باز کردن در دسترس نیست.
+            </Banner>
+          ) : alreadyOpened ? (
+            <Banner tone="info">
+              باز شدن بسته قبلاً ثبت شده است. تخمین فقط از داده backend نمایش
+              داده می‌شود.
+            </Banner>
+          ) : (
             <>
               <Banner tone="warning">
-                تا قبل از تأیید باز شدن بسته، تخمین روز باقی‌مانده شروع نمی‌شود.
+                تا قبل از تایید باز شدن بسته، تخمین روز باقی‌مانده شروع نمی‌شود.
               </Banner>
-              <Button onClick={confirmOpening} loading={busy}>
-                تأیید باز شدن بسته
+              <Button
+                onClick={() => openMutation.mutate()}
+                loading={openMutation.isPending}
+                disabled={openMutation.isPending}
+              >
+                تایید باز شدن بسته
               </Button>
             </>
-          ) : (
-            <Banner tone="info">
-              باز شدن بسته ثبت شد. برای تخمین دقیق‌تر، backend داده کافی مصرف را
-              تعیین می‌کند.
-            </Banner>
           )}
+          {openMutation.isError ? (
+            <Banner tone="error">{errorText(openMutation.error)}</Banner>
+          ) : null}
+          {openMutation.isSuccess ? (
+            <Banner tone="info">
+              باز شدن بسته ثبت شد. اگر backend تخمین معتبر برگرداند، همان داده
+              نمایش داده می‌شود.
+            </Banner>
+          ) : null}
         </Card>
       </div>
     </AppShell>
   );
+}
+
+function errorText(error: unknown) {
+  if (error instanceof ApiError) return error.message;
+  return "خطا در ارتباط با سرویس.";
 }

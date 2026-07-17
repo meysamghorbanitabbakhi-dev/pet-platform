@@ -18,7 +18,6 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     env: {
       GATE_FIXTURE_MODE: "1",
-      NEXT_PUBLIC_GATE_FIXTURE_MODE: "1",
       NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:8000",
     },
   },

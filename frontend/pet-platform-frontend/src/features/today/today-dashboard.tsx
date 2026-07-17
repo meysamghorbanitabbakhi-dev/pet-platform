@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   Banner,
+  Button,
   Card,
   EmptyState,
   ErrorState,
@@ -23,6 +24,8 @@ import {
 } from "@/lib/policy";
 import { FoodStatusCard, NextEventCard } from "./food-status";
 
+const selectedPetKey = "pet-platform.selected-pet-id";
+
 export function TodayDashboard({
   context,
   policy,
@@ -31,6 +34,10 @@ export function TodayDashboard({
   activePetId,
   onPetSelect,
   loading,
+  todayError,
+  onTodayRetry,
+  journeyError,
+  onJourneyRetry,
 }: {
   context: MeContextResponse;
   policy: PolicyResponse;
@@ -39,6 +46,10 @@ export function TodayDashboard({
   activePetId: string;
   onPetSelect: (petId: string) => void;
   loading?: boolean;
+  todayError?: boolean;
+  onTodayRetry?: () => void;
+  journeyError?: boolean;
+  onJourneyRetry?: () => void;
 }) {
   const activePet = context.pets.find((pet) => pet.id === activePetId);
 
@@ -65,7 +76,7 @@ export function TodayDashboard({
       <div className="split">
         <div>
           <div className="eyebrow">Pet Platform</div>
-          <h1 className="display">امروز</h1>
+          <h1 className="display">Today</h1>
         </div>
         <span className="chip chip--active">RTL</span>
       </div>
@@ -76,18 +87,39 @@ export function TodayDashboard({
         onSelect={onPetSelect}
       />
 
-      {loading || !today ? (
+      {loading ? (
         <Card className="stack">
           <Skeleton />
           <Skeleton />
           <Skeleton />
         </Card>
-      ) : (
+      ) : todayError ? (
+        <ErrorState
+          title="وضعیت امروز این پت دریافت نشد"
+          body="بخش‌های دیگر صفحه باقی می‌مانند؛ فقط این ماژول دوباره دریافت می‌شود."
+          action={
+            onTodayRetry ? (
+              <Button variant="secondary" onClick={onTodayRetry}>
+                تلاش دوباره
+              </Button>
+            ) : null
+          }
+        />
+      ) : today ? (
         <>
           <FoodStatusCard today={today} policy={policy} />
           <NextEventCard today={today} />
           <HouseholdInventoryBoundary today={today} />
-          {shouldRenderCareJourneys(policy, journeyOffers) ? (
+          {journeyError ? (
+            <Banner tone="warning">
+              مسیرهای مراقبتی دریافت نشدند.
+              {onJourneyRetry ? (
+                <Button variant="ghost" onClick={onJourneyRetry}>
+                  تلاش دوباره
+                </Button>
+              ) : null}
+            </Banner>
+          ) : shouldRenderCareJourneys(policy, journeyOffers) ? (
             <CareJourneyPreview offers={journeyOffers} />
           ) : null}
           {shouldRenderReserveNow(policy) ? (
@@ -97,6 +129,11 @@ export function TodayDashboard({
           ) : null}
           <GardenPreview today={today} />
         </>
+      ) : (
+        <EmptyState
+          title="وضعیت امروز آماده نیست"
+          body="وقتی backend داده معتبر برگرداند، این بخش نمایش داده می‌شود."
+        />
       )}
     </div>
   );
@@ -115,7 +152,7 @@ function HouseholdInventoryBoundary({ today }: { today: TodayResponse }) {
         <div className="eyebrow">مصرف پت</div>
         <h2 className="title">{today.pet.name}</h2>
         <p className="caption">
-          سهم مصرف فقط پس از setup و تأیید باز شدن بسته به پت نسبت داده می‌شود.
+          سهم مصرف فقط پس از setup و تایید باز شدن بسته به پت نسبت داده می‌شود.
         </p>
       </div>
     </Card>
@@ -128,8 +165,8 @@ function CareJourneyPreview({ offers }: { offers: JourneyOfferResponse[] }) {
       <div className="eyebrow">مسیر مراقبتی</div>
       <h2 className="title">{offers[0]?.title_fa}</h2>
       <p className="caption">
-        فقط مسیرهای تأییدشده، فعال، واجد شرایط و دارای مرجع حرفه‌ای از backend
-        نمایش داده می‌شوند.
+        فقط مسیرهایی نمایش داده می‌شوند که backend به عنوان فعال، تاییدشده و
+        واجد شرایط برگردانده است.
       </p>
     </Card>
   );
@@ -144,11 +181,9 @@ function GardenPreview({ today }: { today: TodayResponse }) {
     >
       <div className="split">
         <div>
-          <div className="eyebrow" style={{ color: "oklch(0.8 0.03 150)" }}>
-            باغ ایرانی
-          </div>
+          <div className="eyebrow garden-preview__eyebrow">باغ ایرانی</div>
           <h2 className="title">باغ {today.pet.name}</h2>
-          <p className="caption" style={{ color: "oklch(0.8 0.03 150)" }}>
+          <p className="caption garden-preview__caption">
             {formatPersianNumber(today.garden.object_count)} شیء جای‌گذاری‌شده
             از خاطره‌های معتبر
           </p>
@@ -159,8 +194,25 @@ function GardenPreview({ today }: { today: TodayResponse }) {
   );
 }
 
-export function useFixtureSelectedPet(context: MeContextResponse) {
-  const [activePetId, setActivePetId] = useState(context.pets[0]?.id ?? "");
+export function usePersistedSelectedPet(context: MeContextResponse) {
+  const fallbackPetId = context.pets[0]?.id ?? "";
+  const [storedPetId, setStoredPetId] = useState(() =>
+    typeof window === "undefined"
+      ? null
+      : window.localStorage.getItem(selectedPetKey),
+  );
+  const activePetId =
+    storedPetId && context.pets.some((pet) => pet.id === storedPetId)
+      ? storedPetId
+      : fallbackPetId;
+
+  const setActivePetId = (petId: string) => {
+    setStoredPetId(petId);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(selectedPetKey, petId);
+    }
+  };
+
   const activePet = useMemo(
     () => context.pets.find((pet) => pet.id === activePetId) ?? context.pets[0],
     [activePetId, context.pets],

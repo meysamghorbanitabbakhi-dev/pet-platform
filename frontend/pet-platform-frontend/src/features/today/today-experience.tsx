@@ -1,15 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { ErrorState } from "@/components/primitives";
+import { Button, ErrorState, Skeleton } from "@/components/primitives";
 import {
   getJourneyOffers,
   getMeContext,
   getPolicies,
   getToday,
 } from "@/lib/api/client";
-import { TodayDashboard, useFixtureSelectedPet } from "./today-dashboard";
+import { TodayDashboard, usePersistedSelectedPet } from "./today-dashboard";
 
 export function TodayExperience() {
   const policyQuery = useQuery({ queryKey: ["policy"], queryFn: getPolicies });
@@ -22,8 +23,24 @@ export function TodayExperience() {
     return (
       <AppShell>
         <ErrorState
-          title="خطا در دریافت امروز"
+          title="خطا در دریافت Today"
           body="اتصال یا نشست را بررسی کنید و دوباره تلاش کنید."
+          action={
+            <div className="cluster">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  void policyQuery.refetch();
+                  void contextQuery.refetch();
+                }}
+              >
+                تلاش دوباره
+              </Button>
+              <Link className="button button--ghost" href="/auth/mobile">
+                ورود دوباره
+              </Link>
+            </div>
+          }
         />
       </AppShell>
     );
@@ -33,9 +50,9 @@ export function TodayExperience() {
     return (
       <AppShell>
         <div className="stack">
-          <div className="display">امروز</div>
-          <div className="card skeleton" />
-          <div className="card skeleton" />
+          <div className="display">Today</div>
+          <Skeleton />
+          <Skeleton />
         </div>
       </AppShell>
     );
@@ -51,7 +68,7 @@ function TodayLoaded({
   policy: Awaited<ReturnType<typeof getPolicies>>;
   context: Awaited<ReturnType<typeof getMeContext>>;
 }) {
-  const { activePetId, setActivePetId } = useFixtureSelectedPet(context);
+  const { activePetId, setActivePetId } = usePersistedSelectedPet(context);
   const todayQuery = useQuery({
     queryKey: ["pet-life", "today", activePetId],
     queryFn: () => getToday(activePetId),
@@ -73,6 +90,10 @@ function TodayLoaded({
         activePetId={activePetId}
         onPetSelect={setActivePetId}
         loading={todayQuery.isLoading}
+        todayError={todayQuery.isError}
+        onTodayRetry={() => void todayQuery.refetch()}
+        journeyError={journeyQuery.isError}
+        onJourneyRetry={() => void journeyQuery.refetch()}
       />
     </AppShell>
   );
