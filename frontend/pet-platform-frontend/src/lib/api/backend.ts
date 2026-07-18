@@ -24,6 +24,7 @@ import type {
   CustomerRequestBody,
   CustomerRequestPage,
   CustomerRequestResponse,
+  DelayAcknowledgementResponse,
   DiaryEntryDetailResponse,
   DiaryListItem,
   GardenPlacementBody,
@@ -31,6 +32,7 @@ import type {
   InventoryListItem,
   JourneyCheckInBody,
   NotificationPage,
+  OrderListPage,
   PrivacyRequestBody,
   PrivacyRequestResponse,
   WalletSummaryResponse,
@@ -1065,6 +1067,31 @@ export async function paymentCallbackBackend(
     await backendClient.GET("/api/v1/payments/zarinpal/callback", {
       params: { query: { Authority: authority, Status: status } },
       cache: "no-store",
+    }),
+  );
+}
+
+export async function listOrdersBackend(): Promise<OrderListPage> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listOrders();
+  return withAuth((headers) => backendClient.GET("/api/v1/orders", { headers }));
+}
+
+export async function acknowledgeOrderDelayBackend(
+  orderId: string,
+  idempotencyKey: string,
+): Promise<DelayAcknowledgementResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.acknowledgeOrderDelay(orderId, idempotencyKey);
+  }
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/orders/{order_id}/delay-acknowledgements", {
+      params: {
+        header: { "Idempotency-Key": idempotencyKey },
+        path: { order_id: orderId },
+      },
+      headers,
     }),
   );
 }

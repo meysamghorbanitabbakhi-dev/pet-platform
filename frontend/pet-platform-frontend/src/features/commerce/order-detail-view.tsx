@@ -9,9 +9,12 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  Money,
+  OrderTimeline,
   Skeleton,
 } from "@/components/primitives";
 import {
+  acknowledgeOrderDelay,
   getMeContext,
   getOrderDetail,
   getOrderJourney,
@@ -23,10 +26,15 @@ import type {
 } from "@/lib/api-types";
 import { ApiError } from "@/lib/api/errors";
 import { clearCart } from "@/lib/cart";
-import { orderStatusLabel, supplierCountryLabel } from "@/lib/commerce-format";
+import {
+  authenticityLabel,
+  orderStatusLabel,
+  supplierCountryLabel,
+} from "@/lib/commerce-format";
 import { clearCheckoutAttempt } from "@/lib/checkout-attempt";
 import {
   formatDeliveryCommitment,
+  formatIranDate,
   formatIranDateTime,
   formatTomanFromIrr,
 } from "@/lib/format";
@@ -35,6 +43,31 @@ function errorText(error: unknown) {
   if (error instanceof ApiError) return error.message;
   return "خطا در دریافت سفارش.";
 }
+
+const timelineEventLabels: Record<string, string> = {
+  cancelled: "لغو شد",
+  delayed: "تاخیر ثبت شد",
+  delivered: "تحویل داده شد",
+  in_transit: "در مسیر تحویل",
+  payment_confirmed: "پرداخت تایید شد",
+  resolution_recorded: "پیگیری ثبت شد",
+  sourcing_failed: "تامین ناموفق بود",
+  sourcing_started: "تامین آغاز شد",
+};
+
+const timelineEventTone: Record<
+  string,
+  "positive" | "info" | "warning" | "error" | "muted"
+> = {
+  cancelled: "muted",
+  delayed: "warning",
+  delivered: "positive",
+  in_transit: "info",
+  payment_confirmed: "positive",
+  resolution_recorded: "info",
+  sourcing_failed: "error",
+  sourcing_started: "info",
+};
 
 export function OrderDetailView({
   confirmation = false,
@@ -128,17 +161,41 @@ function OrderSummary({
   journey: OrderJourneyResponse;
   order: OrderDetailResponse;
 }) {
+  const queryClient = useQueryClient();
+  const delayed = Boolean(
+    journey.revised_delivery_at &&
+      journey.original_delivery_commitment_at &&
+      journey.revised_delivery_at !== journey.original_delivery_commitment_at,
+  );
+  const ackMutation = useMutation({
+    mutationFn: () => acknowledgeOrderDelay(order.id, crypto.randomUUID()),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["orders", order.id] });
+    },
+  });
+
   return (
     <>
+      {order.status === "delivered" ? (
+        <Banner tone="info">
+          این سفارش تحویل داده شد
+          {journey.delivered_at
+            ? ` (${formatIranDateTime(journey.delivered_at)})`
+            : ""}
+          .
+        </Banner>
+      ) : null}
+      {order.status === "failed" ? (
+        <Banner tone="error">این سفارش ناموفق ثبت شده است.</Banner>
+      ) : null}
+
       <Card className="stack">
         <div className="split">
           <div>
             <div className="eyebrow">وضعیت سفارش</div>
             <h2 className="title">{orderStatusLabel(order.status)}</h2>
           </div>
-          <div className="money">
-            {formatTomanFromIrr(order.merchandise_total_irr)}
-          </div>
+          <Money irr={order.merchandise_total_irr} />
         </div>
         <div className="grid grid--two">
           <Fact
@@ -166,6 +223,27 @@ function OrderSummary({
           {formatDeliveryCommitment(order.policies.delivery_commitment_hours)}{" "}
           است.
         </Banner>
+        {delayed ? (
+          <Banner tone="warning">
+            زمان تحویل تغییر کرده است. زمان اولیه:{" "}
+            {formatIranDateTime(journey.original_delivery_commitment_at)} ·
+            زمان به‌روزشده: {formatIranDateTime(journey.revised_delivery_at)}
+            {ackMutation.isSuccess ? null : (
+              <div className="cluster">
+                <Button
+                  variant="ghost"
+                  loading={ackMutation.isPending}
+                  onClick={() => ackMutation.mutate()}
+                >
+                  متوجه شدم
+                </Button>
+              </div>
+            )}
+          </Banner>
+        ) : null}
+        {ackMutation.isSuccess ? (
+          <Banner tone="info">تاخیر تایید شد.</Banner>
+        ) : null}
       </Card>
 
       <Card className="stack">
@@ -179,8 +257,21 @@ function OrderSummary({
               </p>
               {line.sourced_unit ? (
                 <p className="caption">
-                  اصالت: تاییدشده توسط تامین‌کننده · کشور تامین‌کننده:{" "}
+                  اصالت: {authenticityLabel(line.sourced_unit.authenticity)} ·
+                  کشور تامین‌کننده:{" "}
                   {supplierCountryLabel(line.sourced_unit.supplier_country)}
+                </p>
+              ) : null}
+              {line.sourced_unit?.exact_expiry_date ? (
+                <p className="caption">
+                  تاریخ انقضا:{" "}
+                  {formatIranDate(line.sourced_unit.exact_expiry_date)}
+                </p>
+              ) : null}
+              {line.sourced_unit?.confirmed_at ? (
+                <p className="caption">
+                  زمان تایید تامین:{" "}
+                  {formatIranDateTime(line.sourced_unit.confirmed_at)}
                 </p>
               ) : null}
             </div>
@@ -203,14 +294,15 @@ function OrderSummary({
       <Card className="stack">
         <div className="eyebrow">مسیر سفارش</div>
         {journey.timeline.length ? (
-          journey.timeline.map((item) => (
-            <div className="split" key={`${item.type}-${item.occurred_at}`}>
-              <span>{item.type}</span>
-              <span className="caption">
-                {formatIranDateTime(item.occurred_at)}
-              </span>
-            </div>
-          ))
+          <OrderTimeline
+            steps={journey.timeline.map((item, index) => ({
+              key: `${item.type}-${item.occurred_at}`,
+              label: timelineEventLabels[item.type] ?? item.type,
+              timestamp: formatIranDateTime(item.occurred_at),
+              tone: timelineEventTone[item.type] ?? "muted",
+              current: index === journey.timeline.length - 1,
+            }))}
+          />
         ) : (
           <p className="caption">هنوز رخداد عملیاتی ثبت نشده است.</p>
         )}

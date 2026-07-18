@@ -71,6 +71,10 @@ export type BreedSelectionBody = Schema<"BreedSelectionBody">;
 export type GuidancePreferenceBody = Schema<"GuidancePreferenceBody">;
 export type ConsentBody = Schema<"ConsentBody">;
 export type BodyAssessmentBody = Schema<"BodyAssessmentBody">;
+export type OrderListItem = Schema<"OrderListItem">;
+export type OrderListPage = Schema<"OffsetPage_OrderListItem_">;
+export type DelayAcknowledgementResponse = Schema<"DelayAcknowledgementResponse">;
+export type SourcedUnitResponse = Schema<"SourcedUnitResponse">;
 export type AvailabilitySubscriptionPage =
   Schema<"OffsetPage_AvailabilitySubscriptionResponse_">;
 export type CustomerRequestPage = Schema<"OffsetPage_CustomerRequestResponse_">;

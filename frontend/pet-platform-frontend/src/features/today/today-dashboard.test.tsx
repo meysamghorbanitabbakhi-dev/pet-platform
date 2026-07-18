@@ -90,6 +90,27 @@ describe("TodayDashboard", () => {
     expect(screen.queryByText(/رزرو اکنون/)).not.toBeInTheDocument();
   });
 
+  it("shows a distinct empty state when the household itself hasn't been created yet", () => {
+    render(
+      <TodayDashboard
+        context={{
+          ...meContextFixture,
+          onboarding: { ...meContextFixture.onboarding, needs_household: true },
+          pets: [],
+        }}
+        policy={policyFixture}
+        today={null}
+        journeyOffers={[]}
+        activePetId=""
+        onPetSelect={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByText("هنوز خانواری ثبت نشده است"),
+    ).toBeInTheDocument();
+  });
+
   it("keeps Garden free of score, purchase, streak, or decay mechanics", () => {
     const { container } = render(
       <TodayDashboard

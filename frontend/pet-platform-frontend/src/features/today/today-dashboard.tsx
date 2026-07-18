@@ -64,6 +64,14 @@ export function TodayDashboard({
   }
 
   if (!activePet) {
+    if (context.onboarding.needs_household) {
+      return (
+        <EmptyState
+          title="هنوز خانواری ثبت نشده است"
+          body="فروشگاه همچنان در دسترس است و می‌توانید بعداً خانوار و پت را تکمیل کنید."
+        />
+      );
+    }
     return (
       <EmptyState
         title="پتی برای نمایش وجود ندارد"

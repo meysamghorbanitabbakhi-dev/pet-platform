@@ -295,6 +295,19 @@ export async function loadDevelopmentApi() {
       void _body;
       return undefined;
     },
+    listOrders: async () => fixtures.orderListPageFixture,
+    acknowledgeOrderDelay: async (orderId: string, _idempotencyKey: string) => {
+      void _idempotencyKey;
+      return {
+        acknowledged_at: "2026-07-17T09:00:00Z",
+        cancellation_implied: false as const,
+        compensation_implied: false as const,
+        delay_event_version: 1,
+        id: fixtures.ids.orderPaid,
+        order_id: orderId,
+        waiver_implied: false as const,
+      };
+    },
     getJourneyOffers: async (_petId: string) => {
       void _petId;
       return fixtures.journeyOffersFixture;

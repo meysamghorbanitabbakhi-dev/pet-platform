@@ -7,6 +7,7 @@ import type {
   DiaryEntryDetailResponse,
   DiaryListItem,
   NotificationPage,
+  OrderListPage,
   PrivacyRequestResponse,
   WalletSummaryResponse,
 } from "@/lib/api-types";
@@ -318,6 +319,22 @@ export const orderJourneyFixture: OrderJourneyResponse = {
       type: "payment_confirmed",
     },
   ],
+};
+
+export const orderListPageFixture: OrderListPage = {
+  items: [
+    {
+      currency: "IRR",
+      delivered_at: null,
+      delivery_commitment_at: "2026-08-01T15:00:00Z",
+      household_id: ids.household,
+      id: ids.orderPaid,
+      paid_at: "2026-07-17T09:05:00Z",
+      status: "paid",
+      total_irr: 4_800_000,
+    },
+  ],
+  page: { has_more: false, limit: 25, offset: 0, total: 1 },
 };
 
 export const incomingTodayFixture: TodayResponse = {

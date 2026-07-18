@@ -36,8 +36,10 @@ import type {
   NotificationPage,
   OfferDetailResponse,
   OpenInventoryBody,
+  DelayAcknowledgementResponse,
   OrderDetailResponse,
   OrderJourneyResponse,
+  OrderListPage,
   OrderPetPlanBody,
   OrderResponse,
   OtpRequestBody,
@@ -387,6 +389,17 @@ export function paymentCallback(authority: string, status: string | null) {
   if (status !== null) params.set("Status", status);
   return bff<PaymentCallbackResponse>(
     `/api/bff/payments/zarinpal/callback?${params.toString()}`,
+  );
+}
+
+export function listOrders() {
+  return bff<OrderListPage>("/api/bff/orders");
+}
+
+export function acknowledgeOrderDelay(orderId: string, idempotencyKey: string) {
+  return bff<DelayAcknowledgementResponse>(
+    `/api/bff/orders/${orderId}/delay-acknowledgements`,
+    { method: "POST", body: { idempotencyKey } },
   );
 }
 

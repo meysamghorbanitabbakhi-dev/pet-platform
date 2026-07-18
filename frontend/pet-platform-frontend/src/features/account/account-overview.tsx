@@ -203,6 +203,13 @@ export function AccountOverview() {
         </Card>
 
         <Card className="stack">
+          <h2 className="title">سفارش‌ها</h2>
+          <Link className="button button--secondary" href="/orders">
+            تاریخچه سفارش‌ها
+          </Link>
+        </Card>
+
+        <Card className="stack">
           <h2 className="title">کیف پول</h2>
           {walletQuery.isLoading ? <Skeleton /> : null}
           {walletQuery.isError ? (

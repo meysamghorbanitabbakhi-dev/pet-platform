@@ -326,6 +326,7 @@ export function PetOnboardingForm() {
 
   return (
     <OnboardingScreen eyebrow="پروفایل پت" title="نام و گونه پت">
+      <p className="caption">هنوز پتی برای این خانوار ثبت نشده است.</p>
       <Card>
         <form className="stack" onSubmit={form.handleSubmit(onSubmit)}>
           <Input
@@ -461,6 +462,7 @@ export function AddressOnboardingForm() {
 
   return (
     <OnboardingScreen eyebrow="نشانی" title="آدرس تحویل">
+      <p className="caption">هنوز آدرسی برای این خانوار ثبت نشده است.</p>
       <Card>
         <form className="stack" onSubmit={form.handleSubmit(onSubmit)}>
           <Input
