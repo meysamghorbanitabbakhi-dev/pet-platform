@@ -2,8 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
   Button,
@@ -15,7 +13,7 @@ import {
 } from "@/components/primitives";
 import type { InventoryListItem } from "@/lib/api-types";
 import { getMeContext, listHouseholdInventory } from "@/lib/api/client";
-import { ApiError } from "@/lib/api/errors";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 const stateLabelFa: Record<string, string> = {
   delivered_unopened: "تحویل‌شده، باز نشده",
@@ -57,7 +55,6 @@ function InventoryRow({ item }: { item: InventoryListItem }) {
 }
 
 export function InventoryList() {
-  const router = useRouter();
   const contextQuery = useQuery({
     queryKey: ["me", "context"],
     queryFn: getMeContext,
@@ -74,12 +71,10 @@ export function InventoryList() {
     enabled: Boolean(householdId),
   });
 
-  const sessionExpired =
-    contextQuery.error instanceof ApiError && contextQuery.error.status === 401;
-
-  useEffect(() => {
-    if (sessionExpired) router.replace("/auth/session-expired");
-  }, [sessionExpired, router]);
+  const sessionExpired = useSessionExpiryRedirect(
+    contextQuery.error,
+    inventoryQuery.error,
+  );
 
   if (sessionExpired) {
     return (
@@ -96,7 +91,10 @@ export function InventoryList() {
           title="خطا در دریافت انبار"
           body="اتصال را بررسی کنید و دوباره تلاش کنید."
           action={
-            <Button variant="secondary" onClick={() => void contextQuery.refetch()}>
+            <Button
+              variant="secondary"
+              onClick={() => void contextQuery.refetch()}
+            >
               تلاش دوباره
             </Button>
           }

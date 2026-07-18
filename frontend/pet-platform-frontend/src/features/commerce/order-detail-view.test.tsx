@@ -16,8 +16,11 @@ import {
 } from "@/test/fixtures/gate-fixtures";
 import { OrderDetailView } from "./order-detail-view";
 
+const replace = vi.fn();
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/orders/order-1",
+  useRouter: () => ({ replace }),
 }));
 
 vi.mock("@/lib/api/client", () => ({
@@ -40,7 +43,10 @@ function renderWithQuery(ui: ReactNode) {
 describe("OrderDetailView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getMeContext).mockResolvedValue({ ...meContextFixture, pets: [] });
+    vi.mocked(getMeContext).mockResolvedValue({
+      ...meContextFixture,
+      pets: [],
+    });
   });
 
   it("shows the real authenticity field from the backend, never a hardcoded claim", async () => {

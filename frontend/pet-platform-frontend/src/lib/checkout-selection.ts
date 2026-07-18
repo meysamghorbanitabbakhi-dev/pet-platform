@@ -37,3 +37,8 @@ export function writeCheckoutSelection(
     JSON.stringify({ ...selection, version: 1 }),
   );
 }
+
+export function clearCheckoutSelection() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(storageKey);
+}

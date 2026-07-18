@@ -29,6 +29,7 @@ import {
 import { ApiError } from "@/lib/api/errors";
 import { formatIranDateTime, formatPersianNumber } from "@/lib/format";
 import { enabled } from "@/lib/policy";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 const levelLabels: Record<string, string> = {
   full: "پر (۷۵ تا ۱۰۰٪)",
@@ -68,15 +69,25 @@ function RemainingChooser({
     if (mode === "grams") {
       const parsed = Number.parseInt(grams, 10);
       if (!Number.isFinite(parsed) || parsed <= 0) return;
-      onSubmit({ feeding_context: "unknown", remaining: { mode: "grams", grams: parsed } });
+      onSubmit({
+        feeding_context: "unknown",
+        remaining: { mode: "grams", grams: parsed },
+      });
       return;
     }
     if (mode === "level") {
       if (!level) return;
-      onSubmit({ feeding_context: "unknown", remaining: { mode: "level", level } });
+      onSubmit({
+        feeding_context: "unknown",
+        remaining: { mode: "level", level },
+      });
       return;
     }
-    onSubmit({ feeding_context: "unknown", remaining: null, remaining_grams: null });
+    onSubmit({
+      feeding_context: "unknown",
+      remaining: null,
+      remaining_grams: null,
+    });
   }
 
   const canSubmit =
@@ -86,7 +97,11 @@ function RemainingChooser({
 
   return (
     <div className="stack">
-      <div className="cluster" role="radiogroup" aria-label="نحوه ثبت باقی‌مانده">
+      <div
+        className="cluster"
+        role="radiogroup"
+        aria-label="نحوه ثبت باقی‌مانده"
+      >
         <Button
           type="button"
           variant={mode === "grams" ? "selection" : "secondary"}
@@ -131,7 +146,11 @@ function RemainingChooser({
       ) : null}
 
       {mode === "level" ? (
-        <div className="cluster" role="radiogroup" aria-label="سطح تقریبی باقی‌مانده">
+        <div
+          className="cluster"
+          role="radiogroup"
+          aria-label="سطح تقریبی باقی‌مانده"
+        >
           {levelOrder.map((value) => (
             <Button
               key={value}
@@ -226,9 +245,8 @@ const reorderOutcomeTone: Record<
 };
 
 function ReorderPanel({ unitId }: { unitId: string }) {
-  const [assessment, setAssessment] = useState<ReorderAssessmentResponse | null>(
-    null,
-  );
+  const [assessment, setAssessment] =
+    useState<ReorderAssessmentResponse | null>(null);
   const [showSnooze, setShowSnooze] = useState(false);
 
   const assessMutation = useMutation({
@@ -268,7 +286,8 @@ function ReorderPanel({ unitId }: { unitId: string }) {
           {assessment.remaining_low_days !== null &&
           assessment.remaining_low_days !== undefined ? (
             <p className="caption">
-              بازه برآورد باقی‌مانده: {formatPersianNumber(assessment.remaining_low_days)}
+              بازه برآورد باقی‌مانده:{" "}
+              {formatPersianNumber(assessment.remaining_low_days)}
               {assessment.remaining_high_days
                 ? ` تا ${formatPersianNumber(assessment.remaining_high_days)}`
                 : ""}{" "}
@@ -308,9 +327,8 @@ function ReorderPanel({ unitId }: { unitId: string }) {
         <Sheet title="به‌خواب بردن بررسی" onClose={() => setShowSnooze(false)}>
           <div className="stack">
             <p className="caption">
-              بررسی تجدید سفارش تا حداکثر ۷۲ ساعت متوقف می‌شود. در صورت بدتر
-              شدن قابل‌توجه وضعیت، سرویس پیش از پایان این مدت دوباره هشدار
-              می‌دهد.
+              بررسی تجدید سفارش تا حداکثر ۷۲ ساعت متوقف می‌شود. در صورت بدتر شدن
+              قابل‌توجه وضعیت، سرویس پیش از پایان این مدت دوباره هشدار می‌دهد.
             </p>
             {snoozeMutation.isError ? (
               <Banner tone="error">{errorText(snoozeMutation.error)}</Banner>
@@ -363,6 +381,16 @@ export function InventoryOpening({ unitId }: { unitId: string }) {
     mutationFn: () => exhaustInventory(unitId),
     onSuccess: () => invalidateInventory(),
   });
+
+  const sessionExpired = useSessionExpiryRedirect(detailQuery.error);
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
 
   if (detailQuery.isLoading) {
     return (

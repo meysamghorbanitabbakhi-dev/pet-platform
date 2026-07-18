@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button, Card, ErrorState, Skeleton } from "@/components/primitives";
 import { getDiaryEntry } from "@/lib/api/client";
 import { formatIranDateTime } from "@/lib/format";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 export function DiaryEntryDetail({
   petId,
@@ -19,6 +20,16 @@ export function DiaryEntryDetail({
     queryFn: () => getDiaryEntry(petId, entryId),
     enabled: Boolean(petId && entryId),
   });
+
+  const sessionExpired = useSessionExpiryRedirect(entryQuery.error);
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
 
   if (entryQuery.isLoading) {
     return (
@@ -60,7 +71,9 @@ export function DiaryEntryDetail({
         </div>
 
         <Card className="stack">
-          <span className="caption">{formatIranDateTime(entry.happened_at)}</span>
+          <span className="caption">
+            {formatIranDateTime(entry.happened_at)}
+          </span>
           {entry.note_fa ? <p>{entry.note_fa}</p> : null}
         </Card>
 
@@ -70,7 +83,10 @@ export function DiaryEntryDetail({
             <p className="caption">
               این خاطره یک شیء برای باغ ایرانی پت شما به همراه داشت.
             </p>
-            <Link className="button button--selection" href={`/garden/${petId}`}>
+            <Link
+              className="button button--selection"
+              href={`/garden/${petId}`}
+            >
               مشاهده باغ
             </Link>
           </Card>

@@ -6,8 +6,11 @@ import { getCustomerRequest } from "@/lib/api/client";
 import { customerRequestFixture } from "@/test/fixtures/gate-fixtures";
 import { ConciergeRequestDetail } from "./concierge-request-detail";
 
+const replace = vi.fn();
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/support/request-1",
+  useRouter: () => ({ replace }),
 }));
 
 vi.mock("@/lib/api/client", () => ({

@@ -3,12 +3,19 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getGarden, placeGardenObject, returnGardenObject } from "@/lib/api/client";
+import {
+  getGarden,
+  placeGardenObject,
+  returnGardenObject,
+} from "@/lib/api/client";
 import { gardenStateFixture } from "@/test/fixtures/gate-fixtures";
 import { GardenView } from "./garden-view";
 
+const replace = vi.fn();
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/garden/pet-1",
+  useRouter: () => ({ replace }),
 }));
 
 vi.mock("@/lib/api/client", () => ({
@@ -47,7 +54,9 @@ describe("GardenView", () => {
     const user = userEvent.setup();
 
     renderWithQuery(<GardenView petId="pet-1" />);
-    await user.click(await screen.findByRole("button", { name: "watering_can" }));
+    await user.click(
+      await screen.findByRole("button", { name: "watering_can" }),
+    );
     await user.click(screen.getByRole("button", { name: "وسط وسط" }));
 
     await waitFor(() =>
@@ -67,7 +76,9 @@ describe("GardenView", () => {
     const user = userEvent.setup();
 
     renderWithQuery(<GardenView petId="pet-1" />);
-    await user.click(await screen.findByRole("button", { name: "watering_can" }));
+    await user.click(
+      await screen.findByRole("button", { name: "watering_can" }),
+    );
     await user.click(
       screen.getByRole("button", { name: "بازگرداندن به انبار" }),
     );
@@ -88,7 +99,9 @@ describe("GardenView", () => {
     const user = userEvent.setup();
 
     renderWithQuery(<GardenView petId="pet-1" />);
-    await user.click(await screen.findByRole("button", { name: "watering_can" }));
+    await user.click(
+      await screen.findByRole("button", { name: "watering_can" }),
+    );
     await user.click(screen.getByRole("button", { name: "جابه‌جایی" }));
     await user.click(screen.getByRole("button", { name: "پایین چپ" }));
 

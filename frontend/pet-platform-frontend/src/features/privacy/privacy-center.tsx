@@ -19,6 +19,7 @@ import {
 } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import { formatIranDateTime } from "@/lib/format";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 function errorText(error: unknown) {
   if (error instanceof ApiError) return error.message;
@@ -92,6 +93,16 @@ export function PrivacyCenter() {
       });
     },
   });
+
+  const sessionExpired = useSessionExpiryRedirect(requestsQuery.error);
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>

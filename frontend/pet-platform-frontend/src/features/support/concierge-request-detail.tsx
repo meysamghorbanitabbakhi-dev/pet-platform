@@ -11,6 +11,7 @@ import {
 } from "@/components/primitives";
 import { getCustomerRequest } from "@/lib/api/client";
 import { formatIranDateTime } from "@/lib/format";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 import {
   promiseLabel,
   requestStatusLabel,
@@ -24,6 +25,16 @@ export function ConciergeRequestDetail({ requestId }: { requestId: string }) {
     queryFn: () => getCustomerRequest(requestId),
     enabled: Boolean(requestId),
   });
+
+  const sessionExpired = useSessionExpiryRedirect(requestQuery.error);
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
 
   if (requestQuery.isLoading) {
     return (
@@ -65,7 +76,9 @@ export function ConciergeRequestDetail({ requestId }: { requestId: string }) {
         <div className="split">
           <div>
             <div className="eyebrow">پشتیبانی</div>
-            <h1 className="display">{requestTypeLabel(request.request_type)}</h1>
+            <h1 className="display">
+              {requestTypeLabel(request.request_type)}
+            </h1>
           </div>
           <StatusChip tone={requestStatusTone(request.status)}>
             {requestStatusLabel(request.status)}

@@ -20,6 +20,7 @@ import {
   returnGardenObject,
 } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 function errorText(error: unknown) {
   if (error instanceof ApiError) return error.message;
@@ -141,6 +142,16 @@ export function GardenView({
       await queryClient.invalidateQueries({ queryKey: ["pet-life", "garden"] });
     },
   });
+
+  const sessionExpired = useSessionExpiryRedirect(gardenQuery.error);
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
 
   if (gardenQuery.isLoading) {
     return (

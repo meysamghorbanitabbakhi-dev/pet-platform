@@ -2,8 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
   Button,
@@ -15,9 +14,9 @@ import {
   StatusChip,
 } from "@/components/primitives";
 import { listOrders } from "@/lib/api/client";
-import { ApiError } from "@/lib/api/errors";
 import { orderStatusLabel } from "@/lib/commerce-format";
 import { formatIranDate } from "@/lib/format";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 const statusTone: Record<
   string,
@@ -44,17 +43,11 @@ const statusFilters = [
 ] as const;
 
 export function OrderHistory() {
-  const router = useRouter();
   const [statusFilter, setStatusFilter] =
     useState<(typeof statusFilters)[number]>("all");
   const ordersQuery = useQuery({ queryKey: ["orders"], queryFn: listOrders });
 
-  const sessionExpired =
-    ordersQuery.error instanceof ApiError && ordersQuery.error.status === 401;
-
-  useEffect(() => {
-    if (sessionExpired) router.replace("/auth/session-expired");
-  }, [sessionExpired, router]);
+  const sessionExpired = useSessionExpiryRedirect(ordersQuery.error);
 
   if (sessionExpired) {
     return (
@@ -70,7 +63,10 @@ export function OrderHistory() {
         <ErrorState
           title="تاریخچه سفارش‌ها در دسترس نیست"
           action={
-            <Button variant="secondary" onClick={() => void ordersQuery.refetch()}>
+            <Button
+              variant="secondary"
+              onClick={() => void ordersQuery.refetch()}
+            >
               تلاش دوباره
             </Button>
           }
@@ -127,7 +123,9 @@ export function OrderHistory() {
           />
         ) : null}
 
-        {ordersQuery.data && ordersQuery.data.items.length > 0 && items.length === 0 ? (
+        {ordersQuery.data &&
+        ordersQuery.data.items.length > 0 &&
+        items.length === 0 ? (
           <p className="caption">سفارشی با این وضعیت یافت نشد.</p>
         ) : null}
 

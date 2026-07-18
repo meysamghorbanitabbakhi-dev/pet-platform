@@ -23,9 +23,8 @@ import {
   shouldRenderCareJourneys,
   shouldRenderReserveNow,
 } from "@/lib/policy";
+import { selectedPetStorageKey as selectedPetKey } from "@/lib/selected-pet";
 import { FoodStatusCard, NextEventCard } from "./food-status";
-
-const selectedPetKey = "pet-platform.selected-pet-id";
 
 export function TodayDashboard({
   context,

@@ -19,6 +19,7 @@ import {
 import type { SmsPreferenceResponse } from "@/lib/api-types";
 import { ApiError } from "@/lib/api/errors";
 import { enabled } from "@/lib/policy";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 // The only SMS-preference-gated notification event actually wired up in the
 // backend today (see app/modules/notifications/service.py). There is no
@@ -53,6 +54,16 @@ export function NotificationPreferences() {
       enabled(policyQuery.data, "late_credit_customer_visible"),
     ),
   });
+
+  const sessionExpired = useSessionExpiryRedirect(preferenceQuery.error);
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
 
   if (policyQuery.isLoading) {
     return (

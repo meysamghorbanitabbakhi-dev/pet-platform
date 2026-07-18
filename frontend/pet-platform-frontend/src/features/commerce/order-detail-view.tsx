@@ -26,6 +26,7 @@ import type {
 } from "@/lib/api-types";
 import { ApiError } from "@/lib/api/errors";
 import { clearCart } from "@/lib/cart";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 import {
   authenticityLabel,
   orderStatusLabel,
@@ -87,12 +88,21 @@ export function OrderDetailView({
     enabled: Boolean(orderId),
   });
 
+  const sessionExpired = useSessionExpiryRedirect(
+    orderQuery.error,
+    journeyQuery.error,
+  );
+
   useEffect(() => {
     if (confirmation && orderQuery.data?.payment?.status === "verified") {
       clearCart();
       clearCheckoutAttempt();
     }
   }, [confirmation, orderQuery.data?.payment?.status]);
+
+  if (sessionExpired) {
+    return <Skeleton />;
+  }
 
   if (!orderId) {
     return (
@@ -164,8 +174,8 @@ function OrderSummary({
   const queryClient = useQueryClient();
   const delayed = Boolean(
     journey.revised_delivery_at &&
-      journey.original_delivery_commitment_at &&
-      journey.revised_delivery_at !== journey.original_delivery_commitment_at,
+    journey.original_delivery_commitment_at &&
+    journey.revised_delivery_at !== journey.original_delivery_commitment_at,
   );
   const ackMutation = useMutation({
     mutationFn: () => acknowledgeOrderDelay(order.id, crypto.randomUUID()),
@@ -226,8 +236,8 @@ function OrderSummary({
         {delayed ? (
           <Banner tone="warning">
             زمان تحویل تغییر کرده است. زمان اولیه:{" "}
-            {formatIranDateTime(journey.original_delivery_commitment_at)} ·
-            زمان به‌روزشده: {formatIranDateTime(journey.revised_delivery_at)}
+            {formatIranDateTime(journey.original_delivery_commitment_at)} · زمان
+            به‌روزشده: {formatIranDateTime(journey.revised_delivery_at)}
             {ackMutation.isSuccess ? null : (
               <div className="cluster">
                 <Button

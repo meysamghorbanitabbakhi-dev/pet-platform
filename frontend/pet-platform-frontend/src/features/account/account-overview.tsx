@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
   Banner,
@@ -25,8 +25,10 @@ import {
   logout,
   updateAddress,
 } from "@/lib/api/client";
+import { clearAccountLocalState } from "@/lib/account-local-state";
 import { ApiError } from "@/lib/api/errors";
 import type { AddressResponse } from "@/lib/api-types";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 function addressErrorText(error: unknown) {
   return error instanceof ApiError
@@ -79,12 +81,7 @@ export function AccountOverview() {
     enabled: Boolean(householdId),
   });
 
-  const sessionExpired =
-    contextQuery.error instanceof ApiError && contextQuery.error.status === 401;
-
-  useEffect(() => {
-    if (sessionExpired) router.replace("/auth/session-expired");
-  }, [sessionExpired, router]);
+  const sessionExpired = useSessionExpiryRedirect(contextQuery.error);
 
   if (sessionExpired) {
     return (
@@ -139,6 +136,11 @@ export function AccountOverview() {
         error instanceof ApiError ? error.message : "خروج از حساب ناموفق بود.",
       );
     } finally {
+      // Clear account-local state even if the server-side logout call
+      // failed: the user's intent was to log out, and a previous account's
+      // cart/selected-pet/checkout-progress/cached queries must never leak
+      // into the next login on this device.
+      clearAccountLocalState(queryClient);
       setLoggingOut(false);
     }
   }

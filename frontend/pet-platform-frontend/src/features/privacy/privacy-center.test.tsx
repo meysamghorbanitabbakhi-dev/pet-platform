@@ -16,6 +16,13 @@ import {
 } from "@/test/fixtures/gate-fixtures";
 import { PrivacyCenter } from "./privacy-center";
 
+const replace = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/privacy",
+  useRouter: () => ({ replace }),
+}));
+
 vi.mock("@/lib/api/client", () => ({
   exportMyData: vi.fn(),
   listPrivacyRequests: vi.fn(),

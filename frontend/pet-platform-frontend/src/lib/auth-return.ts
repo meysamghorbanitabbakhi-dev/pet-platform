@@ -1,7 +1,26 @@
 "use client";
 
 const storageKey = "pet-platform.auth-return";
-const allowedPrefixes = ["/cart", "/checkout", "/shop", "/orders"];
+// Every real protected route, matching src/app's top-level route
+// directories -- an explicit allowlist, never an open redirect. /breeds is
+// deliberately excluded: it is public and never triggers a session-expiry
+// redirect in the first place.
+const allowedPrefixes = [
+  "/account",
+  "/cart",
+  "/checkout",
+  "/diary",
+  "/garden",
+  "/inventory",
+  "/journeys",
+  "/notifications",
+  "/orders",
+  "/pets",
+  "/privacy",
+  "/shop",
+  "/support",
+  "/today",
+];
 
 export function safeReturnTo(value: string | null | undefined) {
   if (!value || !value.startsWith("/")) return null;

@@ -11,6 +11,13 @@ import {
 import { policyFixture } from "@/test/fixtures/gate-fixtures";
 import { NotificationPreferences } from "./notification-preferences";
 
+const replace = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/account/notifications/preferences",
+  useRouter: () => ({ replace }),
+}));
+
 vi.mock("@/lib/api/client", () => ({
   getPolicies: vi.fn(),
   getSmsPreference: vi.fn(),

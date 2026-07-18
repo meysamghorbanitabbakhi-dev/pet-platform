@@ -8,11 +8,17 @@ import {
   getPetKnowledge,
   setGuidancePreference,
 } from "@/lib/api/client";
-import { careGuidanceFixture, petKnowledgeFixture } from "@/test/fixtures/gate-fixtures";
+import {
+  careGuidanceFixture,
+  petKnowledgeFixture,
+} from "@/test/fixtures/gate-fixtures";
 import { PetCare } from "./pet-care";
+
+const replace = vi.fn();
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/pets/pet-1/care",
+  useRouter: () => ({ replace }),
 }));
 
 vi.mock("@/lib/api/client", () => ({
@@ -49,9 +55,10 @@ describe("PetCare", () => {
     expect(
       await screen.findByText("نژاد این پت ثبت نشده است"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "انتخاب نژاد" }),
-    ).toHaveAttribute("href", "/breeds?petId=pet-1");
+    expect(screen.getByRole("link", { name: "انتخاب نژاد" })).toHaveAttribute(
+      "href",
+      "/breeds?petId=pet-1",
+    );
   });
 
   it("renders approved guidance and dismisses it through the real backend endpoint", async () => {

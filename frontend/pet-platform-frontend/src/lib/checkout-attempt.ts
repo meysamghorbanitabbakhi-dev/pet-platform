@@ -103,3 +103,8 @@ export function clearCheckoutAttempt() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(storageKey);
 }
+
+export function clearLatestOrderId() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(latestOrderKey);
+}

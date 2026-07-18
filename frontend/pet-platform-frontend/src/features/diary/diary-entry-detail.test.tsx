@@ -6,8 +6,11 @@ import { getDiaryEntry } from "@/lib/api/client";
 import { diaryEntryDetailFixture } from "@/test/fixtures/gate-fixtures";
 import { DiaryEntryDetail } from "./diary-entry-detail";
 
+const replace = vi.fn();
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/diary/pet-1/entry-1",
+  useRouter: () => ({ replace }),
 }));
 
 vi.mock("@/lib/api/client", () => ({

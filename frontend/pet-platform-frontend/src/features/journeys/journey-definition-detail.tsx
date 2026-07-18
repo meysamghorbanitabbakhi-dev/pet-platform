@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
   Banner,
@@ -13,13 +13,17 @@ import {
   Skeleton,
 } from "@/components/primitives";
 import { usePersistedSelectedPet } from "@/features/today/today-dashboard";
-import type { JourneyDefinitionResponse, MeContextResponse } from "@/lib/api-types";
+import type {
+  JourneyDefinitionResponse,
+  MeContextResponse,
+} from "@/lib/api-types";
 import {
   getJourneyDefinition,
   getMeContext,
   startJourney,
 } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 const speciesLabelFa: Record<string, string> = { cat: "گربه", dog: "سگ" };
 
@@ -33,7 +37,6 @@ export function JourneyDefinitionDetail({
 }: {
   definitionId: string;
 }) {
-  const router = useRouter();
   const contextQuery = useQuery({
     queryKey: ["me", "context"],
     queryFn: getMeContext,
@@ -44,12 +47,7 @@ export function JourneyDefinitionDetail({
     enabled: Boolean(definitionId),
   });
 
-  const sessionExpired =
-    contextQuery.error instanceof ApiError && contextQuery.error.status === 401;
-
-  useEffect(() => {
-    if (sessionExpired) router.replace("/auth/session-expired");
-  }, [sessionExpired, router]);
+  const sessionExpired = useSessionExpiryRedirect(contextQuery.error);
 
   if (sessionExpired) {
     return (
@@ -162,8 +160,8 @@ function JourneyDefinitionBody({
             </div>
           ) : null}
           <p className="caption">
-            تکمیل این مسیر یک خاطره در دفترچه و یک شیء برای باغ ایرانی پت شما
-            به همراه دارد.
+            تکمیل این مسیر یک خاطره در دفترچه و یک شیء برای باغ ایرانی پت شما به
+            همراه دارد.
           </p>
         </Card>
 
@@ -196,14 +194,11 @@ function JourneyDefinitionBody({
         )}
 
         {showStart && activePet ? (
-          <Sheet
-            title="شروع مسیر مراقبتی"
-            onClose={() => setShowStart(false)}
-          >
+          <Sheet title="شروع مسیر مراقبتی" onClose={() => setShowStart(false)}>
             <div className="stack">
               <p className="caption">
-                این مسیر برای «{activePet.name}» شروع می‌شود. می‌توانید بعداً
-                آن را متوقف یا لغو کنید.
+                این مسیر برای «{activePet.name}» شروع می‌شود. می‌توانید بعداً آن
+                را متوقف یا لغو کنید.
               </p>
               {startMutation.isError ? (
                 <Banner tone="error">{errorText(startMutation.error)}</Banner>

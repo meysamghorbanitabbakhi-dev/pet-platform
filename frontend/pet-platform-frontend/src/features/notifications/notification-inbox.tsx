@@ -2,8 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
   Banner,
@@ -20,10 +18,10 @@ import {
   listNotifications,
   markNotificationRead,
 } from "@/lib/api/client";
-import { ApiError } from "@/lib/api/errors";
 import { formatIranDateTime } from "@/lib/format";
 import { notificationDestinationHref } from "@/lib/notification-destination";
 import { enabled } from "@/lib/policy";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 const eventLabels: Record<string, string> = {
   "catalog.offer_available": "محصولی که منتظرش بودید موجود شد",
@@ -78,20 +76,13 @@ function NotificationRow({ item }: { item: NotificationListItem }) {
 }
 
 export function NotificationInbox() {
-  const router = useRouter();
   const notificationsQuery = useQuery({
     queryKey: ["pet-life", "notifications"],
     queryFn: listNotifications,
   });
   const policyQuery = useQuery({ queryKey: ["policy"], queryFn: getPolicies });
 
-  const sessionExpired =
-    notificationsQuery.error instanceof ApiError &&
-    notificationsQuery.error.status === 401;
-
-  useEffect(() => {
-    if (sessionExpired) router.replace("/auth/session-expired");
-  }, [sessionExpired, router]);
+  const sessionExpired = useSessionExpiryRedirect(notificationsQuery.error);
 
   if (sessionExpired) {
     return (

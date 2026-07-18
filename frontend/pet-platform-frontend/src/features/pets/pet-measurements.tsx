@@ -11,9 +11,14 @@ import {
   ErrorState,
   Skeleton,
 } from "@/components/primitives";
-import { getWeightTrend, listMeasurements, recordMeasurement } from "@/lib/api/client";
+import {
+  getWeightTrend,
+  listMeasurements,
+  recordMeasurement,
+} from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import { formatIranDate, formatPersianDecimal } from "@/lib/format";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 function errorText(error: unknown) {
   if (error instanceof ApiError) return error.message;
@@ -96,6 +101,19 @@ export function PetMeasurements({ petId }: { petId: string }) {
     enabled: Boolean(petId),
   });
 
+  const sessionExpired = useSessionExpiryRedirect(
+    measurementsQuery.error,
+    trendQuery.error,
+  );
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="stack">
@@ -118,7 +136,8 @@ export function PetMeasurements({ petId }: { petId: string }) {
           {trendQuery.data?.state === "available" ? (
             <div className="stack">
               <span className="title">
-                {formatPersianDecimal(trendQuery.data.current_weight_kg)} کیلوگرم
+                {formatPersianDecimal(trendQuery.data.current_weight_kg)}{" "}
+                کیلوگرم
               </span>
               <span className="caption">
                 این روند فقط بر اساس داده‌های همین پت است و تفسیر بالینی ندارد.
@@ -126,7 +145,9 @@ export function PetMeasurements({ petId }: { petId: string }) {
               {trendQuery.data.changes["30_days"] ? (
                 <span className="caption">
                   تغییر نسبت به ۳۰ روز پیش:{" "}
-                  {formatPersianDecimal(trendQuery.data.changes["30_days"].change_percent)}
+                  {formatPersianDecimal(
+                    trendQuery.data.changes["30_days"].change_percent,
+                  )}
                   ٪
                 </span>
               ) : null}
@@ -165,7 +186,9 @@ export function PetMeasurements({ petId }: { petId: string }) {
                       item.measurement_type}
                     : {formatPersianDecimal(item.value)} {item.unit}
                   </span>
-                  <span className="caption">{formatIranDate(item.measured_at)}</span>
+                  <span className="caption">
+                    {formatIranDate(item.measured_at)}
+                  </span>
                 </li>
               ))}
             </ul>

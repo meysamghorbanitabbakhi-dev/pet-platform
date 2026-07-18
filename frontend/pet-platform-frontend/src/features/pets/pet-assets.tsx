@@ -26,6 +26,7 @@ import {
 } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import { formatPersianNumber } from "@/lib/format";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 function errorText(error: unknown) {
   if (error instanceof ApiError) return error.message;
@@ -40,19 +41,23 @@ const categoryLabels: Record<string, string> = {
   other_medical: "سایر مدارک پزشکی",
 };
 
-const categoryPurpose: Record<string, "body_photographs" | "medical_records"> = {
-  body_side: "body_photographs",
-  body_top: "body_photographs",
-  lab_result: "medical_records",
-  medical_document: "medical_records",
-  other_medical: "medical_records",
-};
+const categoryPurpose: Record<string, "body_photographs" | "medical_records"> =
+  {
+    body_side: "body_photographs",
+    body_top: "body_photographs",
+    lab_result: "medical_records",
+    medical_document: "medical_records",
+    other_medical: "medical_records",
+  };
 
 // Explanation copy is derived from the approved product decisions in
 // backend/docs/architecture/pet-health-assets.md (purpose-limited use,
 // household-only access, versioned and revocable consent). Exact legal
 // wording is pending product/legal sign-off before this ships broadly.
-const purposeExplanationFa: Record<"body_photographs" | "medical_records", string> = {
+const purposeExplanationFa: Record<
+  "body_photographs" | "medical_records",
+  string
+> = {
   body_photographs:
     "تصاویر بدن پت فقط برای پیگیری شخصی وضعیت بدنی او در طول زمان استفاده می‌شود و فقط برای اعضای همین خانوار قابل مشاهده است.",
   medical_records:
@@ -69,7 +74,8 @@ const muscleConditionLabels: Record<string, string> = {
 
 function UploadForm({ petId }: { petId: string }) {
   const queryClient = useQueryClient();
-  const [category, setCategory] = useState<keyof typeof categoryLabels>("body_top");
+  const [category, setCategory] =
+    useState<keyof typeof categoryLabels>("body_top");
   const [file, setFile] = useState<File | null>(null);
   const purpose = categoryPurpose[category];
 
@@ -81,26 +87,34 @@ function UploadForm({ petId }: { petId: string }) {
   });
 
   async function invalidateConsents() {
-    await queryClient.invalidateQueries({ queryKey: ["pet-life", "consents", petId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["pet-life", "consents", petId],
+    });
   }
 
-  const currentPolicyVersion = policyQuery.data?.pet_health_consent_policy_version;
+  const currentPolicyVersion =
+    policyQuery.data?.pet_health_consent_policy_version;
   const grantedForPurpose = consentsQuery.data?.find(
     (item) => item.purpose === purpose && item.status === "granted",
   );
   const activeConsent =
-    grantedForPurpose && grantedForPurpose.policy_version === currentPolicyVersion
+    grantedForPurpose &&
+    grantedForPurpose.policy_version === currentPolicyVersion
       ? grantedForPurpose
       : undefined;
   // Granted under an older policy_version: the backend requires an explicit
   // withdrawal before a fresh consent can be granted (it never silently
   // reinterprets an old grant as covering a new policy version).
-  const staleConsent = grantedForPurpose && !activeConsent ? grantedForPurpose : undefined;
+  const staleConsent =
+    grantedForPurpose && !activeConsent ? grantedForPurpose : undefined;
 
   const consentMutation = useMutation({
     mutationFn: () => {
       if (!currentPolicyVersion) throw new Error("policy not loaded");
-      return grantPetConsent(petId, { policy_version: currentPolicyVersion, purpose });
+      return grantPetConsent(petId, {
+        policy_version: currentPolicyVersion,
+        purpose,
+      });
     },
     onSuccess: invalidateConsents,
   });
@@ -109,18 +123,26 @@ function UploadForm({ petId }: { petId: string }) {
     mutationFn: (consentId: string) => withdrawPetConsent(petId, consentId),
     onSuccess: async () => {
       await invalidateConsents();
-      await queryClient.invalidateQueries({ queryKey: ["pet-life", "assets", petId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["pet-life", "assets", petId],
+      });
     },
   });
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
-      if (!file || !activeConsent) throw new Error("no file selected or consent missing");
-      return uploadPetAsset(petId, file, { category, consentId: activeConsent.id });
+      if (!file || !activeConsent)
+        throw new Error("no file selected or consent missing");
+      return uploadPetAsset(petId, file, {
+        category,
+        consentId: activeConsent.id,
+      });
     },
     onSuccess: async () => {
       setFile(null);
-      await queryClient.invalidateQueries({ queryKey: ["pet-life", "assets", petId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["pet-life", "assets", petId],
+      });
     },
   });
 
@@ -152,8 +174,8 @@ function UploadForm({ petId }: { petId: string }) {
           <p className="caption">{purposeExplanationFa[purpose]}</p>
           <p className="caption">
             رضایت شما نسخه‌دار است؛ در صورت تغییر نسخه سیاست، دوباره از شما
-            پرسیده می‌شود. می‌توانید هر زمان آن را لغو کنید؛ لغو رضایت،
-            دسترسی به فایل‌های آپلودشده را فوراً غیرفعال می‌کند.
+            پرسیده می‌شود. می‌توانید هر زمان آن را لغو کنید؛ لغو رضایت، دسترسی
+            به فایل‌های آپلودشده را فوراً غیرفعال می‌کند.
           </p>
           {consentMutation.isError ? (
             <Banner tone="error">{errorText(consentMutation.error)}</Banner>
@@ -255,7 +277,9 @@ function AssessmentForm({ petId }: { petId: string }) {
           className="input"
           max={9}
           min={1}
-          onChange={(event) => setBcsScore(Number.parseInt(event.target.value, 10))}
+          onChange={(event) =>
+            setBcsScore(Number.parseInt(event.target.value, 10))
+          }
           type="number"
           value={bcsScore}
         />
@@ -278,7 +302,10 @@ function AssessmentForm({ petId }: { petId: string }) {
       {submitMutation.isError ? (
         <Banner tone="error">{errorText(submitMutation.error)}</Banner>
       ) : null}
-      <Button loading={submitMutation.isPending} onClick={() => submitMutation.mutate()}>
+      <Button
+        loading={submitMutation.isPending}
+        onClick={() => submitMutation.mutate()}
+      >
         ثبت
       </Button>
     </Card>
@@ -301,9 +328,24 @@ export function PetAssets({ petId }: { petId: string }) {
   const deleteMutation = useMutation({
     mutationFn: (assetId: string) => deletePetAsset(petId, assetId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["pet-life", "assets", petId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["pet-life", "assets", petId],
+      });
     },
   });
+
+  const sessionExpired = useSessionExpiryRedirect(
+    assetsQuery.error,
+    assessmentsQuery.error,
+  );
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
@@ -322,7 +364,10 @@ export function PetAssets({ petId }: { petId: string }) {
             <ErrorState
               title="گالری در دسترس نیست"
               action={
-                <Button variant="secondary" onClick={() => void assetsQuery.refetch()}>
+                <Button
+                  variant="secondary"
+                  onClick={() => void assetsQuery.refetch()}
+                >
                   تلاش دوباره
                 </Button>
               }
@@ -385,9 +430,12 @@ export function PetAssets({ petId }: { petId: string }) {
                   <span>
                     امتیاز {formatPersianNumber(item.bcs_score)} از{" "}
                     {formatPersianNumber(item.bcs_scale)} -{" "}
-                    {muscleConditionLabels[item.muscle_condition] ?? item.muscle_condition}
+                    {muscleConditionLabels[item.muscle_condition] ??
+                      item.muscle_condition}
                   </span>
-                  <StatusChip tone={item.veterinarian_confirmed_at ? "positive" : "muted"}>
+                  <StatusChip
+                    tone={item.veterinarian_confirmed_at ? "positive" : "muted"}
+                  >
                     {item.veterinarian_confirmed_at
                       ? "تاییدشده توسط دامپزشک"
                       : "ثبت‌شده توسط مالک"}

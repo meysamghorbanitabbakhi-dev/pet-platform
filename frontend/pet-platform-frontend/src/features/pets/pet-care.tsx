@@ -19,6 +19,7 @@ import {
   setGuidancePreference,
 } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 function errorText(error: unknown) {
   if (error instanceof ApiError) return error.message;
@@ -31,6 +32,12 @@ function KnowledgeSection({ petId }: { petId: string }) {
     queryFn: () => getPetKnowledge(petId),
     enabled: Boolean(petId),
   });
+
+  const sessionExpired = useSessionExpiryRedirect(knowledgeQuery.error);
+
+  if (sessionExpired) {
+    return <Skeleton />;
+  }
 
   if (knowledgeQuery.isLoading) {
     return (
@@ -45,7 +52,10 @@ function KnowledgeSection({ petId }: { petId: string }) {
       <ErrorState
         title="اطلاعات نژاد در دسترس نیست"
         action={
-          <Button variant="secondary" onClick={() => void knowledgeQuery.refetch()}>
+          <Button
+            variant="secondary"
+            onClick={() => void knowledgeQuery.refetch()}
+          >
             تلاش دوباره
           </Button>
         }
@@ -93,8 +103,7 @@ function KnowledgeSection({ petId }: { petId: string }) {
               <p>{claim.text_fa}</p>
               {claim.sources.length ? (
                 <p className="caption">
-                  منبع:{" "}
-                  {claim.sources.map((source) => source.title).join("، ")}
+                  منبع: {claim.sources.map((source) => source.title).join("، ")}
                 </p>
               ) : null}
             </li>
@@ -114,7 +123,18 @@ const domainLabels: Record<string, string> = {
   training: "آموزش",
 };
 
-function GuidanceRow({ petId, item }: { petId: string; item: { id: string; domain: string; text_fa: string; emergency_classification: string } }) {
+function GuidanceRow({
+  petId,
+  item,
+}: {
+  petId: string;
+  item: {
+    id: string;
+    domain: string;
+    text_fa: string;
+    emergency_classification: string;
+  };
+}) {
   const queryClient = useQueryClient();
   const [dismissed, setDismissed] = useState(false);
 
@@ -157,7 +177,9 @@ function GuidanceRow({ petId, item }: { petId: string; item: { id: string; domai
   return (
     <li className="stack">
       <div className="split">
-        <span className="eyebrow">{domainLabels[item.domain] ?? item.domain}</span>
+        <span className="eyebrow">
+          {domainLabels[item.domain] ?? item.domain}
+        </span>
         {item.emergency_classification !== "not_emergency" ? (
           <StatusChip tone="warning">نیازمند توجه</StatusChip>
         ) : null}
@@ -193,6 +215,12 @@ function CareGuidanceSection({ petId }: { petId: string }) {
     enabled: Boolean(petId),
   });
 
+  const sessionExpired = useSessionExpiryRedirect(guidanceQuery.error);
+
+  if (sessionExpired) {
+    return <Skeleton />;
+  }
+
   if (guidanceQuery.isLoading) {
     return (
       <Card className="stack">
@@ -206,7 +234,10 @@ function CareGuidanceSection({ petId }: { petId: string }) {
       <ErrorState
         title="راهنمای مراقبتی در دسترس نیست"
         action={
-          <Button variant="secondary" onClick={() => void guidanceQuery.refetch()}>
+          <Button
+            variant="secondary"
+            onClick={() => void guidanceQuery.refetch()}
+          >
             تلاش دوباره
           </Button>
         }
@@ -226,7 +257,9 @@ function CareGuidanceSection({ petId }: { petId: string }) {
         />
       ) : null}
       {guidance.state === "no_eligible_guidance" ? (
-        <p className="caption">در حال حاضر راهنمای واجد شرایطی برای این پت نیست.</p>
+        <p className="caption">
+          در حال حاضر راهنمای واجد شرایطی برای این پت نیست.
+        </p>
       ) : null}
       {guidance.state === "available" ? (
         <ul className="stack" aria-label="فهرست راهنماهای مراقبتی">

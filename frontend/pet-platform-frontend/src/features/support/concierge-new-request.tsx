@@ -14,9 +14,14 @@ import {
   EmptyState,
   Skeleton,
 } from "@/components/primitives";
-import { createCustomerRequest, getMeContext, getPolicies } from "@/lib/api/client";
+import {
+  createCustomerRequest,
+  getMeContext,
+  getPolicies,
+} from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import { enabled } from "@/lib/policy";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 const requestSchema = z.object({
   contactPreference: z.enum(["in_app", "sms"]),
@@ -73,6 +78,16 @@ export function ConciergeNewRequest() {
     },
   });
 
+  const sessionExpired = useSessionExpiryRedirect(contextQuery.error);
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
+
   if (contextQuery.isLoading || policyQuery.isLoading) {
     return (
       <AppShell>
@@ -84,7 +99,10 @@ export function ConciergeNewRequest() {
     );
   }
 
-  if (!policyQuery.data || !enabled(policyQuery.data, "concierge_requests_enabled")) {
+  if (
+    !policyQuery.data ||
+    !enabled(policyQuery.data, "concierge_requests_enabled")
+  ) {
     return (
       <AppShell>
         <EmptyState
@@ -156,7 +174,9 @@ export function ConciergeNewRequest() {
                 <Button
                   key={value}
                   type="button"
-                  variant={contactPreference === value ? "selection" : "secondary"}
+                  variant={
+                    contactPreference === value ? "selection" : "secondary"
+                  }
                   aria-pressed={contactPreference === value}
                   onClick={() => {
                     setContactPreference(value);

@@ -19,8 +19,11 @@ import {
 } from "@/test/fixtures/gate-fixtures";
 import { InventoryOpening } from "./inventory-opening";
 
+const replace = vi.fn();
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/inventory/unit-1",
+  useRouter: () => ({ replace }),
 }));
 
 vi.mock("@/lib/api/client", () => ({
@@ -99,7 +102,9 @@ describe("InventoryOpening", () => {
     renderWithQuery(<InventoryOpening unitId={inventoryDetailFixture.id} />);
     await screen.findByText(inventoryDetailFixture.id);
 
-    await user.click(screen.getByRole("button", { name: "دقیقاً می‌دانم (گرم)" }));
+    await user.click(
+      screen.getByRole("button", { name: "دقیقاً می‌دانم (گرم)" }),
+    );
     await user.type(screen.getByLabelText("گرم باقی‌مانده"), "900");
     await user.click(screen.getByRole("button", { name: "ثبت" }));
 
@@ -232,7 +237,9 @@ describe("InventoryOpening", () => {
     renderWithQuery(<InventoryOpening unitId={inventoryDetailFixture.id} />);
     await screen.findByText(/قبلاً ثبت شده/);
 
-    await user.click(screen.getByRole("button", { name: "دقیقاً می‌دانم (گرم)" }));
+    await user.click(
+      screen.getByRole("button", { name: "دقیقاً می‌دانم (گرم)" }),
+    );
     await user.type(screen.getByLabelText("گرم باقی‌مانده"), "450");
     await user.click(screen.getByRole("button", { name: "ثبت" }));
 
@@ -242,7 +249,9 @@ describe("InventoryOpening", () => {
         remaining: { mode: "grams", grams: 450 },
       }),
     );
-    expect(await screen.findByText("تخمین به‌روزرسانی شد.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("تخمین به‌روزرسانی شد."),
+    ).toBeInTheDocument();
   });
 
   it("shows the backend reorder outcome and offers a snooze, never inventing eligibility client-side", async () => {

@@ -1,8 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button, ErrorState, Skeleton } from "@/components/primitives";
 import {
@@ -11,27 +9,20 @@ import {
   getPolicies,
   getToday,
 } from "@/lib/api/client";
-import { ApiError } from "@/lib/api/errors";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 import { TodayDashboard, usePersistedSelectedPet } from "./today-dashboard";
 
-function isSessionExpired(error: unknown) {
-  return error instanceof ApiError && error.status === 401;
-}
-
 export function TodayExperience() {
-  const router = useRouter();
   const policyQuery = useQuery({ queryKey: ["policy"], queryFn: getPolicies });
   const contextQuery = useQuery({
     queryKey: ["me", "context"],
     queryFn: getMeContext,
   });
 
-  const sessionExpired =
-    isSessionExpired(policyQuery.error) || isSessionExpired(contextQuery.error);
-
-  useEffect(() => {
-    if (sessionExpired) router.replace("/auth/session-expired");
-  }, [sessionExpired, router]);
+  const sessionExpired = useSessionExpiryRedirect(
+    policyQuery.error,
+    contextQuery.error,
+  );
 
   if (sessionExpired) {
     return (

@@ -15,8 +15,11 @@ import { journeyDetailFixture } from "@/test/fixtures/gate-fixtures";
 import { checkInIdempotencyKey } from "@/lib/journey-idempotency";
 import { JourneyActive } from "./journey-active";
 
+const replace = vi.fn();
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/journeys/active/journey-1",
+  useRouter: () => ({ replace }),
 }));
 
 vi.mock("@/lib/api/client", () => ({
@@ -58,7 +61,9 @@ describe("JourneyActive", () => {
 
     renderWithQuery(<JourneyActive journeyId={journeyDetailFixture.id} />);
 
-    expect(await screen.findByRole("heading", { name: "هفته اول: بررسی وزن" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "هفته اول: بررسی وزن" }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "روند طبیعی است" }));
     await user.click(screen.getByRole("button", { name: "ثبت پاسخ" }));
 
@@ -149,7 +154,9 @@ describe("JourneyActive", () => {
     await user.click(screen.getByRole("button", { name: "توقف موقت" }));
     await user.click(screen.getByRole("button", { name: "تایید توقف موقت" }));
 
-    await waitFor(() => expect(pauseJourney).toHaveBeenCalledWith(journeyDetailFixture.id));
+    await waitFor(() =>
+      expect(pauseJourney).toHaveBeenCalledWith(journeyDetailFixture.id),
+    );
   });
 
   it("completes the journey with a required memory title once all steps are answered", async () => {
@@ -196,10 +203,7 @@ describe("JourneyActive", () => {
 
     expect(
       await screen.findByRole("link", { name: "مشاهده خاطره" }),
-    ).toHaveAttribute(
-      "href",
-      `/diary/${journeyDetailFixture.pet_id}/diary-1`,
-    );
+    ).toHaveAttribute("href", `/diary/${journeyDetailFixture.pet_id}/diary-1`);
     expect(
       screen.getByRole("link", { name: "مشاهده پاداش در باغ" }),
     ).toHaveAttribute(
@@ -209,7 +213,8 @@ describe("JourneyActive", () => {
   });
 
   it("surfaces the diary entry and Garden reward when the backend auto-completes the journey on the final check-in, without a separate manual completion step", async () => {
-    const lastStep = journeyDetailFixture.steps[journeyDetailFixture.steps.length - 1];
+    const lastStep =
+      journeyDetailFixture.steps[journeyDetailFixture.steps.length - 1];
     const beforeFinalCheckIn = {
       ...journeyDetailFixture,
       check_ins: journeyDetailFixture.steps
@@ -259,15 +264,25 @@ describe("JourneyActive", () => {
     const user = userEvent.setup();
 
     renderWithQuery(<JourneyActive journeyId={journeyDetailFixture.id} />);
-    await user.click(await screen.findByRole("button", { name: lastStep.allowed_answers[0].label_fa }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: lastStep.allowed_answers[0].label_fa,
+      }),
+    );
     await user.click(screen.getByRole("button", { name: "ثبت پاسخ" }));
 
     expect(
       await screen.findByRole("link", { name: "مشاهده خاطره" }),
-    ).toHaveAttribute("href", `/diary/${journeyDetailFixture.pet_id}/diary-auto-1`);
+    ).toHaveAttribute(
+      "href",
+      `/diary/${journeyDetailFixture.pet_id}/diary-auto-1`,
+    );
     expect(
       screen.getByRole("link", { name: "مشاهده پاداش در باغ" }),
-    ).toHaveAttribute("href", `/garden/${journeyDetailFixture.pet_id}?reward=reward-auto-1`);
+    ).toHaveAttribute(
+      "href",
+      `/garden/${journeyDetailFixture.pet_id}?reward=reward-auto-1`,
+    );
     expect(screen.getByText(/این مسیر تکمیل شده است/)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "تکمیل مسیر" }),

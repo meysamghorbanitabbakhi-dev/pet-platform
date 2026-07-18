@@ -3,12 +3,22 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getWeightTrend, listMeasurements, recordMeasurement } from "@/lib/api/client";
-import { measurementFixture, weightTrendFixture } from "@/test/fixtures/gate-fixtures";
+import {
+  getWeightTrend,
+  listMeasurements,
+  recordMeasurement,
+} from "@/lib/api/client";
+import {
+  measurementFixture,
+  weightTrendFixture,
+} from "@/test/fixtures/gate-fixtures";
 import { PetMeasurements } from "./pet-measurements";
+
+const replace = vi.fn();
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/pets/pet-1/measurements",
+  useRouter: () => ({ replace }),
 }));
 
 vi.mock("@/lib/api/client", () => ({

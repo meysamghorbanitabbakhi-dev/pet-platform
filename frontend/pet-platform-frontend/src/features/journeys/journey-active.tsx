@@ -25,6 +25,7 @@ import {
 import { ApiError } from "@/lib/api/errors";
 import { formatIranDateTime } from "@/lib/format";
 import { checkInIdempotencyKey } from "@/lib/journey-idempotency";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 function errorText(error: unknown) {
   if (error instanceof ApiError) return error.message;
@@ -93,9 +94,9 @@ function CheckInForm({
 
 export function JourneyActive({ journeyId }: { journeyId: string }) {
   const queryClient = useQueryClient();
-  const [sheet, setSheet] = useState<"pause" | "resume" | "stop" | "complete" | null>(
-    null,
-  );
+  const [sheet, setSheet] = useState<
+    "pause" | "resume" | "stop" | "complete" | null
+  >(null);
   const [stopReason, setStopReason] = useState("");
   const [memoryTitle, setMemoryTitle] = useState("");
 
@@ -165,6 +166,16 @@ export function JourneyActive({ journeyId }: { journeyId: string }) {
     },
   });
 
+  const sessionExpired = useSessionExpiryRedirect(journeyQuery.error);
+
+  if (sessionExpired) {
+    return (
+      <AppShell>
+        <Skeleton />
+      </AppShell>
+    );
+  }
+
   if (journeyQuery.isLoading) {
     return (
       <AppShell>
@@ -207,7 +218,10 @@ export function JourneyActive({ journeyId }: { journeyId: string }) {
     journey.status === "completed" &&
     journey.diary_entry_id &&
     journey.garden_reward_id
-      ? { diary_entry_id: journey.diary_entry_id, garden_reward_id: journey.garden_reward_id }
+      ? {
+          diary_entry_id: journey.diary_entry_id,
+          garden_reward_id: journey.garden_reward_id,
+        }
       : null;
 
   return (
@@ -229,7 +243,9 @@ export function JourneyActive({ journeyId }: { journeyId: string }) {
             {journey.steps.map((step) => (
               <li className="split" key={step.key}>
                 <span>{step.title_fa}</span>
-                <StatusChip tone={answeredKeys.has(step.key) ? "positive" : "muted"}>
+                <StatusChip
+                  tone={answeredKeys.has(step.key) ? "positive" : "muted"}
+                >
                   {answeredKeys.has(step.key) ? "پاسخ ثبت شد" : "در انتظار"}
                 </StatusChip>
               </li>
@@ -407,7 +423,9 @@ export function JourneyActive({ journeyId }: { journeyId: string }) {
                 />
               </div>
               {completeMutation.isError ? (
-                <Banner tone="error">{errorText(completeMutation.error)}</Banner>
+                <Banner tone="error">
+                  {errorText(completeMutation.error)}
+                </Banner>
               ) : null}
               <div className="cluster">
                 <Button

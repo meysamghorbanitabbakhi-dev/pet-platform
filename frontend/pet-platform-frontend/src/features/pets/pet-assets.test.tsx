@@ -22,8 +22,11 @@ import {
 } from "@/test/fixtures/gate-fixtures";
 import { PetAssets } from "./pet-assets";
 
+const replace = vi.fn();
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/pets/pet-1/assets",
+  useRouter: () => ({ replace }),
 }));
 
 vi.mock("@/lib/api/client", () => ({
@@ -75,9 +78,13 @@ describe("PetAssets", () => {
     await screen.findByAltText(petAssetFixture.filename);
 
     expect(screen.getByTestId("consent-gate")).toBeInTheDocument();
-    expect(screen.queryByLabelText("فایل (jpg، png یا pdf)")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("فایل (jpg، png یا pdf)"),
+    ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "موافقم و رضایت می‌دهم" }));
+    await user.click(
+      screen.getByRole("button", { name: "موافقم و رضایت می‌دهم" }),
+    );
 
     await waitFor(() =>
       expect(grantPetConsent).toHaveBeenCalledWith("pet-1", {
@@ -89,7 +96,10 @@ describe("PetAssets", () => {
 
   it("uploads directly, without re-asking for consent, once a matching valid consent already exists", async () => {
     vi.mocked(listPetConsents).mockResolvedValue([petConsentFixture]);
-    vi.mocked(uploadPetAsset).mockResolvedValue({ id: "asset-2", status: "active" });
+    vi.mocked(uploadPetAsset).mockResolvedValue({
+      id: "asset-2",
+      status: "active",
+    });
     const user = userEvent.setup();
     const file = new File(["fake-bytes"], "photo.jpg", { type: "image/jpeg" });
 
@@ -129,7 +139,10 @@ describe("PetAssets", () => {
     await user.click(screen.getByRole("button", { name: "لغو رضایت قبلی" }));
 
     await waitFor(() =>
-      expect(withdrawPetConsent).toHaveBeenCalledWith("pet-1", petConsentFixture.id),
+      expect(withdrawPetConsent).toHaveBeenCalledWith(
+        "pet-1",
+        petConsentFixture.id,
+      ),
     );
   });
 
@@ -144,7 +157,10 @@ describe("PetAssets", () => {
     await user.click(screen.getByRole("button", { name: "لغو رضایت" }));
 
     await waitFor(() =>
-      expect(withdrawPetConsent).toHaveBeenCalledWith("pet-1", petConsentFixture.id),
+      expect(withdrawPetConsent).toHaveBeenCalledWith(
+        "pet-1",
+        petConsentFixture.id,
+      ),
     );
   });
 

@@ -2,8 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
   Button,
@@ -15,28 +13,18 @@ import {
 } from "@/components/primitives";
 import { usePersistedSelectedPet } from "@/features/today/today-dashboard";
 import type { MeContextResponse } from "@/lib/api-types";
-import {
-  getJourneyOffers,
-  getMeContext,
-  getPolicies,
-} from "@/lib/api/client";
-import { ApiError } from "@/lib/api/errors";
+import { getJourneyOffers, getMeContext, getPolicies } from "@/lib/api/client";
 import { enabled } from "@/lib/policy";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 export function JourneysList() {
-  const router = useRouter();
   const contextQuery = useQuery({
     queryKey: ["me", "context"],
     queryFn: getMeContext,
   });
   const policyQuery = useQuery({ queryKey: ["policy"], queryFn: getPolicies });
 
-  const sessionExpired =
-    contextQuery.error instanceof ApiError && contextQuery.error.status === 401;
-
-  useEffect(() => {
-    if (sessionExpired) router.replace("/auth/session-expired");
-  }, [sessionExpired, router]);
+  const sessionExpired = useSessionExpiryRedirect(contextQuery.error);
 
   if (sessionExpired) {
     return (

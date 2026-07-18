@@ -2,8 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
   Button,
@@ -16,22 +14,16 @@ import {
 import { usePersistedSelectedPet } from "@/features/today/today-dashboard";
 import type { MeContextResponse } from "@/lib/api-types";
 import { getMeContext, listDiary } from "@/lib/api/client";
-import { ApiError } from "@/lib/api/errors";
 import { formatIranDateTime } from "@/lib/format";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 export function DiaryTimeline() {
-  const router = useRouter();
   const contextQuery = useQuery({
     queryKey: ["me", "context"],
     queryFn: getMeContext,
   });
 
-  const sessionExpired =
-    contextQuery.error instanceof ApiError && contextQuery.error.status === 401;
-
-  useEffect(() => {
-    if (sessionExpired) router.replace("/auth/session-expired");
-  }, [sessionExpired, router]);
+  const sessionExpired = useSessionExpiryRedirect(contextQuery.error);
 
   if (sessionExpired) {
     return (
@@ -47,7 +39,10 @@ export function DiaryTimeline() {
         <ErrorState
           title="خطا در دریافت دفترچه"
           action={
-            <Button variant="secondary" onClick={() => void contextQuery.refetch()}>
+            <Button
+              variant="secondary"
+              onClick={() => void contextQuery.refetch()}
+            >
               تلاش دوباره
             </Button>
           }

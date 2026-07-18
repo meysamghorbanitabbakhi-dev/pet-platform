@@ -2,8 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
   Button,
@@ -14,22 +12,20 @@ import {
   StatusChip,
 } from "@/components/primitives";
 import { listCustomerRequests } from "@/lib/api/client";
-import { ApiError } from "@/lib/api/errors";
-import { requestStatusLabel, requestStatusTone, requestTypeLabel } from "./labels";
+import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
+import {
+  requestStatusLabel,
+  requestStatusTone,
+  requestTypeLabel,
+} from "./labels";
 
 export function ConciergeRequestList() {
-  const router = useRouter();
   const requestsQuery = useQuery({
     queryKey: ["customer-requests"],
     queryFn: listCustomerRequests,
   });
 
-  const sessionExpired =
-    requestsQuery.error instanceof ApiError && requestsQuery.error.status === 401;
-
-  useEffect(() => {
-    if (sessionExpired) router.replace("/auth/session-expired");
-  }, [sessionExpired, router]);
+  const sessionExpired = useSessionExpiryRedirect(requestsQuery.error);
 
   if (sessionExpired) {
     return (
