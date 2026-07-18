@@ -10,6 +10,7 @@ import {
   ErrorState,
   PetSwitcher,
   Skeleton,
+  StatusChip,
 } from "@/components/primitives";
 import type {
   JourneyOfferResponse,
@@ -34,10 +35,13 @@ export function TodayDashboard({
   activePetId,
   onPetSelect,
   loading,
+  refreshing,
   todayError,
   onTodayRetry,
   journeyError,
   onJourneyRetry,
+  petWasReset,
+  onAcknowledgePetReset,
 }: {
   context: MeContextResponse;
   policy: PolicyResponse;
@@ -46,10 +50,13 @@ export function TodayDashboard({
   activePetId: string;
   onPetSelect: (petId: string) => void;
   loading?: boolean;
+  refreshing?: boolean;
   todayError?: boolean;
   onTodayRetry?: () => void;
   journeyError?: boolean;
   onJourneyRetry?: () => void;
+  petWasReset?: boolean;
+  onAcknowledgePetReset?: () => void;
 }) {
   const activePet = context.pets.find((pet) => pet.id === activePetId);
 
@@ -86,7 +93,22 @@ export function TodayDashboard({
           <div className="eyebrow">وضعیت جاری</div>
           <h1 className="display">امروز</h1>
         </div>
+        {refreshing ? (
+          <StatusChip tone="info">در حال به‌روزرسانی</StatusChip>
+        ) : null}
       </div>
+
+      {petWasReset ? (
+        <Banner tone="warning">
+          پتی که پیش‌تر مشاهده می‌کردید دیگر در دسترس نیست. اکنون{" "}
+          {activePet.name} نمایش داده می‌شود.
+          {onAcknowledgePetReset ? (
+            <Button variant="ghost" onClick={onAcknowledgePetReset}>
+              متوجه شدم
+            </Button>
+          ) : null}
+        </Banner>
+      ) : null}
 
       <PetSwitcher
         pets={context.pets}
@@ -210,6 +232,15 @@ export function usePersistedSelectedPet(context: MeContextResponse) {
       ? null
       : window.localStorage.getItem(selectedPetKey),
   );
+  // A stored pet id that no longer matches any current pet (the pet was
+  // removed from the household since it was last selected) is a real,
+  // reachable "missing pet_id" condition -- surfaced via petWasReset rather
+  // than silently substituting a different pet with no explanation.
+  const storedPetMissing =
+    Boolean(storedPetId) &&
+    context.pets.length > 0 &&
+    !context.pets.some((pet) => pet.id === storedPetId);
+  const [fallbackAcknowledged, setFallbackAcknowledged] = useState(false);
   const activePetId =
     storedPetId && context.pets.some((pet) => pet.id === storedPetId)
       ? storedPetId
@@ -217,6 +248,7 @@ export function usePersistedSelectedPet(context: MeContextResponse) {
 
   const setActivePetId = (petId: string) => {
     setStoredPetId(petId);
+    setFallbackAcknowledged(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(selectedPetKey, petId);
     }
@@ -226,5 +258,11 @@ export function usePersistedSelectedPet(context: MeContextResponse) {
     () => context.pets.find((pet) => pet.id === activePetId) ?? context.pets[0],
     [activePetId, context.pets],
   );
-  return { activePet, activePetId, setActivePetId };
+  return {
+    activePet,
+    activePetId,
+    setActivePetId,
+    petWasReset: storedPetMissing && !fallbackAcknowledged,
+    acknowledgePetReset: () => setFallbackAcknowledged(true),
+  };
 }

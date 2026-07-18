@@ -1,6 +1,12 @@
-import { render, screen, within } from "@testing-library/react";
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   journeyOffersFixture,
   meContextFixture,
@@ -10,7 +16,8 @@ import {
   rexTodayFixture,
   unopenedTodayFixture,
 } from "@/test/fixtures/gate-fixtures";
-import { TodayDashboard } from "./today-dashboard";
+import { selectedPetStorageKey } from "@/lib/selected-pet";
+import { TodayDashboard, usePersistedSelectedPet } from "./today-dashboard";
 
 describe("TodayDashboard", () => {
   it("renders setup status without a premature estimate before opening", () => {
@@ -106,9 +113,7 @@ describe("TodayDashboard", () => {
       />,
     );
 
-    expect(
-      screen.getByText("هنوز خانواری ثبت نشده است"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("هنوز خانواری ثبت نشده است")).toBeInTheDocument();
   });
 
   it("keeps Garden free of score, purchase, streak, or decay mechanics", () => {
@@ -127,5 +132,114 @@ describe("TodayDashboard", () => {
     expect(container.textContent).not.toMatch(
       /XP|امتیاز|سلامت|خرید|استریک|افت/,
     );
+  });
+
+  it("shows a background-revalidation indicator distinct from the initial-load skeleton", () => {
+    const { rerender } = render(
+      <TodayDashboard
+        context={meContextFixture}
+        policy={policyFixture}
+        today={returningTodayFixture}
+        journeyOffers={[]}
+        activePetId={meContextFixture.pets[0].id}
+        onPetSelect={() => {}}
+        refreshing={false}
+      />,
+    );
+    expect(screen.queryByText("در حال به‌روزرسانی")).not.toBeInTheDocument();
+
+    rerender(
+      <TodayDashboard
+        context={meContextFixture}
+        policy={policyFixture}
+        today={returningTodayFixture}
+        journeyOffers={[]}
+        activePetId={meContextFixture.pets[0].id}
+        onPetSelect={() => {}}
+        refreshing
+      />,
+    );
+    expect(screen.getByText("در حال به‌روزرسانی")).toBeInTheDocument();
+  });
+
+  it("warns when the previously-selected pet is no longer available, naming the pet now shown", async () => {
+    const user = userEvent.setup();
+    const onAcknowledgePetReset = vi.fn();
+    render(
+      <TodayDashboard
+        context={meContextFixture}
+        policy={policyFixture}
+        today={returningTodayFixture}
+        journeyOffers={[]}
+        activePetId={meContextFixture.pets[0].id}
+        onPetSelect={() => {}}
+        petWasReset
+        onAcknowledgePetReset={onAcknowledgePetReset}
+      />,
+    );
+
+    const banner = screen
+      .getByText(/پتی که پیش‌تر مشاهده می‌کردید دیگر در دسترس نیست/)
+      .closest(".banner");
+    expect(banner).not.toBeNull();
+    expect(
+      within(banner as HTMLElement).getByText(
+        new RegExp(meContextFixture.pets[0].name),
+      ),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "متوجه شدم" }));
+    expect(onAcknowledgePetReset).toHaveBeenCalled();
+  });
+});
+
+describe("usePersistedSelectedPet", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("silently falls back to the first pet when nothing is stored yet", () => {
+    const { result } = renderHook(() =>
+      usePersistedSelectedPet(meContextFixture),
+    );
+
+    expect(result.current.activePetId).toBe(meContextFixture.pets[0].id);
+    expect(result.current.petWasReset).toBe(false);
+  });
+
+  it("surfaces, rather than silently swallows, a stored pet id that no longer exists", () => {
+    window.localStorage.setItem(selectedPetStorageKey, "deleted-pet-id");
+
+    const { result } = renderHook(() =>
+      usePersistedSelectedPet(meContextFixture),
+    );
+
+    expect(result.current.activePetId).toBe(meContextFixture.pets[0].id);
+    expect(result.current.petWasReset).toBe(true);
+  });
+
+  it("clears the reset notice once the user acknowledges it or picks a pet themselves", () => {
+    window.localStorage.setItem(selectedPetStorageKey, "deleted-pet-id");
+    const { result } = renderHook(() =>
+      usePersistedSelectedPet(meContextFixture),
+    );
+    expect(result.current.petWasReset).toBe(true);
+
+    act(() => result.current.acknowledgePetReset());
+
+    expect(result.current.petWasReset).toBe(false);
+  });
+
+  it("does not raise the reset notice when a real pet is already correctly selected", () => {
+    window.localStorage.setItem(
+      selectedPetStorageKey,
+      meContextFixture.pets[1].id,
+    );
+
+    const { result } = renderHook(() =>
+      usePersistedSelectedPet(meContextFixture),
+    );
+
+    expect(result.current.activePetId).toBe(meContextFixture.pets[1].id);
+    expect(result.current.petWasReset).toBe(false);
   });
 });

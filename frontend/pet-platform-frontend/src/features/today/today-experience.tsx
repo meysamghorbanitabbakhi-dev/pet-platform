@@ -76,7 +76,8 @@ function TodayLoaded({
   policy: Awaited<ReturnType<typeof getPolicies>>;
   context: Awaited<ReturnType<typeof getMeContext>>;
 }) {
-  const { activePetId, setActivePetId } = usePersistedSelectedPet(context);
+  const { activePetId, setActivePetId, petWasReset, acknowledgePetReset } =
+    usePersistedSelectedPet(context);
   const todayQuery = useQuery({
     queryKey: ["pet-life", "today", activePetId],
     queryFn: () => getToday(activePetId),
@@ -98,10 +99,13 @@ function TodayLoaded({
         activePetId={activePetId}
         onPetSelect={setActivePetId}
         loading={todayQuery.isLoading}
+        refreshing={todayQuery.isFetching && !todayQuery.isLoading}
         todayError={todayQuery.isError}
         onTodayRetry={() => void todayQuery.refetch()}
         journeyError={journeyQuery.isError}
         onJourneyRetry={() => void journeyQuery.refetch()}
+        petWasReset={petWasReset}
+        onAcknowledgePetReset={acknowledgePetReset}
       />
     </AppShell>
   );
