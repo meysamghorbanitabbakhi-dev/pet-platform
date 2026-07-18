@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,8 +8,10 @@ import {
   getMeContext,
   getOrderDetail,
   getOrderJourney,
+  replaceOrderPetPlan,
 } from "@/lib/api/client";
 import {
+  ids,
   meContextFixture,
   orderDetailFixture,
   orderJourneyFixture,
@@ -155,5 +157,76 @@ describe("OrderDetailView", () => {
       ),
     );
     expect(await screen.findByText("تاخیر تایید شد.")).toBeInTheDocument();
+  });
+
+  it("pre-selects each order line's already-saved pet plan instead of always starting blank", async () => {
+    vi.mocked(getMeContext).mockResolvedValue(meContextFixture);
+    vi.mocked(getOrderDetail).mockResolvedValue({
+      ...orderDetailFixture,
+      lines: [
+        { ...orderDetailFixture.lines[0], planned_pet_ids: [ids.petBishi] },
+      ],
+    });
+    vi.mocked(getOrderJourney).mockResolvedValue(orderJourneyFixture);
+
+    renderWithQuery(<OrderDetailView orderId="order-1" />);
+
+    const bishiCheckbox = await screen.findByRole("checkbox", {
+      name: meContextFixture.pets[0].name,
+    });
+    expect(bishiCheckbox).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: meContextFixture.pets[1].name }),
+    ).not.toBeChecked();
+  });
+
+  it("assigns different pets to different order lines in the same order, not one pet for the whole order", async () => {
+    vi.mocked(getMeContext).mockResolvedValue(meContextFixture);
+    const secondLine = {
+      ...orderDetailFixture.lines[0],
+      id: "23232323-2323-4232-8232-232323232323",
+      title_fa: "پروپلن کت",
+      planned_pet_ids: [],
+    };
+    vi.mocked(getOrderDetail).mockResolvedValue({
+      ...orderDetailFixture,
+      lines: [orderDetailFixture.lines[0], secondLine],
+    });
+    vi.mocked(getOrderJourney).mockResolvedValue(orderJourneyFixture);
+    vi.mocked(replaceOrderPetPlan).mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    renderWithQuery(<OrderDetailView orderId="order-1" />);
+    await screen.findAllByRole("checkbox");
+
+    const groups = screen.getAllByRole("group");
+    await user.click(
+      within(groups[0]).getByRole("checkbox", {
+        name: meContextFixture.pets[0].name,
+      }),
+    );
+    await user.click(
+      within(groups[1]).getByRole("checkbox", {
+        name: meContextFixture.pets[1].name,
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "ثبت برنامه اختیاری" }),
+    );
+
+    await waitFor(() =>
+      expect(replaceOrderPetPlan).toHaveBeenCalledWith(orderDetailFixture.id, {
+        lines: [
+          {
+            order_line_id: orderDetailFixture.lines[0].id,
+            pet_ids: [meContextFixture.pets[0].id],
+          },
+          {
+            order_line_id: secondLine.id,
+            pet_ids: [meContextFixture.pets[1].id],
+          },
+        ],
+      }),
+    );
   });
 });

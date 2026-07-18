@@ -332,18 +332,28 @@ function Fact({ label, value }: { label: string; value: string }) {
 
 function OptionalPetPlan({ order }: { order: OrderDetailResponse }) {
   const queryClient = useQueryClient();
-  const [selectedPetId, setSelectedPetId] = useState<string>("");
   const contextQuery = useQuery({
     queryKey: ["me", "context"],
     queryFn: getMeContext,
     retry: false,
   });
+  // Reload-safe: seeded once from the server's own planned_pet_ids per line,
+  // not reset to blank on every render. Each order line can be connected to
+  // a different set of pets (a household with more than one pet may split a
+  // single order across them), so state is keyed per line, not one
+  // selection applied to the whole order.
+  const [linePetIds, setLinePetIds] = useState<Record<string, string[]>>(() =>
+    Object.fromEntries(
+      order.lines.map((line) => [line.id, line.planned_pet_ids]),
+    ),
+  );
+
   const petPlanMutation = useMutation({
     mutationFn: () =>
       replaceOrderPetPlan(order.id, {
         lines: order.lines.map((line) => ({
           order_line_id: line.id,
-          pet_ids: selectedPetId ? [selectedPetId] : [],
+          pet_ids: linePetIds[line.id] ?? [],
         })),
       }),
     onSuccess: async () => {
@@ -354,6 +364,16 @@ function OptionalPetPlan({ order }: { order: OrderDetailResponse }) {
   const pets = contextQuery.data?.pets ?? [];
   if (!pets.length) return null;
 
+  function togglePetForLine(lineId: string, petId: string) {
+    setLinePetIds((current) => {
+      const existing = current[lineId] ?? [];
+      const next = existing.includes(petId)
+        ? existing.filter((id) => id !== petId)
+        : [...existing, petId];
+      return { ...current, [lineId]: next };
+    });
+  }
+
   return (
     <Card className="stack">
       <div>
@@ -361,21 +381,32 @@ function OptionalPetPlan({ order }: { order: OrderDetailResponse }) {
         <h2 className="title">برنامه پت برای سفارش</h2>
       </div>
       <p className="caption">
-        این کار اختیاری است و انبار یا تخمین مصرف غذا ایجاد نمی‌کند.
+        این کار اختیاری است و انبار یا تخمین مصرف غذا ایجاد نمی‌کند. هر قلم
+        سفارش را می‌توان جدا به یک یا چند پت متصل کرد.
       </p>
-      <select
-        className="input"
-        value={selectedPetId}
-        onChange={(event) => setSelectedPetId(event.target.value)}
-        aria-label="انتخاب پت برای برنامه سفارش"
-      >
-        <option value="">بدون اتصال</option>
-        {pets.map((pet) => (
-          <option key={pet.id} value={pet.id}>
-            {pet.name}
-          </option>
+      <div className="stack">
+        {order.lines.map((line) => (
+          <div className="stack" key={line.id}>
+            <div className="eyebrow">{line.title_fa}</div>
+            <div
+              className="cluster"
+              role="group"
+              aria-label={`انتخاب پت برای ${line.title_fa}`}
+            >
+              {pets.map((pet) => (
+                <label key={pet.id}>
+                  <input
+                    type="checkbox"
+                    checked={(linePetIds[line.id] ?? []).includes(pet.id)}
+                    onChange={() => togglePetForLine(line.id, pet.id)}
+                  />{" "}
+                  {pet.name}
+                </label>
+              ))}
+            </div>
+          </div>
         ))}
-      </select>
+      </div>
       {petPlanMutation.isError ? (
         <Banner tone="error">{errorText(petPlanMutation.error)}</Banner>
       ) : null}
