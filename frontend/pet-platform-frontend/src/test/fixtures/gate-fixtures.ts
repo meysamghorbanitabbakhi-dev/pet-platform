@@ -17,6 +17,7 @@ import type {
   PetAssetItem,
   PetConsentResponse,
   PetKnowledgeResponse,
+  PrivacyRequestPage,
   PrivacyRequestResponse,
   WalletSummaryResponse,
   WeightTrendResponse,
@@ -644,8 +645,16 @@ export const notificationPageFixture: NotificationPage = {
 };
 
 export const privacyRequestFixture: PrivacyRequestResponse = {
+  completed_at: null,
+  created_at: "2026-07-17T08:00:00Z",
   id: "dddd4444-dddd-4ddd-8ddd-ddddddddddd4",
-  status: "pending",
+  request_type: "disable",
+  status: "requested",
+};
+
+export const privacyRequestPageFixture: PrivacyRequestPage = {
+  items: [privacyRequestFixture],
+  page: { has_more: false, limit: 25, offset: 0, total: 1 },
 };
 
 export const privacyExportFixture: Record<string, unknown> = {

@@ -1235,3 +1235,82 @@ async def test_notification_destinations_are_typed_and_server_populated(seed: Se
         wallet_credit = by_event["wallet.late_delivery_credit_granted"]
         assert wallet_credit["destination"] == {"kind": "order", "id": str(order_id)}
     app.dependency_overrides.clear()
+
+
+async def test_privacy_request_status_is_scoped_typed_and_paginated(seed: Seed) -> None:
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        empty = await client.get("/api/v1/privacy/requests")
+        assert empty.status_code == 200
+        assert empty.json()["items"] == []
+
+        created = await client.post(
+            "/api/v1/privacy/requests", json={"request_type": "disable"}
+        )
+        assert created.status_code == 202
+        request_id = created.json()["id"]
+        assert created.json()["status"] == "requested"
+
+        # Duplicate active-request behavior: a second create while one is
+        # still active must not create a second row, and the list must
+        # still show exactly one.
+        duplicate = await client.post(
+            "/api/v1/privacy/requests", json={"request_type": "disable"}
+        )
+        assert duplicate.status_code == 202
+        assert duplicate.json()["id"] == request_id
+
+        listed = await client.get("/api/v1/privacy/requests")
+        assert listed.status_code == 200
+        assert len(listed.json()["items"]) == 1
+        item = listed.json()["items"][0]
+        assert item["id"] == request_id
+        assert item["request_type"] == "disable"
+        assert item["status"] == "requested"
+        assert item["created_at"]
+
+        # Persists after "reload": fetching the single request by id shows
+        # the same status, not just the one-time creation response.
+        detail = await client.get(f"/api/v1/privacy/requests/{request_id}")
+        assert detail.status_code == 200
+        assert detail.json()["id"] == request_id
+        assert detail.json()["status"] == "requested"
+
+        # A different request_type is an independent request.
+        second = await client.post(
+            "/api/v1/privacy/requests", json={"request_type": "anonymize"}
+        )
+        assert second.status_code == 202
+        assert second.json()["id"] != request_id
+        assert second.json()["status"] == "awaiting_policy"
+
+        paginated_first = await client.get("/api/v1/privacy/requests?limit=1&offset=0")
+        assert len(paginated_first.json()["items"]) == 1
+        assert paginated_first.json()["page"]["total"] == 2
+        assert paginated_first.json()["page"]["has_more"] is True
+        paginated_second = await client.get("/api/v1/privacy/requests?limit=1&offset=1")
+        assert len(paginated_second.json()["items"]) == 1
+        assert paginated_second.json()["page"]["has_more"] is False
+        assert (
+            paginated_first.json()["items"][0]["id"]
+            != paginated_second.json()["items"][0]["id"]
+        )
+
+        unknown = await client.get(f"/api/v1/privacy/requests/{uuid.uuid4()}")
+        assert unknown.status_code == 404
+
+    # Non-enumerating: another identity must not be able to see or fetch
+    # this identity's privacy requests, and the failure mode for "exists but
+    # not mine" must be identical to "does not exist" (404, not 403).
+    app.dependency_overrides[get_current_identity] = lambda: seed.other_identity
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        other_list = await client.get("/api/v1/privacy/requests")
+        assert other_list.status_code == 200
+        assert other_list.json()["items"] == []
+
+        cross_identity = await client.get(f"/api/v1/privacy/requests/{request_id}")
+        assert cross_identity.status_code == 404
+        assert cross_identity.json()["error"]["code"] == unknown.json()["error"]["code"]
+    app.dependency_overrides.clear()

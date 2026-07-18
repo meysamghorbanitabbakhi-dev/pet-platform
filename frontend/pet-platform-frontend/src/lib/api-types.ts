@@ -71,6 +71,7 @@ export type SmsPreferenceResponse = Schema<"SmsPreferenceResponse">;
 export type NotificationPreferenceBody = Schema<"NotificationPreferenceBody">;
 export type PrivacyRequestBody = Schema<"PrivacyRequestBody">;
 export type PrivacyRequestResponse = Schema<"PrivacyRequestResponse">;
+export type PrivacyRequestPage = Schema<"OffsetPage_PrivacyRequestResponse_">;
 export type MeasurementBody = Schema<"MeasurementBody">;
 export type BreedSelectionBody = Schema<"BreedSelectionBody">;
 export type GuidancePreferenceBody = Schema<"GuidancePreferenceBody">;

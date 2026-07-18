@@ -36,6 +36,7 @@ import type {
   NotificationPreferenceBody,
   OrderListPage,
   PrivacyRequestBody,
+  PrivacyRequestPage,
   PrivacyRequestResponse,
   SmsPreferenceResponse,
   WalletSummaryResponse,
@@ -795,6 +796,27 @@ export async function requestPrivacyActionBackend(
   if (developmentApi) return developmentApi.requestPrivacyAction(body);
   return withAuth((headers) =>
     backendClient.POST("/api/v1/privacy/requests", { body, headers }),
+  );
+}
+
+export async function listPrivacyRequestsBackend(): Promise<PrivacyRequestPage> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listPrivacyRequests();
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/privacy/requests", { headers }),
+  );
+}
+
+export async function getPrivacyRequestBackend(
+  requestId: string,
+): Promise<PrivacyRequestResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getPrivacyRequest(requestId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/privacy/requests/{request_id}", {
+      params: { path: { request_id: requestId } },
+      headers,
+    }),
   );
 }
 

@@ -65,6 +65,7 @@ import type {
   PetSummary,
   PolicyResponse,
   PrivacyRequestBody,
+  PrivacyRequestPage,
   PrivacyRequestResponse,
   ReorderAssessmentResponse,
   ReorderSnoozeBody,
@@ -327,6 +328,14 @@ export function requestPrivacyAction(body: PrivacyRequestBody) {
     method: "POST",
     body,
   });
+}
+
+export function listPrivacyRequests() {
+  return bff<PrivacyRequestPage>("/api/bff/privacy/requests");
+}
+
+export function getPrivacyRequest(requestId: string) {
+  return bff<PrivacyRequestResponse>(`/api/bff/privacy/requests/${requestId}`);
 }
 
 export function getSmsPreference(eventKey: string) {

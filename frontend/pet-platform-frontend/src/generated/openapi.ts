@@ -2235,10 +2235,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List My Privacy Requests */
+        get: operations["list_my_privacy_requests_api_v1_privacy_requests_get"];
         put?: never;
         /** Request Privacy Action */
         post: operations["request_privacy_action_api_v1_privacy_requests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get My Privacy Request */
+        get: operations["get_my_privacy_request_api_v1_privacy_requests__request_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4141,6 +4159,12 @@ export interface components {
             items: components["schemas"]["OrderListItem"][];
             page: components["schemas"]["OffsetPageMetadata"];
         };
+        /** OffsetPage[PrivacyRequestResponse] */
+        OffsetPage_PrivacyRequestResponse_: {
+            /** Items */
+            items: components["schemas"]["PrivacyRequestResponse"][];
+            page: components["schemas"]["OffsetPageMetadata"];
+        };
         /** OnboardingRequirementsResponse */
         OnboardingRequirementsResponse: {
             /** Needs Address */
@@ -4706,13 +4730,28 @@ export interface components {
         };
         /** PrivacyRequestResponse */
         PrivacyRequestResponse: {
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
             /**
              * Id
              * Format: uuid
              */
             id: string;
-            /** Status */
-            status: string;
+            /**
+             * Request Type
+             * @enum {string}
+             */
+            request_type: "export" | "disable" | "anonymize";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "requested" | "awaiting_policy" | "completed" | "rejected";
         };
         /** ProductBody */
         ProductBody: {
@@ -10075,6 +10114,38 @@ export interface operations {
             };
         };
     };
+    list_my_privacy_requests_api_v1_privacy_requests_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OffsetPage_PrivacyRequestResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     request_privacy_action_api_v1_privacy_requests_post: {
         parameters: {
             query?: never;
@@ -10090,6 +10161,37 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_my_privacy_request_api_v1_privacy_requests__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

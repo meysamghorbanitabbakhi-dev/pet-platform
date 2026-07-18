@@ -1,16 +1,55 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { Banner, Button, Card, Sheet } from "@/components/primitives";
-import { exportMyData, requestPrivacyAction } from "@/lib/api/client";
+import {
+  Banner,
+  Button,
+  Card,
+  Skeleton,
+  StatusChip,
+  Sheet,
+} from "@/components/primitives";
+import type { PrivacyRequestResponse } from "@/lib/api-types";
+import {
+  exportMyData,
+  listPrivacyRequests,
+  requestPrivacyAction,
+} from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
+import { formatIranDateTime } from "@/lib/format";
 
 function errorText(error: unknown) {
   if (error instanceof ApiError) return error.message;
   return "خطا در ارتباط با سرویس.";
 }
+
+const requestTypeLabels: Record<
+  PrivacyRequestResponse["request_type"],
+  string
+> = {
+  export: "خروجی اطلاعات",
+  disable: "غیرفعال‌سازی حساب",
+  anonymize: "ناشناس‌سازی داده‌ها",
+};
+
+const statusLabels: Record<PrivacyRequestResponse["status"], string> = {
+  requested: "در حال بررسی",
+  awaiting_policy: "در انتظار تایید سیاست",
+  completed: "انجام‌شده",
+  rejected: "رد شده",
+};
+
+const statusTones: Record<
+  PrivacyRequestResponse["status"],
+  "muted" | "info" | "positive"
+> = {
+  requested: "info",
+  awaiting_policy: "info",
+  completed: "positive",
+  rejected: "muted",
+};
 
 function download(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -25,9 +64,15 @@ function download(filename: string, data: unknown) {
 }
 
 export function PrivacyCenter() {
+  const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState<"disable" | "anonymize" | null>(
     null,
   );
+
+  const requestsQuery = useQuery({
+    queryKey: ["privacy", "requests"],
+    queryFn: listPrivacyRequests,
+  });
 
   const exportMutation = useMutation({
     mutationFn: exportMyData,
@@ -37,7 +82,15 @@ export function PrivacyCenter() {
   const requestMutation = useMutation({
     mutationFn: (requestType: "disable" | "anonymize") =>
       requestPrivacyAction({ reason: null, request_type: requestType }),
-    onSuccess: () => setConfirming(null),
+    onSuccess: async () => {
+      setConfirming(null);
+      // Persist the real status by re-fetching from the backend, not by
+      // trusting the one-time creation response alone -- a duplicate active
+      // request must show as the same one row, not a second one.
+      await queryClient.invalidateQueries({
+        queryKey: ["privacy", "requests"],
+      });
+    },
   });
 
   return (
@@ -81,12 +134,33 @@ export function PrivacyCenter() {
           </div>
         </Card>
 
-        {requestMutation.isSuccess ? (
-          <Banner tone="info">
-            درخواست شما با شناسه {requestMutation.data.id} ثبت شد. وضعیت فعلی:{" "}
-            {requestMutation.data.status}
-          </Banner>
-        ) : null}
+        <Card className="stack">
+          <h2 className="title">درخواست‌های من</h2>
+          {requestsQuery.isLoading ? <Skeleton /> : null}
+          {requestsQuery.isError ? (
+            <Banner tone="error">فهرست درخواست‌ها در دسترس نیست.</Banner>
+          ) : null}
+          {requestsQuery.data?.items.length === 0 ? (
+            <p className="caption">هنوز درخواستی ثبت نشده است.</p>
+          ) : null}
+          {requestsQuery.data?.items.length ? (
+            <ul className="stack" aria-label="فهرست درخواست‌های حریم خصوصی">
+              {requestsQuery.data.items.map((item) => (
+                <li className="split" key={item.id}>
+                  <span>{requestTypeLabels[item.request_type]}</span>
+                  <span className="cluster">
+                    <span className="caption">
+                      {formatIranDateTime(item.created_at)}
+                    </span>
+                    <StatusChip tone={statusTones[item.status]}>
+                      {statusLabels[item.status]}
+                    </StatusChip>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </Card>
 
         {confirming ? (
           <Sheet

@@ -212,6 +212,11 @@ export async function loadDevelopmentApi() {
       void _body;
       return fixtures.privacyRequestFixture;
     },
+    listPrivacyRequests: async () => fixtures.privacyRequestPageFixture,
+    getPrivacyRequest: async (_requestId: string) => {
+      void _requestId;
+      return fixtures.privacyRequestFixture;
+    },
     getSmsPreference: async (eventKey: string) => {
       return {
         event_key: eventKey,

@@ -1,12 +1,15 @@
-from typing import Annotated
+from datetime import datetime
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.contracts import OffsetPage
 from app.api.dependencies import CurrentIdentity
+from app.api.pagination import Pagination, page
 from app.db.session import get_db_session
 from app.modules.households.models import Household, HouseholdMembership
 from app.modules.identity.privacy import PrivacyRequest
@@ -24,6 +27,7 @@ from app.modules.pets.models import Pet
 
 router = APIRouter(prefix="/privacy", tags=["privacy"])
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
+PaginationDependency = Annotated[Pagination, Depends()]
 
 
 class PrivacyRequestBody(BaseModel):
@@ -33,7 +37,20 @@ class PrivacyRequestBody(BaseModel):
 
 class PrivacyRequestResponse(BaseModel):
     id: UUID
-    status: str
+    request_type: Literal["export", "disable", "anonymize"]
+    status: Literal["requested", "awaiting_policy", "completed", "rejected"]
+    created_at: datetime
+    completed_at: datetime | None = None
+
+
+def _privacy_request_response(item: PrivacyRequest) -> PrivacyRequestResponse:
+    return PrivacyRequestResponse(
+        id=item.id,
+        request_type=item.request_type,
+        status=item.status,
+        created_at=item.created_at,
+        completed_at=item.completed_at,
+    )
 
 
 @router.get("/export", response_model=dict[str, object])
@@ -258,7 +275,7 @@ async def request_privacy_action(
         )
     )
     if existing is not None:
-        return PrivacyRequestResponse(id=existing.id, status=existing.status)
+        return _privacy_request_response(existing)
     request = PrivacyRequest(
         identity_id=identity.id,
         request_type=body.request_type,
@@ -267,4 +284,41 @@ async def request_privacy_action(
     )
     session.add(request)
     await session.commit()
-    return PrivacyRequestResponse(id=request.id, status=request.status)
+    return _privacy_request_response(request)
+
+
+@router.get("/requests", response_model=OffsetPage[PrivacyRequestResponse])
+async def list_my_privacy_requests(
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    pagination: PaginationDependency,
+) -> OffsetPage[PrivacyRequestResponse]:
+    filters = (PrivacyRequest.identity_id == identity.id,)
+    total = int(await session.scalar(select(func.count(PrivacyRequest.id)).where(*filters)) or 0)
+    requests = list(
+        (
+            await session.scalars(
+                select(PrivacyRequest)
+                .where(*filters)
+                .order_by(PrivacyRequest.created_at.desc())
+                .offset(pagination.offset)
+                .limit(pagination.limit)
+            )
+        ).all()
+    )
+    items = [_privacy_request_response(item) for item in requests]
+    return OffsetPage[PrivacyRequestResponse].model_validate(
+        page(items, total=total, pagination=pagination)
+    )
+
+
+@router.get("/requests/{request_id}", response_model=PrivacyRequestResponse)
+async def get_my_privacy_request(
+    request_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+) -> PrivacyRequestResponse:
+    request = await session.get(PrivacyRequest, request_id)
+    if request is None or request.identity_id != identity.id:
+        raise HTTPException(status_code=404, detail="privacy_request_not_found")
+    return _privacy_request_response(request)

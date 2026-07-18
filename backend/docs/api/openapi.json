@@ -5069,6 +5069,26 @@
         "title": "OffsetPage[OrderListItem]",
         "type": "object"
       },
+      "OffsetPage_PrivacyRequestResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyRequestResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/OffsetPageMetadata"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "OffsetPage[PrivacyRequestResponse]",
+        "type": "object"
+      },
       "OnboardingRequirementsResponse": {
         "properties": {
           "needs_address": {
@@ -6676,19 +6696,53 @@
       },
       "PrivacyRequestResponse": {
         "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
           },
+          "request_type": {
+            "enum": [
+              "export",
+              "disable",
+              "anonymize"
+            ],
+            "title": "Request Type",
+            "type": "string"
+          },
           "status": {
+            "enum": [
+              "requested",
+              "awaiting_policy",
+              "completed",
+              "rejected"
+            ],
             "title": "Status",
             "type": "string"
           }
         },
         "required": [
           "id",
-          "status"
+          "request_type",
+          "status",
+          "created_at"
         ],
         "title": "PrivacyRequestResponse",
         "type": "object"
@@ -16140,6 +16194,66 @@
       }
     },
     "/api/v1/privacy/requests": {
+      "get": {
+        "operationId": "list_my_privacy_requests_api_v1_privacy_requests_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsetPage_PrivacyRequestResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List My Privacy Requests",
+        "tags": [
+          "privacy"
+        ]
+      },
       "post": {
         "operationId": "request_privacy_action_api_v1_privacy_requests_post",
         "requestBody": {
@@ -16180,6 +16294,54 @@
           }
         ],
         "summary": "Request Privacy Action",
+        "tags": [
+          "privacy"
+        ]
+      }
+    },
+    "/api/v1/privacy/requests/{request_id}": {
+      "get": {
+        "operationId": "get_my_privacy_request_api_v1_privacy_requests__request_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyRequestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get My Privacy Request",
         "tags": [
           "privacy"
         ]
