@@ -7,15 +7,15 @@ Included:
 - FastAPI application and all domain modules.
 - Integration ports and adapters for Zarinpal, Payamak Panel and filesystem storage.
 - Outbox worker and scheduler.
-- Alembic migrations through `20260716_0018`.
+- Alembic migrations through the head recorded in `release-contract.json` (`alembic.heads`) — do not hardcode a revision id here.
 - Dockerfile, local Docker Compose and hardened production override.
 - Automated tests and development configuration.
-- Checked OpenAPI JSON with 110 public operations.
+- Checked OpenAPI JSON; path/operation counts are governed by `release-contract.json`, not restated here.
 - Architecture decisions, runbooks, gate reports and deterministic fixtures.
 - `BACKEND_SYSTEM_MAP.md` and `API_ENDPOINT_CATALOG.md`.
 - The final collector `1.6.1` ZIP as an approved release input, kept as a separate nested archive.
 
-Excluded intentionally:
+Excluded intentionally (matches `.gitignore`; no packaging script currently enforces this list against a built archive — treat it as intent, not verified build behavior, until one exists):
 
 - Local virtual environment and Python caches.
 - Test/type/lint caches.

@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-The checked OpenAPI contract contains 133 public operations. Routes use the `/api/v1` prefix except health/docs/internal metrics. Schema details in `docs/api/openapi.json` are authoritative.
+The checked OpenAPI contract's path and operation counts are governed by `release-contract.json` (`path_count`, `operation_count`) — do not hardcode them here, and do not conflate the two: one path can expose more than one HTTP operation. Routes use the `/api/v1` prefix except health/docs/internal metrics. Schema details in `docs/api/openapi.json` are authoritative.
 
 ## K9 customer integration endpoints
 

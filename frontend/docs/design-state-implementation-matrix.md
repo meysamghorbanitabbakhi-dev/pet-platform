@@ -4,7 +4,7 @@ Generated: 2026-07-17. Covers all 152 accepted design states from `gate5.2c-scre
 
 ## Source-of-truth used
 
-- Backend OpenAPI: `backend/openapi.json` (133 paths, 144 operations, matches `backend/release-contract.json` alembic head `20260716_0024`).
+- Backend OpenAPI: `backend/openapi.json`. Path count, operation count, and the required Alembic head are governed by `backend/release-contract.json` — do not hardcode them here; run `python -m app.cli.verify_release_contract` for the current values. (Path count and operation count are different numbers: one path can expose more than one HTTP operation.)
 - Policy defaults: `backend/release-contract.json` -> `policy_defaults`, cross-checked against `frontend/frontend-coding-contract/design-pages/gate5.2c-screen-data.v3.1.js` -> `GATE52C_POLICY` (27 fields, matches).
 - Canonical screen graph: `gate5.2c-screen-data.v3.1.js` -> `GATE52C_SCREENS` (152), `GATE52C_JOURNEYS` (11).
 - Component contract: `Gate 5.2C - Final Component Contract R3.1.dc.html` (named components) plus `src/components/primitives.tsx` for primitives actually shared today.

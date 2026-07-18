@@ -1,8 +1,8 @@
 # Backend contract blockers
 
 Generated: 2026-07-17. These are the only states, out of all 152 accepted design states, where the current
-backend OpenAPI (`backend/openapi.json`, alembic head `20260716_0024`, matching `backend/release-contract.json`)
-does not expose the operation or response field the design requires. Every other MISSING/PARTIAL state in
+backend OpenAPI (`backend/openapi.json`, Alembic head governed by `backend/release-contract.json` — do not
+hardcode it here) does not expose the operation or response field the design requires. Every other MISSING/PARTIAL state in
 `design-state-implementation-matrix.md` is a frontend build gap only — the backend operation already exists.
 
 Do not invent a frontend-only workaround for any row below. Continue implementing all unblocked states while
