@@ -1,9 +1,11 @@
 # Backend contract blockers
 
-Generated: 2026-07-17. These are the only states, out of all 152 accepted design states, where the current
-backend OpenAPI (`backend/openapi.json`, Alembic head governed by `backend/release-contract.json` — do not
-hardcode it here) does not expose the operation or response field the design requires. Every other MISSING/PARTIAL state in
-`design-state-implementation-matrix.md` is a frontend build gap only — the backend operation already exists.
+Generated: 2026-07-17, last reconciled 2026-07-18. These are the only states, out of all 152 accepted design
+states, classified `BACKEND_BLOCKED` in `design-state-implementation-matrix.md`: either the backend OpenAPI
+(`backend/openapi.json`, Alembic head governed by `backend/release-contract.json` — do not hardcode it here)
+does not expose the operation or response field the design requires, or (G5-SHOP-13) no approved backend domain
+rule exists yet for the frontend to build against. Every other MISSING/PARTIAL state in
+`design-state-implementation-matrix.md` is a frontend build gap only — the backend already provides what it needs.
 
 Do not invent a frontend-only workaround for any row below. Continue implementing all unblocked states while
 these wait on backend ownership.
@@ -49,6 +51,44 @@ these wait on backend ownership.
 
 ---
 
+## G5-ACC-03 — Address edit/delete
+
+- **user_goal**: Correct a typo in a saved delivery address, or remove one that's no longer used, from the account addresses screen.
+- **missing_operation**: `PATCH /api/v1/pet-life/households/{household_id}/addresses/{address_id}` and `DELETE /api/v1/pet-life/households/{household_id}/addresses/{address_id}`. Only `GET` (list) and `POST` (create) exist today.
+- **required_request_shape**: `PATCH` — a partial `AddressBody`-shaped update (subset of `label, recipient_name, recipient_mobile, province, city, address_line`). `DELETE` — no body.
+- **required_response_shape**: `PATCH` returns the updated `AddressResponse`; `DELETE` returns 204.
+- **authorization_scope**: household-member identity scope (same boundary as the existing `GET`/`POST` on this path); must reject another household's address with a non-enumerating not-found, not a 403 that confirms the address exists.
+- **idempotency_requirement**: `DELETE` must be idempotent (deleting an already-deleted/already-inactive address is a no-op, not an error). Deletion must be soft (through the existing `active` state), and must never mutate an address snapshot already captured on a placed order.
+- **policy_requirement**: none.
+- **recommended_backend_owner**: households module (same owner as the existing address `GET`/`POST` in `app/api/routes/pet_life.py`) — this is standard CRUD completion on an existing resource, not a new product decision.
+
+---
+
+## G5-SHOP-13 — Product alternatives
+
+- **user_goal**: When a desired product is unavailable or doesn't fit a pet's needs, see other products the platform considers reasonable substitutes.
+- **missing_operation**: none exists, and none should be built speculatively. This is not a missing read endpoint so much as a missing domain rule: `gate5.2c-screen-data.v3.1.js` marks this state's disposition `deferred`, and there is no approved definition anywhere in the backend of what makes two products "alternatives" of each other (species match? formula match? weight-range equivalence? price-band equivalence?).
+- **required_request_shape/response_shape**: cannot be specified yet — depends on the substitutability rule, which is a product decision, not an engineering one.
+- **authorization_scope**: n/a until a rule exists.
+- **idempotency_requirement**: n/a (would be a read).
+- **policy_requirement**: none identified yet.
+- **recommended_backend_owner**: catalog module, pending a product decision on the substitutability rule. Do not infer one from product names/categories on the frontend — that would fabricate a business rule the platform has not approved.
+
+---
+
+## G5-SHOP-14 — Catalog search
+
+- **user_goal**: Find a product by typing a Persian query (title, SKU, product line, or formula) instead of scrolling the full catalog.
+- **missing_operation**: a backend-owned search operation, e.g. `GET /api/v1/catalog/offers/search?q=...`. Today only `GET /api/v1/catalog/offers` (full/paginated list, no query-text parameter) exists.
+- **required_request_shape**: query string `q` (Persian-normalized), optional availability/species/category filters where the catalog data already supports them, and standard pagination params.
+- **required_response_shape**: same bounded, paginated `OfferResponse[]`-shaped list the catalog list endpoint already returns, plus a typed empty-result response (not a bare `[]` the frontend has to interpret).
+- **authorization_scope**: same as the existing public catalog list (no additional auth).
+- **idempotency_requirement**: n/a (read-only).
+- **policy_requirement**: must not expose operator-only price-intelligence fields through this path.
+- **recommended_backend_owner**: catalog module — the goal is Persian-normalized, deterministically-ordered, paginated search over the real catalog, not client-side filtering of whichever page of `/shop` happens to already be loaded (which silently misses everything not currently on screen and isn't real search).
+
+---
+
 ## G5-AUTH-11 — OTP SMS delivery-failure state
 
 - **user_goal**: Know when an OTP code was requested successfully but the SMS provider (Payamak) failed to deliver it, so the user isn't left waiting on a code that will never arrive.
@@ -58,7 +98,8 @@ these wait on backend ownership.
 - **authorization_scope**: unauthenticated (pre-session, same boundary as the OTP request/verify endpoints themselves) but must be scoped to the issuing `challenge_id` only — must not enumerate other challenges.
 - **idempotency_requirement**: polling is naturally idempotent; if webhook-driven, the webhook handler must dedupe by provider delivery-receipt id.
 - **policy_requirement**: none — this is a provider-integration gap, not a policy toggle. The design source for this state is marked `"assumed"` in `gate5.2c-screen-data.v3.1.js`, meaning the designer flagged it as unconfirmed rather than backend-verified.
-- **recommended_backend_owner**: auth/OTP module, in coordination with whichever integration owns the Payamak SMS provider client (`app/integrations/`) — requires a genuine product/vendor decision (webhook vs. poll, and whether Payamak's API even exposes delivery receipts), so this is explicitly **not** something to build speculatively per the "no new product decision" rule; flagging only.
+- **vendor decision (recorded 2026-07-18)**: checked against the actual integration, `app/integrations/otp/payamak_panel.py`, and its reference documentation, `backend/docs/integrations/payamak-panel.md`. The only contracted operation is `POST https://rest.payamak-panel.com/api/SendSMS/SendSMS`, which returns a synchronous `{RetStatus, Value}` submission-accepted/-rejected response and nothing else — no delivery receipt (DLR) field, no webhook registration, no polling endpoint is documented or implemented anywhere in this integration. **Conclusion: Payamak Panel, as integrated here, does not support delivery-receipt tracking.** This state stays `BACKEND_BLOCKED` — not because the backend hasn't built a poll/webhook handler yet, but because there is nothing on the provider side for such a handler to consume. Building one now would be speculative, contradicting the "no new product decision" rule. If delivery tracking becomes a real requirement, it requires either a different SMS provider or a commercial upgrade with Payamak, both genuine vendor/product decisions outside engineering scope. In the meantime, product copy for OTP request screens should say only that the request was submitted, not that delivery is confirmed — checked 2026-07-18: the current /auth/otp copy ("کد ۶ رقمی پیامک‌شده را وارد کنید") already only prompts for the code and makes no delivery guarantee, so no copy change was needed.
+- **recommended_backend_owner**: auth/OTP module, in coordination with whichever integration owns the Payamak SMS provider client (`app/integrations/otp/`) — requires a genuine product/vendor decision (a different or upgraded SMS provider), so this is explicitly **not** something to build speculatively per the "no new product decision" rule; flagging only.
 
 ---
 
@@ -66,6 +107,6 @@ these wait on backend ownership.
 
 A few states looked backend-blocked at first glance but are not, for the record:
 
-- **G5-CHK-13/14/15 (payment cancelled vs. failed vs. ambiguous)**: the Zarinpal callback route (`app/api/routes/commerce.py`) intentionally returns one merged `cancelled_or_failed` state. This matches `GATE52C_RESIDUAL` #1 ("Uncertain payment... Calm pending-verification state; never routes directly to retry") — an accepted design limitation, not a missing operation. Frontend gap (distinct tone/copy per case) is tracked as PARTIAL in the matrix, not here.
+- **G5-CHK-13/14/15 (payment cancelled vs. failed vs. ambiguous)**: the Zarinpal callback route (`app/api/routes/commerce.py`) intentionally returns one merged `cancelled_or_failed` state. This matches `GATE52C_RESIDUAL` #1 ("Uncertain payment... Calm pending-verification state; never routes directly to retry") — an accepted design limitation, not a missing operation, and not a backend blocker. As of the 2026-07-18 matrix reconciliation, G5-CHK-13 is IMPLEMENTED (it represents the real merged screen) and G5-CHK-14 is OBSOLETE_BY_CONTRACT (superseded by CHK-13 — the provider genuinely cannot support a second, separately-toned state). G5-CHK-15's remaining gap (no nav-to-order/support-contact link on ambiguous verification failure) stays PARTIAL — that one is a real frontend build gap, tracked in the matrix, not here.
 - **G5-ACC-02/07/10/14 (pet list, wallet, notification inbox, privacy export)**: all have real, working backend operations (`GET .../pets`, `GET .../wallet`, `GET .../notifications`, `GET /privacy/export`) that are simply unconsumed by any frontend code today. These are Wave 5/7 build work, not backend blockers.
 - **All of JOURNEY-05 through JOURNEY-20 and BRIDGE-25 through BRIDGE-35 (care journeys, reorder, Garden)**: every backend operation these states need already exists and is policy-enabled (`care_journey_delivery_enabled=true`, `semantic_level_estimation_enabled=true`). Zero frontend code consumes any of them today. Wave 1/2/3 build work, not backend blockers.
