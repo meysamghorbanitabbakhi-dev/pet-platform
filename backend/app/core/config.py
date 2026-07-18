@@ -71,6 +71,13 @@ class Settings(BaseSettings):
     payamak_panel_password: str | None = None
     payamak_panel_sender_number: str | None = None
     payamak_panel_timeout_seconds: float = Field(default=15, gt=0, le=60)
+    # Local/CI convenience only: when no SMS provider is configured and this is
+    # enabled, OTP codes are logged to the server console instead of failing
+    # closed with otp_provider_not_configured. The OTP itself, its hash, TTL,
+    # attempt-locking, and consumption are entirely unchanged -- only the
+    # delivery channel is swapped for a log line. Refused outright in
+    # production (see validate_production_secrets below).
+    otp_dev_console_fallback_enabled: bool = False
     otp_pepper: str = Field(default="development-only-otp-pepper-change-me")
     otp_ttl_seconds: int = Field(default=120, ge=60, le=600)
     otp_resend_cooldown_seconds: int = Field(default=60, ge=30, le=300)
@@ -114,6 +121,10 @@ class Settings(BaseSettings):
                 raise ValueError("production secrets must be unique and at least 32 characters")
             if not self.metrics_bearer_token or len(self.metrics_bearer_token) < 32:
                 raise ValueError("production metrics bearer token must be at least 32 characters")
+            if self.otp_dev_console_fallback_enabled:
+                raise ValueError(
+                    "otp_dev_console_fallback_enabled must never be set in production"
+                )
         return self
 
 
