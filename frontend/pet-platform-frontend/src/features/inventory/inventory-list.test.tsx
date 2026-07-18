@@ -58,6 +58,22 @@ describe("InventoryList", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a distinct empty state, not a blank screen, when the household itself hasn't been created yet", async () => {
+    vi.mocked(getMeContext).mockResolvedValue({
+      ...meContextFixture,
+      default_household_id: null,
+      households: [],
+      onboarding: { ...meContextFixture.onboarding, needs_household: true },
+    });
+
+    renderWithQuery(<InventoryList />);
+
+    expect(
+      await screen.findByText("هنوز خانواری ثبت نشده است"),
+    ).toBeInTheDocument();
+    expect(listHouseholdInventory).not.toHaveBeenCalled();
+  });
+
   it("redirects to the session-expired screen on a 401", async () => {
     vi.mocked(getMeContext).mockRejectedValue(new ApiError("expired", 401));
     renderWithQuery(<InventoryList />);

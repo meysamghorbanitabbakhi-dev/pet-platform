@@ -103,6 +103,17 @@ export function InventoryList() {
     );
   }
 
+  if (contextQuery.data?.onboarding.needs_household) {
+    return (
+      <AppShell>
+        <EmptyState
+          title="هنوز خانواری ثبت نشده است"
+          body="پس از تکمیل خانوار، واحدهای انبار آن اینجا نمایش داده می‌شوند."
+        />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="stack">
