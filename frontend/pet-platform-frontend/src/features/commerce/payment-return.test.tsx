@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { paymentCallback } from "@/lib/api/client";
+import { setLatestOrderId } from "@/lib/checkout-attempt";
 import { ids, paymentCallbackFixture } from "@/test/fixtures/gate-fixtures";
 import { PaymentReturn } from "./payment-return";
 
@@ -60,5 +61,42 @@ describe("PaymentReturn", () => {
         `/checkout/confirmation?orderId=${ids.orderPaid}`,
       ),
     );
+  });
+
+  it("shows a calm recovery state, not an alarming failure, when the callback check itself errors", async () => {
+    vi.mocked(paymentCallback).mockRejectedValue(new Error("network down"));
+    setLatestOrderId(ids.orderPaid);
+
+    renderWithQuery(
+      <PaymentReturn authority="fixture-authority" status="OK" />,
+    );
+
+    expect(
+      await screen.findByText("وضعیت پرداخت هنوز مشخص نشد"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "مشاهده سفارش" })).toHaveAttribute(
+      "href",
+      `/orders/${ids.orderPaid}`,
+    );
+    expect(
+      screen.getByRole("link", { name: "بازگشت به امروز" }),
+    ).toHaveAttribute("href", "/today");
+    expect(
+      screen.getByRole("link", { name: "تماس با پشتیبانی" }),
+    ).toHaveAttribute("href", "/support/new");
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("does not offer a view-order link when no order id has been recorded for this attempt", async () => {
+    vi.mocked(paymentCallback).mockRejectedValue(new Error("network down"));
+
+    renderWithQuery(
+      <PaymentReturn authority="fixture-authority" status="OK" />,
+    );
+
+    await screen.findByText("وضعیت پرداخت هنوز مشخص نشد");
+    expect(
+      screen.queryByRole("link", { name: "مشاهده سفارش" }),
+    ).not.toBeInTheDocument();
   });
 });

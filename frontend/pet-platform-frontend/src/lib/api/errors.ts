@@ -20,6 +20,12 @@ export function mapApiError(status?: number, detail?: unknown): ApiError {
     );
   if (status === 404)
     return new ApiError("داده مورد نظر پیدا نشد.", status, detail);
+  if (status === 409)
+    return new ApiError(
+      "این درخواست با وضعیت فعلی سرویس همخوانی ندارد. اطلاعات را بررسی و دوباره تلاش کنید.",
+      status,
+      detail,
+    );
   if (status === 422)
     return new ApiError("اطلاعات واردشده نیاز به اصلاح دارد.", status, detail);
   if (status === 429)

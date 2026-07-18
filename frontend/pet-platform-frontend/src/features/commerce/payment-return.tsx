@@ -14,7 +14,7 @@ import {
 import { paymentCallback } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import { paymentCallbackLabel } from "@/lib/commerce-format";
-import { setLatestOrderId } from "@/lib/checkout-attempt";
+import { getLatestOrderId, setLatestOrderId } from "@/lib/checkout-attempt";
 
 function errorText(error: unknown) {
   if (error instanceof ApiError) return error.message;
@@ -64,11 +64,23 @@ export function PaymentReturn({
   }
 
   if (callbackMutation.isError) {
+    // K10 ADR-004: there is no customer-facing payment-reconciliation endpoint,
+    // so a failed callback check does not mean the payment failed -- it only
+    // means this browser could not confirm the outcome yet. The recovery here
+    // stays calm (no alarming failure copy) and offers passive refresh plus
+    // safe navigation, instead of a dead-end error screen.
+    const latestOrderId = getLatestOrderId();
     return (
-      <ErrorState
-        title="نتیجه پرداخت بررسی نشد"
-        body={errorText(callbackMutation.error)}
-        action={
+      <Card className="stack">
+        <div className="eyebrow">نتیجه پرداخت</div>
+        <h2 className="title">وضعیت پرداخت هنوز مشخص نشد</h2>
+        <Banner tone="warning">{errorText(callbackMutation.error)}</Banner>
+        <p className="caption">
+          این فقط به این معناست که این صفحه هنوز نتوانسته پاسخ سرویس را بخواند؛
+          ممکن است پرداخت شما موفق بوده باشد. وضعیت واقعی همیشه از سفارش شما یا
+          بخش امروز قابل مشاهده است.
+        </p>
+        <div className="cluster">
           <Button
             variant="secondary"
             onClick={() => callbackMutation.mutate()}
@@ -76,8 +88,22 @@ export function PaymentReturn({
           >
             تلاش دوباره
           </Button>
-        }
-      />
+          {latestOrderId ? (
+            <Link
+              className="button button--secondary"
+              href={`/orders/${latestOrderId}`}
+            >
+              مشاهده سفارش
+            </Link>
+          ) : null}
+          <Link className="button button--ghost" href="/today">
+            بازگشت به امروز
+          </Link>
+        </div>
+        <Link className="button button--ghost" href="/support/new">
+          تماس با پشتیبانی
+        </Link>
+      </Card>
     );
   }
 
