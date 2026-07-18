@@ -67,6 +67,22 @@ def test_otp_provider_fails_closed_without_configuration_or_fallback() -> None:
         build_otp_provider(settings)
 
 
+def test_blank_payamak_credentials_are_treated_as_unconfigured() -> None:
+    # .env.example ships PAYAMAK_PANEL_* as empty strings (not unset) as
+    # placeholders; compose's env_file merge loads that literally, so this
+    # must fall back the same as a truly-unset provider, not attempt a real
+    # network call with blank credentials.
+    settings = Settings(
+        payamak_panel_username="",
+        payamak_panel_password="",
+        payamak_panel_sender_number="  ",
+        app_env="development",
+        otp_dev_console_fallback_enabled=True,
+    )
+
+    assert isinstance(build_otp_provider(settings), ConsoleOtpProvider)
+
+
 def test_otp_dev_console_fallback_only_used_when_no_real_provider_configured() -> None:
     settings = _unconfigured(app_env="development", otp_dev_console_fallback_enabled=True)
 

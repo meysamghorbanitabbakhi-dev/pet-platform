@@ -8,9 +8,13 @@ class OtpProviderNotConfiguredError(Exception):
 
 
 def build_otp_provider(settings: Settings) -> PayamakPanelOtpProvider | ConsoleOtpProvider:
-    username = settings.payamak_panel_username
-    password = settings.payamak_panel_password
-    sender_number = settings.payamak_panel_sender_number
+    # .env.example ships with these blank (empty string, not unset) as
+    # placeholders for real credentials; compose's env_file merge loads that
+    # literally, so "" must be treated the same as unconfigured, not as a
+    # real (blank) username/password to send to Payamak Panel.
+    username = (settings.payamak_panel_username or "").strip() or None
+    password = (settings.payamak_panel_password or "").strip() or None
+    sender_number = (settings.payamak_panel_sender_number or "").strip() or None
     if username is None or password is None or sender_number is None:
         # otp_dev_console_fallback_enabled can never be true in production
         # (enforced by Settings.validate_production_secrets), so this branch
