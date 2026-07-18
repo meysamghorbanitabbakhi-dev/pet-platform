@@ -1907,7 +1907,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Pet Consents */
+        get: operations["list_pet_consents_api_v1_pet_life_pets__pet_id__consents_get"];
         put?: never;
         /** Grant Pet Consent */
         post: operations["grant_pet_consent_api_v1_pet_life_pets__pet_id__consents_post"];
@@ -2452,6 +2453,94 @@ export interface components {
             /** Veterinarian Name */
             veterinarian_name: string;
         };
+        /** BodyAssessmentItemResponse */
+        BodyAssessmentItemResponse: {
+            /** Answers */
+            answers: {
+                [key: string]: unknown;
+            };
+            /**
+             * Assessed At
+             * Format: date-time
+             */
+            assessed_at: string;
+            /** Assessment Source */
+            assessment_source: string;
+            /** Bcs Scale */
+            bcs_scale: number;
+            /** Bcs Score */
+            bcs_score: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Muscle Condition */
+            muscle_condition: string;
+            /** Veterinarian Confirmed At */
+            veterinarian_confirmed_at?: string | null;
+            /** Veterinarian Name */
+            veterinarian_name?: string | null;
+        };
+        /** BodyAssessmentMutationResponse */
+        BodyAssessmentMutationResponse: {
+            /**
+             * Assessment Source
+             * @constant
+             */
+            assessment_source: "owner_reported";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
+        /** BreedDetailResponse */
+        BreedDetailResponse: {
+            breed: components["schemas"]["BreedSummary"];
+            /** Claims */
+            claims: components["schemas"]["KnowledgeClaimItem"][];
+            /** Guidance */
+            guidance: components["schemas"]["KnowledgeGuidanceItem"][];
+            release: components["schemas"]["ReleaseSummary"];
+            /** Varieties */
+            varieties: components["schemas"]["BreedVarietyItem"][];
+        };
+        /** BreedListResponse */
+        BreedListResponse: {
+            /** Items */
+            items: components["schemas"]["BreedSummary"][];
+            release: components["schemas"]["ReleaseSummary"] | null;
+        };
+        /** BreedSearchItem */
+        BreedSearchItem: {
+            /** Aliases Fa */
+            aliases_fa: string[];
+            /** Id */
+            id: string;
+            /** Matched Field */
+            matched_field: string;
+            /** Name En */
+            name_en: string;
+            /** Name Fa */
+            name_fa: string;
+            /**
+             * Species
+             * @enum {string}
+             */
+            species: "dog" | "cat";
+        };
+        /** BreedSearchReleaseSummary */
+        BreedSearchReleaseSummary: {
+            /** Dataset Version */
+            dataset_version: string;
+        };
+        /** BreedSearchResponse */
+        BreedSearchResponse: {
+            /** Items */
+            items: components["schemas"]["BreedSearchItem"][];
+            release: components["schemas"]["BreedSearchReleaseSummary"] | null;
+        };
         /** BreedSelectionBody */
         BreedSelectionBody: {
             /** Breed Reference Id */
@@ -2465,6 +2554,116 @@ export interface components {
             identification_source: string;
             /** Selection Mode */
             selection_mode: string;
+        };
+        /** BreedSelectionHistoryItem */
+        BreedSelectionHistoryItem: {
+            /** Breed Reference Id */
+            breed_reference_id?: string | null;
+            /** Breed Variety Id */
+            breed_variety_id?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Identification Source */
+            identification_source: string;
+            /**
+             * Knowledge Release Id
+             * Format: uuid
+             */
+            knowledge_release_id: string;
+            /**
+             * Selected At
+             * Format: date-time
+             */
+            selected_at: string;
+            /** Selection Mode */
+            selection_mode: string;
+        };
+        /** BreedSelectionResponse */
+        BreedSelectionResponse: {
+            profile: components["schemas"]["PetProfileResponse"];
+            /** Release Version */
+            release_version: string;
+            /**
+             * Selection Id
+             * Format: uuid
+             */
+            selection_id: string;
+        };
+        /** BreedSummary */
+        BreedSummary: {
+            /** Id */
+            id: string;
+            /** Name En */
+            name_en: string;
+            /** Name Fa */
+            name_fa: string;
+            /**
+             * Species
+             * @enum {string}
+             */
+            species: "dog" | "cat";
+        };
+        /** BreedVarietyItem */
+        BreedVarietyItem: {
+            /** Id */
+            id: string;
+            /** Name En */
+            name_en: string;
+            /** Name Fa */
+            name_fa: string;
+        };
+        /** CareGuidanceItemResponse */
+        CareGuidanceItemResponse: {
+            /** Domain */
+            domain: string;
+            /** Emergency Classification */
+            emergency_classification: string;
+            /** External Id */
+            external_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Interpretation
+             * @default general_care_guidance_not_individual_medical_advice
+             * @constant
+             */
+            interpretation: "general_care_guidance_not_individual_medical_advice";
+            /** Population Level Explanation Fa */
+            population_level_explanation_fa?: string | null;
+            /** Professional Discussion Fa */
+            professional_discussion_fa?: string | null;
+            release: components["schemas"]["CareGuidanceReleaseSummary"];
+            /** Reviewer Disclosure */
+            reviewer_disclosure: string;
+            /** Supporting Claim Ids */
+            supporting_claim_ids: string[];
+            /** Text Fa */
+            text_fa: string;
+        };
+        /** CareGuidanceReleaseSummary */
+        CareGuidanceReleaseSummary: {
+            /** Checksum Sha256 */
+            checksum_sha256: string;
+            /** Dataset Version */
+            dataset_version: string;
+        };
+        /** CareGuidanceResponse */
+        CareGuidanceResponse: {
+            /** Disclaimer Fa */
+            disclaimer_fa: string;
+            /** Items */
+            items: components["schemas"]["CareGuidanceItemResponse"][];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "breed_specific_guidance_unavailable" | "no_eligible_guidance" | "available";
         };
         /** CheckoutBody */
         CheckoutBody: {
@@ -3192,8 +3391,12 @@ export interface components {
             definition_id: string;
             /** Definition Version */
             definition_version: number;
+            /** Diary Entry Id */
+            diary_entry_id?: string | null;
             /** Ended At */
             ended_at?: string | null;
+            /** Garden Reward Id */
+            garden_reward_id?: string | null;
             /**
              * Id
              * Format: uuid
@@ -3342,6 +3545,23 @@ export interface components {
              */
             reviewed_at: string;
         };
+        /** KnowledgeClaimItem */
+        KnowledgeClaimItem: {
+            /** Claim Type */
+            claim_type: string;
+            /** Id */
+            id: string;
+            /** Review Status */
+            review_status: string;
+            /** Reviewer Disclosure */
+            reviewer_disclosure: string;
+            /** Sources */
+            sources: components["schemas"]["KnowledgeSourceItem"][];
+            /** Text Fa */
+            text_fa: string;
+            /** Variety Id */
+            variety_id: string | null;
+        };
         /** KnowledgeClaimReviewBody */
         KnowledgeClaimReviewBody: {
             /**
@@ -3378,6 +3598,21 @@ export interface components {
             }[];
             /** Reason */
             reason: string;
+        };
+        /** KnowledgeGuidanceItem */
+        KnowledgeGuidanceItem: {
+            /** Domain */
+            domain: string;
+            /** Id */
+            id: string;
+            /** Reviewer Disclosure */
+            reviewer_disclosure: string;
+            /** Supporting Claim Ids */
+            supporting_claim_ids: string[];
+            /** Text Fa */
+            text_fa: string;
+            /** Variety Id */
+            variety_id: string | null;
         };
         /** KnowledgeImportBody */
         KnowledgeImportBody: {
@@ -3420,6 +3655,27 @@ export interface components {
             reviewed_at: string;
             /** Supersedes Release Id */
             supersedes_release_id?: string | null;
+        };
+        /** KnowledgeSourceItem */
+        KnowledgeSourceItem: {
+            /** Doi */
+            doi?: string | null;
+            /** Id */
+            id: string;
+            /** Pmid */
+            pmid?: string | null;
+            /** Publication Date */
+            publication_date?: string | null;
+            /** Retrieval Date */
+            retrieval_date?: string | null;
+            /** Retrieved At */
+            retrieved_at?: string | null;
+            /** Title */
+            title: string;
+            /** Type */
+            type: string;
+            /** Url */
+            url?: string | null;
         };
         /** KnowledgeWithdrawBody */
         KnowledgeWithdrawBody: {
@@ -3543,6 +3799,49 @@ export interface components {
             unit: string;
             /** Value */
             value: number | string;
+        };
+        /** MeasurementItemResponse */
+        MeasurementItemResponse: {
+            /** Confidence */
+            confidence: string;
+            /** Correction Reason */
+            correction_reason?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Measured At
+             * Format: date-time
+             */
+            measured_at: string;
+            /** Measurement Method */
+            measurement_method?: string | null;
+            /** Measurement Type */
+            measurement_type: string;
+            /** Notes */
+            notes?: string | null;
+            /** Source */
+            source: string;
+            /** Status */
+            status: string;
+            /** Supersedes Measurement Id */
+            supersedes_measurement_id?: string | null;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number;
+        };
+        /** MeasurementMutationResponse */
+        MeasurementMutationResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Status */
+            status: string;
         };
         /** NotificationListItem */
         NotificationListItem: {
@@ -4066,6 +4365,52 @@ export interface components {
              */
             callback_url: string;
         };
+        /** PetAssetItemResponse */
+        PetAssetItemResponse: {
+            /** Captured At */
+            captured_at?: string | null;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "body_top" | "body_side" | "medical_document" | "lab_result" | "other_medical";
+            /** Checksum Sha256 */
+            checksum_sha256: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Filename */
+            filename: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Media Type */
+            media_type: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "body_photographs" | "medical_records";
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** PetAssetMutationResponse */
+        PetAssetMutationResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "active";
+        };
         /** PetBody */
         PetBody: {
             /** Birth Date */
@@ -4074,6 +4419,73 @@ export interface components {
             name: string;
             /** Species */
             species: string;
+        };
+        /** PetConsentResponse */
+        PetConsentResponse: {
+            /**
+             * Granted At
+             * Format: date-time
+             */
+            granted_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Policy Version */
+            policy_version: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "body_photographs" | "medical_records";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "granted" | "withdrawn";
+            /** Withdrawn At */
+            withdrawn_at?: string | null;
+        };
+        /** PetKnowledgeAvailable */
+        PetKnowledgeAvailable: {
+            breed: components["schemas"]["BreedSummary"];
+            /** Breed Identification Source */
+            breed_identification_source: string | null;
+            /** Claims */
+            claims: components["schemas"]["KnowledgeClaimItem"][];
+            /** Disclaimer Fa */
+            disclaimer_fa: string;
+            /** Guidance */
+            guidance: components["schemas"]["KnowledgeGuidanceItem"][];
+            /**
+             * Pet Id
+             * Format: uuid
+             */
+            pet_id: string;
+            release: components["schemas"]["ReleaseSummary"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "available";
+        };
+        /** PetKnowledgeUnavailable */
+        PetKnowledgeUnavailable: {
+            /** Claims */
+            claims?: components["schemas"]["KnowledgeClaimItem"][];
+            /** Disclaimer Fa */
+            disclaimer_fa: string;
+            /**
+             * Pet Id
+             * Format: uuid
+             */
+            pet_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "breed_not_recorded";
         };
         /** PetProfilePatch */
         PetProfilePatch: {
@@ -4099,6 +4511,47 @@ export interface components {
             reproductive_state?: string | null;
             /** Sex */
             sex?: string | null;
+        };
+        /** PetProfileResponse */
+        PetProfileResponse: {
+            /** Birth Date */
+            birth_date?: string | null;
+            /** Birth Date Precision */
+            birth_date_precision?: string | null;
+            /** Breed Identification Source */
+            breed_identification_source?: string | null;
+            /** Breed Reference Id */
+            breed_reference_id?: string | null;
+            /** Breed Selection Mode */
+            breed_selection_mode?: string | null;
+            /** Breed Variety Id */
+            breed_variety_id?: string | null;
+            /** Expected Adult Size */
+            expected_adult_size?: string | null;
+            /**
+             * Household Id
+             * Format: uuid
+             */
+            household_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mixed Breed */
+            mixed_breed?: boolean | null;
+            /** Name */
+            name: string;
+            /** Neuter Status */
+            neuter_status?: string | null;
+            /** Reproductive State */
+            reproductive_state?: string | null;
+            /** Sex */
+            sex?: string | null;
+            /** Species */
+            species: string;
+            /** Status */
+            status: string;
         };
         /** PetSummary */
         PetSummary: {
@@ -4158,6 +4611,8 @@ export interface components {
             late_credit_enabled: boolean;
             /** Late Credit Expiry Months */
             late_credit_expiry_months: number;
+            /** Pet Health Consent Policy Version */
+            pet_health_consent_policy_version: string;
             /** Push Notifications Enabled */
             push_notifications_enabled: boolean;
             /** Refund Self Service Enabled */
@@ -4235,6 +4690,23 @@ export interface components {
             /** Sort Order */
             sort_order: number;
         };
+        /** ProfileCompletenessResponse */
+        ProfileCompletenessResponse: {
+            /** Completed Fields */
+            completed_fields: string[];
+            /** Completion Percent */
+            completion_percent: number;
+            /**
+             * Guardrail
+             * @default optional_progressive_profile
+             * @constant
+             */
+            guardrail: "optional_progressive_profile";
+            /** Missing Fields */
+            missing_fields: string[];
+            /** Next Prompt */
+            next_prompt?: string | null;
+        };
         /** ReconciliationBody */
         ReconciliationBody: {
             /** Reason */
@@ -4249,6 +4721,59 @@ export interface components {
             order_id: string;
             /** State */
             state: string;
+        };
+        /** ReferenceComparisonItem */
+        ReferenceComparisonItem: {
+            /** Age Days */
+            age_days?: number | null;
+            /**
+             * Benchmark Id
+             * Format: uuid
+             */
+            benchmark_id: string;
+            /** Claim Id */
+            claim_id: string;
+            /** Claim Text Fa */
+            claim_text_fa: string;
+            /** Classification */
+            classification?: ("below_reference" | "above_reference" | "within_reference") | null;
+            /** Interpretation */
+            interpretation?: "non_diagnostic_population_reference" | null;
+            /** Measurement Definition Fa */
+            measurement_definition_fa?: string | null;
+            /** Normalized Value */
+            normalized_value?: number | null;
+            /** Population Geography */
+            population_geography?: string | null;
+            /** Reasons */
+            reasons: string[];
+            /** Reference Purpose */
+            reference_purpose: string;
+            reference_range: components["schemas"]["ReferenceRange"];
+            /** Release Version */
+            release_version: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "not_applicable" | "reference_only" | "compared";
+        };
+        /** ReferenceComparisonResponse */
+        ReferenceComparisonResponse: {
+            /** Disclaimer Fa */
+            disclaimer_fa: string;
+            /** Items */
+            items: components["schemas"]["ReferenceComparisonItem"][];
+            /**
+             * Measurement Id
+             * Format: uuid
+             */
+            measurement_id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "available" | "no_applicable_reference";
         };
         /** ReferenceEvidenceBody */
         ReferenceEvidenceBody: {
@@ -4269,10 +4794,31 @@ export interface components {
             /** Source Label */
             source_label: string;
         };
+        /** ReferenceRange */
+        ReferenceRange: {
+            /** Maximum */
+            maximum: number;
+            /** Minimum */
+            minimum: number;
+            /** Unit */
+            unit: string;
+        };
         /** RefreshBody */
         RefreshBody: {
             /** Refresh Token */
             refresh_token: string;
+        };
+        /** ReleaseSummary */
+        ReleaseSummary: {
+            /** Checksum Sha256 */
+            checksum_sha256: string;
+            /** Dataset Version */
+            dataset_version: string;
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
         };
         /** RemainingGramsInput */
         RemainingGramsInput: {
@@ -4306,6 +4852,16 @@ export interface components {
             due_at: string;
             /** Measurement Type */
             measurement_type: string;
+        };
+        /** ReminderMutationResponse */
+        ReminderMutationResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Status */
+            status: string;
         };
         /** ReorderAssessmentResponse */
         ReorderAssessmentResponse: {
@@ -4731,6 +5287,52 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** WeightTrendAvailable */
+        WeightTrendAvailable: {
+            /** Changes */
+            changes: {
+                [key: string]: components["schemas"]["WeightTrendChangeWindow"] | null;
+            };
+            /** Current Weight Kg */
+            current_weight_kg: number;
+            /**
+             * Interpretation
+             * @default personal_trend_only
+             * @constant
+             */
+            interpretation: "personal_trend_only";
+            /**
+             * Measured At
+             * Format: date-time
+             */
+            measured_at: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            state: "available";
+        };
+        /** WeightTrendChangeWindow */
+        WeightTrendChangeWindow: {
+            /** Baseline Weight Kg */
+            baseline_weight_kg: number;
+            /** Change Percent */
+            change_percent: number;
+        };
+        /** WeightTrendUnavailable */
+        WeightTrendUnavailable: {
+            /** Changes */
+            changes?: {
+                [key: string]: unknown;
+            };
+            /** Current Weight Kg */
+            current_weight_kg?: null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            state: "no_measurements";
+        };
     };
     responses: never;
     parameters: never;
@@ -5133,9 +5735,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BreedListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5166,9 +5766,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BreedDetailResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5199,9 +5797,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PetKnowledgeUnavailable"] | components["schemas"]["PetKnowledgeAvailable"];
                 };
             };
             /** @description Validation Error */
@@ -5234,9 +5830,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BreedSearchResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8342,9 +8936,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["PetAssetItemResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -8380,9 +8972,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PetAssetMutationResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8473,9 +9063,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["BodyAssessmentItemResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -8510,9 +9098,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BodyAssessmentMutationResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8547,9 +9133,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BreedSelectionResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8580,9 +9164,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["BreedSelectionHistoryItem"][];
                 };
             };
             /** @description Validation Error */
@@ -8616,9 +9198,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CareGuidanceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8666,6 +9246,37 @@ export interface operations {
             };
         };
     };
+    list_pet_consents_api_v1_pet_life_pets__pet_id__consents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PetConsentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     grant_pet_consent_api_v1_pet_life_pets__pet_id__consents_post: {
         parameters: {
             query?: never;
@@ -8687,9 +9298,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PetConsentResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8914,9 +9523,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ReminderMutationResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8982,9 +9589,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["MeasurementItemResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -9019,9 +9624,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["MeasurementMutationResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9057,9 +9660,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["MeasurementMutationResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9091,9 +9692,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ReferenceComparisonResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9124,9 +9723,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PetProfileResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9161,9 +9758,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PetProfileResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9194,9 +9789,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ProfileCompletenessResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9258,9 +9851,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["WeightTrendUnavailable"] | components["schemas"]["WeightTrendAvailable"];
                 };
             };
             /** @description Validation Error */

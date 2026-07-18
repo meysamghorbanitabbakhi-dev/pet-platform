@@ -70,6 +70,7 @@ export type MeasurementBody = Schema<"MeasurementBody">;
 export type BreedSelectionBody = Schema<"BreedSelectionBody">;
 export type GuidancePreferenceBody = Schema<"GuidancePreferenceBody">;
 export type ConsentBody = Schema<"ConsentBody">;
+export type PetConsentResponse = Schema<"PetConsentResponse">;
 export type BodyAssessmentBody = Schema<"BodyAssessmentBody">;
 export type OrderListItem = Schema<"OrderListItem">;
 export type OrderListPage = Schema<"OffsetPage_OrderListItem_">;
@@ -78,3 +79,31 @@ export type SourcedUnitResponse = Schema<"SourcedUnitResponse">;
 export type AvailabilitySubscriptionPage =
   Schema<"OffsetPage_AvailabilitySubscriptionResponse_">;
 export type CustomerRequestPage = Schema<"OffsetPage_CustomerRequestResponse_">;
+
+export type MeasurementItem = Schema<"MeasurementItemResponse">;
+export type MeasurementMutationResponse = Schema<"MeasurementMutationResponse">;
+export type WeightTrendResponse =
+  | Schema<"WeightTrendUnavailable">
+  | Schema<"WeightTrendAvailable">;
+export type PetAssetItem = Schema<"PetAssetItemResponse">;
+export type PetAssetMutationResponse = Schema<"PetAssetMutationResponse">;
+export type BodyAssessmentItem = Schema<"BodyAssessmentItemResponse">;
+export type BodyAssessmentMutationResponse = Schema<"BodyAssessmentMutationResponse">;
+export type BreedListItem = Schema<"BreedSummary">;
+export type BreedListResponse = Schema<"BreedListResponse">;
+export type BreedSearchItem = Schema<"BreedSearchItem">;
+export type BreedSearchResponse = Schema<"BreedSearchResponse">;
+export type BreedDetailResponse = Schema<"BreedDetailResponse">;
+export type KnowledgeClaimItem = Schema<"KnowledgeClaimItem">;
+export type KnowledgeGuidanceItem = Schema<"KnowledgeGuidanceItem">;
+export type PetKnowledgeResponse =
+  | Schema<"PetKnowledgeUnavailable">
+  | Schema<"PetKnowledgeAvailable">;
+export type CareGuidanceItem = Schema<"CareGuidanceItemResponse">;
+export type CareGuidanceResponse = Schema<"CareGuidanceResponse">;
+export type PetProfileResponse = Schema<"PetProfileResponse">;
+export type BreedSelectionResponse = Schema<"BreedSelectionResponse">;
+export type BreedSelectionHistoryItem = Schema<"BreedSelectionHistoryItem">;
+export type ProfileCompletenessResponse = Schema<"ProfileCompletenessResponse">;
+export type ReferenceComparisonResponse = Schema<"ReferenceComparisonResponse">;
+export type ReminderMutationResponse = Schema<"ReminderMutationResponse">;

@@ -6,7 +6,12 @@ import type {
   AvailabilitySubscriptionPage,
   AvailabilitySubscriptionResponse,
   BodyAssessmentBody,
+  BodyAssessmentItem,
+  BreedDetailResponse,
+  BreedListResponse,
+  BreedSearchResponse,
   BreedSelectionBody,
+  CareGuidanceResponse,
   CheckoutBody,
   ConsentBody,
   CustomerRequestBody,
@@ -32,6 +37,7 @@ import type {
   JourneyStartBody,
   JourneyStopBody,
   MeasurementBody,
+  MeasurementItem,
   MeContextResponse,
   NotificationPage,
   OfferDetailResponse,
@@ -49,7 +55,10 @@ import type {
   PaymentCallbackResponse,
   PaymentRedirectResponse,
   PaymentRequestBody,
+  PetAssetItem,
   PetBody,
+  PetConsentResponse,
+  PetKnowledgeResponse,
   PetProfilePatch,
   PetSummary,
   PolicyResponse,
@@ -59,18 +68,8 @@ import type {
   ReorderSnoozeBody,
   TodayResponse,
   WalletSummaryResponse,
-} from "@/lib/api-types";
-import type {
-  BodyAssessmentItem,
-  BreedDetailResponse,
-  BreedListItem,
-  BreedSearchItem,
-  CareGuidanceResponse,
-  MeasurementItem,
-  PetAssetItem,
-  PetKnowledgeResponse,
   WeightTrendResponse,
-} from "@/lib/pet-health-types";
+} from "@/lib/api-types";
 import { csrfHeaders } from "@/lib/session";
 import { mapApiError } from "./errors";
 
@@ -437,10 +436,20 @@ export function listPetAssets(petId: string) {
   return bff<PetAssetItem[]>(`/api/bff/pets/${petId}/assets`);
 }
 
+export function listPetConsents(petId: string) {
+  return bff<PetConsentResponse[]>(`/api/bff/pets/${petId}/consents`);
+}
+
 export function grantPetConsent(petId: string, body: ConsentBody) {
-  return bff<{ id: string; status: string }>(`/api/bff/pets/${petId}/consents`, {
+  return bff<PetConsentResponse>(`/api/bff/pets/${petId}/consents`, {
     method: "POST",
     body,
+  });
+}
+
+export function withdrawPetConsent(petId: string, consentId: string) {
+  return bff<void>(`/api/bff/pets/${petId}/consents/${consentId}/withdraw`, {
+    method: "POST",
   });
 }
 
@@ -490,13 +499,13 @@ export function listBodyAssessments(petId: string) {
 
 export function listBreeds(species?: "dog" | "cat") {
   const query = species ? `?species=${species}` : "";
-  return bff<{ items: BreedListItem[] }>(`/api/bff/breeds${query}`);
+  return bff<BreedListResponse>(`/api/bff/breeds${query}`);
 }
 
 export function searchBreeds(query: string, species?: "dog" | "cat") {
   const params = new URLSearchParams({ q: query });
   if (species) params.set("species", species);
-  return bff<{ items: BreedSearchItem[] }>(`/api/bff/breeds/search?${params}`);
+  return bff<BreedSearchResponse>(`/api/bff/breeds/search?${params}`);
 }
 
 export function getBreedDetail(breedId: string) {

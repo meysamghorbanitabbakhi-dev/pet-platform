@@ -58,10 +58,23 @@ import type {
 } from "@/lib/api-types";
 import type {
   BodyAssessmentBody,
+  BodyAssessmentItem,
+  BodyAssessmentMutationResponse,
+  BreedDetailResponse,
+  BreedListResponse,
+  BreedSearchResponse,
   BreedSelectionBody,
+  CareGuidanceResponse,
   ConsentBody,
   GuidancePreferenceBody,
   MeasurementBody,
+  MeasurementItem,
+  MeasurementMutationResponse,
+  PetAssetItem,
+  PetAssetMutationResponse,
+  PetConsentResponse,
+  PetKnowledgeResponse,
+  WeightTrendResponse,
 } from "@/lib/api-types";
 import {
   clearSessionCookies,
@@ -70,17 +83,6 @@ import {
   setSessionCookies,
 } from "@/lib/session/server";
 import { loadDevelopmentApi } from "./dev-fixtures.server";
-import type {
-  BodyAssessmentItem,
-  BreedDetailResponse,
-  BreedListItem,
-  BreedSearchItem,
-  CareGuidanceResponse,
-  MeasurementItem,
-  PetAssetItem,
-  PetKnowledgeResponse,
-  WeightTrendResponse,
-} from "@/lib/pet-health-types";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
@@ -727,13 +729,13 @@ export async function listMeasurementsBackend(
       params: { path: { pet_id: petId } },
       headers,
     }),
-  ) as unknown as Promise<MeasurementItem[]>;
+  );
 }
 
 export async function recordMeasurementBackend(
   petId: string,
   body: MeasurementBody,
-): Promise<{ id: string; status: string }> {
+): Promise<MeasurementMutationResponse> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) return developmentApi.recordMeasurement(petId, body);
   return withAuth((headers) =>
@@ -742,7 +744,7 @@ export async function recordMeasurementBackend(
       body,
       headers,
     }),
-  ) as unknown as Promise<{ id: string; status: string }>;
+  );
 }
 
 export async function getWeightTrendBackend(
@@ -755,7 +757,7 @@ export async function getWeightTrendBackend(
       params: { path: { pet_id: petId } },
       headers,
     }),
-  ) as unknown as Promise<WeightTrendResponse>;
+  );
 }
 
 export async function listPetAssetsBackend(
@@ -768,13 +770,26 @@ export async function listPetAssetsBackend(
       params: { path: { pet_id: petId } },
       headers,
     }),
-  ) as unknown as Promise<PetAssetItem[]>;
+  );
+}
+
+export async function listPetConsentsBackend(
+  petId: string,
+): Promise<PetConsentResponse[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listPetConsents(petId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/pet-life/pets/{pet_id}/consents", {
+      params: { path: { pet_id: petId } },
+      headers,
+    }),
+  );
 }
 
 export async function grantPetConsentBackend(
   petId: string,
   body: ConsentBody,
-): Promise<{ id: string; status: string }> {
+): Promise<PetConsentResponse> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) return developmentApi.grantPetConsent(petId, body);
   return withAuth((headers) =>
@@ -783,14 +798,31 @@ export async function grantPetConsentBackend(
       body,
       headers,
     }),
-  ) as unknown as Promise<{ id: string; status: string }>;
+  );
+}
+
+export async function withdrawPetConsentBackend(
+  petId: string,
+  consentId: string,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.withdrawPetConsent(petId, consentId);
+  await withAuthVoid((headers) =>
+    backendClient.POST(
+      "/api/v1/pet-life/pets/{pet_id}/consents/{consent_id}/withdraw",
+      {
+        params: { path: { pet_id: petId, consent_id: consentId } },
+        headers,
+      },
+    ),
+  );
 }
 
 export async function uploadPetAssetBackend(
   petId: string,
   file: { bytes: ArrayBuffer; mediaType: string },
   headers: { filename: string; category: string; consentId: string },
-): Promise<{ id: string; status: string }> {
+): Promise<PetAssetMutationResponse> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) {
     return developmentApi.uploadPetAsset(petId, headers);
@@ -848,7 +880,7 @@ export async function deletePetAssetBackend(
 export async function createBodyAssessmentBackend(
   petId: string,
   body: BodyAssessmentBody,
-): Promise<{ id: string; assessment_source: string }> {
+): Promise<BodyAssessmentMutationResponse> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) return developmentApi.createBodyAssessment(petId, body);
   return withAuth((headers) =>
@@ -857,7 +889,7 @@ export async function createBodyAssessmentBackend(
       body,
       headers,
     }),
-  ) as unknown as Promise<{ id: string; assessment_source: string }>;
+  );
 }
 
 export async function listBodyAssessmentsBackend(
@@ -870,32 +902,32 @@ export async function listBodyAssessmentsBackend(
       params: { path: { pet_id: petId } },
       headers,
     }),
-  ) as unknown as Promise<BodyAssessmentItem[]>;
+  );
 }
 
 export async function listBreedsBackend(
   species?: "dog" | "cat",
-): Promise<{ items: BreedListItem[] }> {
+): Promise<BreedListResponse> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) return developmentApi.listBreeds(species);
   return unwrap(
     await backendClient.GET("/api/v1/knowledge/breeds", {
       params: { query: species ? { species } : {} },
     }),
-  ) as unknown as Promise<{ items: BreedListItem[] }>;
+  );
 }
 
 export async function searchBreedsBackend(
   query: string,
   species?: "dog" | "cat",
-): Promise<{ items: BreedSearchItem[] }> {
+): Promise<BreedSearchResponse> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) return developmentApi.searchBreeds(query, species);
   return unwrap(
     await backendClient.GET("/api/v1/knowledge/search", {
       params: { query: { q: query, species } },
     }),
-  ) as unknown as Promise<{ items: BreedSearchItem[] }>;
+  );
 }
 
 export async function getBreedDetailBackend(
@@ -907,7 +939,7 @@ export async function getBreedDetailBackend(
     await backendClient.GET("/api/v1/knowledge/breeds/{breed_id}", {
       params: { path: { breed_id: breedId } },
     }),
-  ) as unknown as Promise<BreedDetailResponse>;
+  );
 }
 
 export async function getPetKnowledgeBackend(
@@ -920,7 +952,7 @@ export async function getPetKnowledgeBackend(
       params: { path: { pet_id: petId } },
       headers,
     }),
-  ) as unknown as Promise<PetKnowledgeResponse>;
+  );
 }
 
 export async function selectPetBreedBackend(
@@ -948,7 +980,7 @@ export async function getPetCareGuidanceBackend(
       params: { path: { pet_id: petId } },
       headers,
     }),
-  ) as unknown as Promise<CareGuidanceResponse>;
+  );
 }
 
 export async function setGuidancePreferenceBackend(

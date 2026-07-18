@@ -4,7 +4,8 @@ import { resolveBackendDir } from "./backend-dir.mjs";
 
 const backendDir = resolveBackendDir();
 const args = ["exec", "openapi-typescript", resolve(backendDir, "openapi.json"), "-o", "src/generated/openapi.ts"];
-execFileSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", args, {
+execFileSync("pnpm", args, {
   cwd: resolve(import.meta.dirname, ".."),
   stdio: "inherit",
+  shell: process.platform === "win32",
 });

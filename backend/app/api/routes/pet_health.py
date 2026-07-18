@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -132,6 +132,157 @@ class GuidancePreferenceBody(BaseModel):
         return self
 
 
+class PetProfileResponse(BaseModel):
+    id: UUID
+    household_id: UUID
+    name: str
+    species: str
+    birth_date: date | None = None
+    birth_date_precision: str | None = None
+    sex: str | None = None
+    neuter_status: str | None = None
+    expected_adult_size: str | None = None
+    breed_reference_id: str | None = None
+    breed_variety_id: str | None = None
+    breed_identification_source: str | None = None
+    mixed_breed: bool | None = None
+    breed_selection_mode: str | None = None
+    reproductive_state: str | None = None
+    status: str
+
+
+class BreedSelectionResponse(BaseModel):
+    selection_id: UUID
+    release_version: str
+    profile: PetProfileResponse
+
+
+class BreedSelectionHistoryItem(BaseModel):
+    id: UUID
+    selection_mode: str
+    breed_reference_id: str | None = None
+    breed_variety_id: str | None = None
+    identification_source: str
+    knowledge_release_id: UUID
+    selected_at: datetime
+
+
+class ProfileCompletenessResponse(BaseModel):
+    completed_fields: list[str]
+    missing_fields: list[str]
+    next_prompt: str | None = None
+    completion_percent: int
+    guardrail: Literal["optional_progressive_profile"] = "optional_progressive_profile"
+
+
+class CareGuidanceReleaseSummary(BaseModel):
+    dataset_version: str
+    checksum_sha256: str
+
+
+class CareGuidanceItemResponse(BaseModel):
+    id: UUID
+    external_id: str
+    domain: str
+    text_fa: str
+    population_level_explanation_fa: str | None = None
+    professional_discussion_fa: str | None = None
+    emergency_classification: str
+    supporting_claim_ids: list[str]
+    release: CareGuidanceReleaseSummary
+    reviewer_disclosure: str
+    interpretation: Literal["general_care_guidance_not_individual_medical_advice"] = (
+        "general_care_guidance_not_individual_medical_advice"
+    )
+
+
+class CareGuidanceResponse(BaseModel):
+    state: Literal[
+        "breed_specific_guidance_unavailable", "no_eligible_guidance", "available"
+    ]
+    items: list[CareGuidanceItemResponse]
+    disclaimer_fa: str
+
+
+class MeasurementMutationResponse(BaseModel):
+    id: UUID
+    status: str
+
+
+class MeasurementItemResponse(BaseModel):
+    id: UUID
+    measurement_type: str
+    value: float
+    unit: str
+    measured_at: datetime
+    source: str
+    measurement_method: str | None = None
+    confidence: str
+    notes: str | None = None
+    status: str
+    supersedes_measurement_id: UUID | None = None
+    correction_reason: str | None = None
+
+
+class ReferenceRange(BaseModel):
+    minimum: float
+    maximum: float
+    unit: str
+
+
+class ReferenceComparisonItem(BaseModel):
+    benchmark_id: UUID
+    claim_id: str
+    claim_text_fa: str
+    release_version: str
+    reference_purpose: str
+    reference_range: ReferenceRange
+    population_geography: str | None = None
+    measurement_definition_fa: str | None = None
+    state: Literal["not_applicable", "reference_only", "compared"]
+    reasons: list[str]
+    classification: Literal["below_reference", "above_reference", "within_reference"] | None = None
+    age_days: int | None = None
+    normalized_value: float | None = None
+    interpretation: Literal["non_diagnostic_population_reference"] | None = None
+
+
+class ReferenceComparisonResponse(BaseModel):
+    measurement_id: UUID
+    state: Literal["available", "no_applicable_reference"]
+    items: list[ReferenceComparisonItem]
+    disclaimer_fa: str
+
+
+class WeightTrendChangeWindow(BaseModel):
+    baseline_weight_kg: float
+    change_percent: float
+
+
+class WeightTrendUnavailable(BaseModel):
+    state: Literal["no_measurements"] = "no_measurements"
+    current_weight_kg: None = None
+    changes: dict[str, object] = Field(default_factory=dict)
+
+
+class WeightTrendAvailable(BaseModel):
+    state: Literal["available"] = "available"
+    current_weight_kg: float
+    measured_at: datetime
+    changes: dict[str, WeightTrendChangeWindow | None]
+    interpretation: Literal["personal_trend_only"] = "personal_trend_only"
+
+
+WeightTrendResult = Annotated[
+    WeightTrendUnavailable | WeightTrendAvailable, Field(discriminator="state")
+]
+
+
+class ReminderMutationResponse(BaseModel):
+    id: UUID
+    status: str
+
+
 async def _pet(session: AsyncSession, identity_id: UUID, pet_id: UUID) -> Pet:
     try:
         return await require_pet_access(session, identity_id=identity_id, pet_id=pet_id)
@@ -139,41 +290,41 @@ async def _pet(session: AsyncSession, identity_id: UUID, pet_id: UUID) -> Pet:
         raise HTTPException(status_code=404, detail="pet_not_found") from exc
 
 
-def _profile(pet: Pet) -> dict[str, object]:
-    return {
-        "id": pet.id,
-        "household_id": pet.household_id,
-        "name": pet.name,
-        "species": pet.species,
-        "birth_date": pet.birth_date,
-        "birth_date_precision": pet.birth_date_precision,
-        "sex": pet.sex,
-        "neuter_status": pet.neuter_status,
-        "expected_adult_size": pet.expected_adult_size,
-        "breed_reference_id": pet.breed_reference_id,
-        "breed_variety_id": pet.breed_variety_id,
-        "breed_identification_source": pet.breed_identification_source,
-        "mixed_breed": pet.mixed_breed,
-        "breed_selection_mode": pet.breed_selection_mode,
-        "reproductive_state": pet.reproductive_state,
-        "status": pet.status,
-    }
+def _profile(pet: Pet) -> PetProfileResponse:
+    return PetProfileResponse(
+        id=pet.id,
+        household_id=pet.household_id,
+        name=pet.name,
+        species=pet.species,
+        birth_date=pet.birth_date,
+        birth_date_precision=pet.birth_date_precision,
+        sex=pet.sex,
+        neuter_status=pet.neuter_status,
+        expected_adult_size=pet.expected_adult_size,
+        breed_reference_id=pet.breed_reference_id,
+        breed_variety_id=pet.breed_variety_id,
+        breed_identification_source=pet.breed_identification_source,
+        mixed_breed=pet.mixed_breed,
+        breed_selection_mode=pet.breed_selection_mode,
+        reproductive_state=pet.reproductive_state,
+        status=pet.status,
+    )
 
 
-@router.get("/pets/{pet_id}/profile", response_model=dict[str, object])
+@router.get("/pets/{pet_id}/profile", response_model=PetProfileResponse)
 async def get_pet_profile(
     pet_id: UUID, identity: CurrentIdentity, session: SessionDependency
-) -> dict[str, object]:
+) -> PetProfileResponse:
     return _profile(await _pet(session, identity.id, pet_id))
 
 
-@router.patch("/pets/{pet_id}/profile", response_model=dict[str, object])
+@router.patch("/pets/{pet_id}/profile", response_model=PetProfileResponse)
 async def update_pet_profile(
     pet_id: UUID,
     body: PetProfilePatch,
     identity: CurrentIdentity,
     session: SessionDependency,
-) -> dict[str, object]:
+) -> PetProfileResponse:
     pet = await _pet(session, identity.id, pet_id)
     changes = body.model_dump(exclude_unset=True)
     if set(changes) & {
@@ -189,13 +340,13 @@ async def update_pet_profile(
     return _profile(pet)
 
 
-@router.put("/pets/{pet_id}/breed-selection", response_model=dict[str, object])
+@router.put("/pets/{pet_id}/breed-selection", response_model=BreedSelectionResponse)
 async def select_pet_breed(
     pet_id: UUID,
     body: BreedSelectionBody,
     identity: CurrentIdentity,
     session: SessionDependency,
-) -> dict[str, object]:
+) -> BreedSelectionResponse:
     pet = await _pet(session, identity.id, pet_id)
     release = await session.scalar(
         select(KnowledgeRelease).where(KnowledgeRelease.status == "published").limit(1)
@@ -247,19 +398,20 @@ async def select_pet_breed(
     session.add(selection)
     pet.breed_selection_mode = body.selection_mode
     await session.commit()
-    return {
-        "selection_id": selection.id,
-        "release_version": release.dataset_version,
-        "profile": _profile(pet),
-    }
+    return BreedSelectionResponse(
+        selection_id=selection.id,
+        release_version=release.dataset_version,
+        profile=_profile(pet),
+    )
 
 
 @router.get(
-    "/pets/{pet_id}/breed-selection/history", response_model=list[dict[str, object]]
+    "/pets/{pet_id}/breed-selection/history",
+    response_model=list[BreedSelectionHistoryItem],
 )
 async def pet_breed_selection_history(
     pet_id: UUID, identity: CurrentIdentity, session: SessionDependency
-) -> list[dict[str, object]]:
+) -> list[BreedSelectionHistoryItem]:
     await _pet(session, identity.id, pet_id)
     rows = list(
         (
@@ -272,23 +424,25 @@ async def pet_breed_selection_history(
         ).all()
     )
     return [
-        {
-            "id": item.id,
-            "selection_mode": item.selection_mode,
-            "breed_reference_id": item.breed_reference_id,
-            "breed_variety_id": item.breed_variety_id,
-            "identification_source": item.identification_source,
-            "knowledge_release_id": item.knowledge_release_id,
-            "selected_at": item.selected_at,
-        }
+        BreedSelectionHistoryItem(
+            id=item.id,
+            selection_mode=item.selection_mode,
+            breed_reference_id=item.breed_reference_id,
+            breed_variety_id=item.breed_variety_id,
+            identification_source=item.identification_source,
+            knowledge_release_id=item.knowledge_release_id,
+            selected_at=item.selected_at,
+        )
         for item in rows
     ]
 
 
-@router.get("/pets/{pet_id}/profile-completeness", response_model=dict[str, object])
+@router.get(
+    "/pets/{pet_id}/profile-completeness", response_model=ProfileCompletenessResponse
+)
 async def pet_profile_completeness(
     pet_id: UUID, identity: CurrentIdentity, session: SessionDependency
-) -> dict[str, object]:
+) -> ProfileCompletenessResponse:
     pet = await _pet(session, identity.id, pet_id)
     has_measurement = (
         await session.scalar(
@@ -310,16 +464,15 @@ async def pet_profile_completeness(
         "weight": has_measurement,
     }
     missing = [field for field, complete in states.items() if not complete]
-    return {
-        "completed_fields": [field for field, complete in states.items() if complete],
-        "missing_fields": missing,
-        "next_prompt": missing[0] if missing else None,
-        "completion_percent": round(sum(states.values()) / len(states) * 100),
-        "guardrail": "optional_progressive_profile",
-    }
+    return ProfileCompletenessResponse(
+        completed_fields=[field for field, complete in states.items() if complete],
+        missing_fields=missing,
+        next_prompt=missing[0] if missing else None,
+        completion_percent=round(sum(states.values()) / len(states) * 100),
+    )
 
 
-@router.get("/pets/{pet_id}/care-guidance", response_model=dict[str, object])
+@router.get("/pets/{pet_id}/care-guidance", response_model=CareGuidanceResponse)
 async def pet_care_guidance(
     pet_id: UUID,
     identity: CurrentIdentity,
@@ -328,20 +481,23 @@ async def pet_care_guidance(
         str | None, Query(pattern=r"^(exercise|grooming|training|home|safety)$")
     ] = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
-) -> dict[str, object]:
+) -> CareGuidanceResponse:
     pet = await _pet(session, identity.id, pet_id)
     release, rows = await eligible_guidance(session, pet=pet, domain=domain)
     if release is None:
-        return {
-            "state": "breed_specific_guidance_unavailable",
-            "items": [],
-            "disclaimer_fa": "راهنماهای عمومی جایگزین توصیه اختصاصی دامپزشک نیستند.",
-        }
-    return {
-        "state": "available" if rows else "no_eligible_guidance",
-        "items": [public_guidance_item(item, release) for item in rows[:limit]],
-        "disclaimer_fa": "راهنماهای عمومی جایگزین توصیه اختصاصی دامپزشک نیستند.",
-    }
+        return CareGuidanceResponse(
+            state="breed_specific_guidance_unavailable",
+            items=[],
+            disclaimer_fa="راهنماهای عمومی جایگزین توصیه اختصاصی دامپزشک نیستند.",
+        )
+    return CareGuidanceResponse(
+        state="available" if rows else "no_eligible_guidance",
+        items=[
+            CareGuidanceItemResponse.model_validate(public_guidance_item(item, release))
+            for item in rows[:limit]
+        ],
+        disclaimer_fa="راهنماهای عمومی جایگزین توصیه اختصاصی دامپزشک نیستند.",
+    )
 
 
 @router.put(
@@ -407,7 +563,7 @@ async def set_care_guidance_preference(
 
 @router.post(
     "/pets/{pet_id}/measurements",
-    response_model=dict[str, object],
+    response_model=MeasurementMutationResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def record_measurement(
@@ -415,7 +571,7 @@ async def record_measurement(
     body: MeasurementBody,
     identity: CurrentIdentity,
     session: SessionDependency,
-) -> dict[str, object]:
+) -> MeasurementMutationResponse:
     await _pet(session, identity.id, pet_id)
     if body.measured_at > utc_now():
         raise HTTPException(status_code=422, detail="measurement_cannot_be_in_future")
@@ -429,12 +585,12 @@ async def record_measurement(
     )
     session.add(measurement)
     await session.commit()
-    return {"id": measurement.id, "status": measurement.status}
+    return MeasurementMutationResponse(id=measurement.id, status=measurement.status)
 
 
 @router.post(
     "/pets/{pet_id}/measurements/{measurement_id}/corrections",
-    response_model=dict[str, object],
+    response_model=MeasurementMutationResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def correct_measurement(
@@ -443,7 +599,7 @@ async def correct_measurement(
     body: CorrectionBody,
     identity: CurrentIdentity,
     session: SessionDependency,
-) -> dict[str, object]:
+) -> MeasurementMutationResponse:
     await _pet(session, identity.id, pet_id)
     original = await session.get(HealthMeasurement, measurement_id, with_for_update=True)
     if original is None or original.pet_id != pet_id:
@@ -469,10 +625,10 @@ async def correct_measurement(
     )
     session.add(replacement)
     await session.commit()
-    return {"id": replacement.id, "status": replacement.status}
+    return MeasurementMutationResponse(id=replacement.id, status=replacement.status)
 
 
-@router.get("/pets/{pet_id}/measurements", response_model=list[dict[str, object]])
+@router.get("/pets/{pet_id}/measurements", response_model=list[MeasurementItemResponse])
 async def list_measurements(
     pet_id: UUID,
     identity: CurrentIdentity,
@@ -480,7 +636,7 @@ async def list_measurements(
     measurement_type: Annotated[str | None, Query()] = None,
     include_corrected: bool = False,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
-) -> list[dict[str, object]]:
+) -> list[MeasurementItemResponse]:
     await _pet(session, identity.id, pet_id)
     query = select(HealthMeasurement).where(HealthMeasurement.pet_id == pet_id)
     if measurement_type is not None:
@@ -495,14 +651,14 @@ async def list_measurements(
 
 @router.get(
     "/pets/{pet_id}/measurements/{measurement_id}/reference-comparison",
-    response_model=dict[str, object],
+    response_model=ReferenceComparisonResponse,
 )
 async def measurement_reference_comparison(
     pet_id: UUID,
     measurement_id: UUID,
     identity: CurrentIdentity,
     session: SessionDependency,
-) -> dict[str, object]:
+) -> ReferenceComparisonResponse:
     pet = await _pet(session, identity.id, pet_id)
     measurement = await session.get(HealthMeasurement, measurement_id)
     if (
@@ -527,7 +683,7 @@ async def measurement_reference_comparison(
             .order_by(BenchmarkDefinition.created_at)
         )
     ).all()
-    items: list[dict[str, object]] = []
+    items: list[ReferenceComparisonItem] = []
     for benchmark, claim, release in rows:
         result = evaluate_benchmark(
             BenchmarkInput(
@@ -557,37 +713,39 @@ async def measurement_reference_comparison(
             ),
         )
         items.append(
-            {
-                "benchmark_id": benchmark.id,
-                "claim_id": claim.external_id,
-                "claim_text_fa": claim.text_fa,
-                "release_version": release.dataset_version,
-                "reference_purpose": benchmark.reference_purpose,
-                "reference_range": {
-                    "minimum": float(benchmark.minimum_value),
-                    "maximum": float(benchmark.maximum_value),
-                    "unit": benchmark.unit,
-                },
-                "population_geography": benchmark.population_geography,
-                "measurement_definition_fa": benchmark.measurement_definition_fa,
-                **result,
-            }
+            ReferenceComparisonItem.model_validate(
+                {
+                    "benchmark_id": benchmark.id,
+                    "claim_id": claim.external_id,
+                    "claim_text_fa": claim.text_fa,
+                    "release_version": release.dataset_version,
+                    "reference_purpose": benchmark.reference_purpose,
+                    "reference_range": {
+                        "minimum": float(benchmark.minimum_value),
+                        "maximum": float(benchmark.maximum_value),
+                        "unit": benchmark.unit,
+                    },
+                    "population_geography": benchmark.population_geography,
+                    "measurement_definition_fa": benchmark.measurement_definition_fa,
+                    **result,
+                }
+            )
         )
-    return {
-        "measurement_id": measurement.id,
-        "state": "available" if items else "no_applicable_reference",
-        "items": items,
-        "disclaimer_fa": (
+    return ReferenceComparisonResponse(
+        measurement_id=measurement.id,
+        state="available" if items else "no_applicable_reference",
+        items=items,
+        disclaimer_fa=(
             "این مقایسه تشخیص پزشکی یا تعیین وزن ایده‌آل نیست و باید همراه با وضعیت بدنی "
             "و نظر دامپزشک تفسیر شود."
         ),
-    }
+    )
 
 
-@router.get("/pets/{pet_id}/weight-trend", response_model=dict[str, object])
+@router.get("/pets/{pet_id}/weight-trend", response_model=WeightTrendResult)
 async def weight_trend(
     pet_id: UUID, identity: CurrentIdentity, session: SessionDependency
-) -> dict[str, object]:
+) -> WeightTrendUnavailable | WeightTrendAvailable:
     await _pet(session, identity.id, pet_id)
     rows = list(
         (
@@ -604,9 +762,9 @@ async def weight_trend(
     )
     normalized = [(item.measured_at, _weight_kg(item)) for item in rows]
     if not normalized:
-        return {"state": "no_measurements", "current_weight_kg": None, "changes": {}}
+        return WeightTrendUnavailable()
     current_at, current = normalized[-1]
-    changes: dict[str, object] = {}
+    changes: dict[str, WeightTrendChangeWindow | None] = {}
     for days in (7, 30, 90):
         cutoff = current_at - timedelta(days=days)
         candidates = [value for measured_at, value in normalized if measured_at <= cutoff]
@@ -614,25 +772,23 @@ async def weight_trend(
         changes[f"{days}_days"] = (
             None
             if baseline is None
-            else {
-                "baseline_weight_kg": float(baseline),
-                "change_percent": float(
+            else WeightTrendChangeWindow(
+                baseline_weight_kg=float(baseline),
+                change_percent=float(
                     ((current - baseline) / baseline * 100).quantize(Decimal("0.1"))
                 ),
-            }
+            )
         )
-    return {
-        "state": "available",
-        "current_weight_kg": float(current),
-        "measured_at": current_at,
-        "changes": changes,
-        "interpretation": "personal_trend_only",
-    }
+    return WeightTrendAvailable(
+        current_weight_kg=float(current),
+        measured_at=current_at,
+        changes=changes,
+    )
 
 
 @router.post(
     "/pets/{pet_id}/measurement-reminders",
-    response_model=dict[str, object],
+    response_model=ReminderMutationResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_measurement_reminder(
@@ -640,7 +796,7 @@ async def create_measurement_reminder(
     body: ReminderBody,
     identity: CurrentIdentity,
     session: SessionDependency,
-) -> dict[str, object]:
+) -> ReminderMutationResponse:
     await _pet(session, identity.id, pet_id)
     reminder = MeasurementReminder(
         pet_id=pet_id,
@@ -651,7 +807,7 @@ async def create_measurement_reminder(
     )
     session.add(reminder)
     await session.commit()
-    return {"id": reminder.id, "status": reminder.status}
+    return ReminderMutationResponse(id=reminder.id, status=reminder.status)
 
 
 @router.post(
@@ -683,21 +839,21 @@ async def resolve_measurement_reminder(
     await session.commit()
 
 
-def _measurement_item(item: HealthMeasurement) -> dict[str, object]:
-    return {
-        "id": item.id,
-        "measurement_type": item.measurement_type,
-        "value": float(item.value),
-        "unit": item.unit,
-        "measured_at": item.measured_at,
-        "source": item.source,
-        "measurement_method": item.measurement_method,
-        "confidence": item.confidence,
-        "notes": item.notes,
-        "status": item.status,
-        "supersedes_measurement_id": item.supersedes_measurement_id,
-        "correction_reason": item.correction_reason,
-    }
+def _measurement_item(item: HealthMeasurement) -> MeasurementItemResponse:
+    return MeasurementItemResponse(
+        id=item.id,
+        measurement_type=item.measurement_type,
+        value=float(item.value),
+        unit=item.unit,
+        measured_at=item.measured_at,
+        source=item.source,
+        measurement_method=item.measurement_method,
+        confidence=item.confidence,
+        notes=item.notes,
+        status=item.status,
+        supersedes_measurement_id=item.supersedes_measurement_id,
+        correction_reason=item.correction_reason,
+    )
 
 
 def _weight_kg(item: HealthMeasurement) -> Decimal:

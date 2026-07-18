@@ -225,10 +225,19 @@ export async function loadDevelopmentApi() {
       void _petId;
       return [fixtures.petAssetFixture];
     },
+    listPetConsents: async (_petId: string) => {
+      void _petId;
+      return [fixtures.petConsentFixture];
+    },
     grantPetConsent: async (_petId: string, _body: ConsentBody) => {
       void _petId;
       void _body;
-      return { id: fixtures.petAssetFixture.id, status: "granted" };
+      return fixtures.petConsentFixture;
+    },
+    withdrawPetConsent: async (_petId: string, _consentId: string) => {
+      void _petId;
+      void _consentId;
+      return undefined;
     },
     uploadPetAsset: async (
       _petId: string,
@@ -236,7 +245,7 @@ export async function loadDevelopmentApi() {
     ) => {
       void _petId;
       void _headers;
-      return { id: fixtures.petAssetFixture.id, status: "active" };
+      return { id: fixtures.petAssetFixture.id, status: "active" as const };
     },
     downloadPetAsset: async (_petId: string, _assetId: string) => {
       void _petId;
@@ -253,7 +262,10 @@ export async function loadDevelopmentApi() {
     createBodyAssessment: async (_petId: string, _body: BodyAssessmentBody) => {
       void _petId;
       void _body;
-      return { assessment_source: "owner_reported", id: fixtures.bodyAssessmentFixture.id };
+      return {
+        assessment_source: "owner_reported" as const,
+        id: fixtures.bodyAssessmentFixture.id,
+      };
     },
     listBodyAssessments: async (_petId: string) => {
       void _petId;

@@ -19,10 +19,10 @@ def test_public_source_projection_excludes_internal_record_fields() -> None:
         },
     )
     result = _public_source(source)
-    assert result["url"] == "https://example.test/study"
-    assert result["pmid"] == "12345"
-    assert "internal_note" not in result
-    assert "copyrighted_excerpt" not in result
+    assert result.url == "https://example.test/study"
+    assert result.pmid == "12345"
+    assert not hasattr(result, "internal_note")
+    assert not hasattr(result, "copyrighted_excerpt")
 
 
 def test_expired_release_is_not_a_public_release_status() -> None:

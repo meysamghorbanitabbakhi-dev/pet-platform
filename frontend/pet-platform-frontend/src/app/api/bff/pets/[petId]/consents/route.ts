@@ -1,6 +1,18 @@
 import type { ConsentBody } from "@/lib/api-types";
 import { jsonError, jsonOk, readJson, requireCsrf } from "@/lib/api/bff-route";
-import { grantPetConsentBackend } from "@/lib/api/backend";
+import { grantPetConsentBackend, listPetConsentsBackend } from "@/lib/api/backend";
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ petId: string }> },
+) {
+  try {
+    const { petId } = await context.params;
+    return jsonOk(await listPetConsentsBackend(petId));
+  } catch (error) {
+    return jsonError(error);
+  }
+}
 
 export async function POST(
   request: Request,

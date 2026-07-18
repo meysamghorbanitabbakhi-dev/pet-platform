@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -42,6 +42,26 @@ class ConsentBody(BaseModel):
     policy_version: str = Field(min_length=1, max_length=50)
 
 
+class PetConsentResponse(BaseModel):
+    id: UUID
+    purpose: Literal["body_photographs", "medical_records"]
+    policy_version: str
+    status: Literal["granted", "withdrawn"]
+    granted_at: datetime
+    withdrawn_at: datetime | None = None
+
+
+def _consent_response(consent: PetConsent) -> PetConsentResponse:
+    return PetConsentResponse(
+        id=consent.id,
+        purpose=consent.purpose,
+        policy_version=consent.policy_version,
+        status=consent.status,
+        granted_at=consent.granted_at,
+        withdrawn_at=consent.withdrawn_at,
+    )
+
+
 class AssessmentAssetBody(BaseModel):
     asset_id: UUID
     role: str = Field(pattern=r"^(top|side|supporting)$")
@@ -58,6 +78,40 @@ class BodyAssessmentBody(BaseModel):
     assets: list[AssessmentAssetBody] = Field(default_factory=list, max_length=10)
 
 
+class PetAssetMutationResponse(BaseModel):
+    id: UUID
+    status: Literal["active"]
+
+
+class PetAssetItemResponse(BaseModel):
+    id: UUID
+    category: Literal["body_top", "body_side", "medical_document", "lab_result", "other_medical"]
+    purpose: Literal["body_photographs", "medical_records"]
+    filename: str
+    media_type: str
+    size_bytes: int
+    checksum_sha256: str
+    captured_at: datetime | None = None
+    created_at: datetime
+
+
+class BodyAssessmentMutationResponse(BaseModel):
+    id: UUID
+    assessment_source: Literal["owner_reported"]
+
+
+class BodyAssessmentItemResponse(BaseModel):
+    id: UUID
+    bcs_score: int
+    bcs_scale: int
+    muscle_condition: str
+    assessment_source: str
+    answers: dict[str, object]
+    assessed_at: datetime
+    veterinarian_name: str | None = None
+    veterinarian_confirmed_at: datetime | None = None
+
+
 async def _require_pet(session: AsyncSession, identity_id: UUID, pet_id: UUID) -> None:
     try:
         await require_pet_access(session, identity_id=identity_id, pet_id=pet_id)
@@ -65,9 +119,26 @@ async def _require_pet(session: AsyncSession, identity_id: UUID, pet_id: UUID) -
         raise HTTPException(status_code=404, detail="pet_not_found") from exc
 
 
+@router.get("/pets/{pet_id}/consents", response_model=list[PetConsentResponse])
+async def list_pet_consents(
+    pet_id: UUID, identity: CurrentIdentity, session: SessionDependency
+) -> list[PetConsentResponse]:
+    await _require_pet(session, identity.id, pet_id)
+    consents = list(
+        (
+            await session.scalars(
+                select(PetConsent)
+                .where(PetConsent.pet_id == pet_id)
+                .order_by(PetConsent.granted_at.desc())
+            )
+        ).all()
+    )
+    return [_consent_response(item) for item in consents]
+
+
 @router.post(
     "/pets/{pet_id}/consents",
-    response_model=dict[str, object],
+    response_model=PetConsentResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def grant_pet_consent(
@@ -75,7 +146,7 @@ async def grant_pet_consent(
     body: ConsentBody,
     identity: CurrentIdentity,
     session: SessionDependency,
-) -> dict[str, object]:
+) -> PetConsentResponse:
     await _require_pet(session, identity.id, pet_id)
     existing = await session.scalar(
         select(PetConsent).where(
@@ -90,7 +161,7 @@ async def grant_pet_consent(
                 status_code=409,
                 detail="withdraw_existing_consent_before_policy_change",
             )
-        return {"id": existing.id, "status": existing.status}
+        return _consent_response(existing)
     consent = PetConsent(
         pet_id=pet_id,
         granted_by_identity_id=identity.id,
@@ -101,7 +172,7 @@ async def grant_pet_consent(
     )
     session.add(consent)
     await session.commit()
-    return {"id": consent.id, "status": consent.status}
+    return _consent_response(consent)
 
 
 @router.post("/pets/{pet_id}/consents/{consent_id}/withdraw", status_code=204)
@@ -130,7 +201,7 @@ async def withdraw_pet_consent(
 
 @router.post(
     "/pets/{pet_id}/assets",
-    response_model=dict[str, object],
+    response_model=PetAssetMutationResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def upload_pet_asset(
@@ -149,7 +220,7 @@ async def upload_pet_asset(
     ],
     consent_id: Annotated[UUID, Header(alias="X-Consent-ID")],
     captured_at: Annotated[datetime | None, Header(alias="X-Captured-At")] = None,
-) -> dict[str, object]:
+) -> PetAssetMutationResponse:
     await _require_pet(session, identity.id, pet_id)
     purpose = _CATEGORY_PURPOSE[category]
     consent = await session.get(PetConsent, consent_id)
@@ -195,13 +266,13 @@ async def upload_pet_asset(
     )
     session.add(asset)
     await session.commit()
-    return {"id": asset.id, "status": asset.status}
+    return PetAssetMutationResponse(id=asset.id, status=asset.status)
 
 
-@router.get("/pets/{pet_id}/assets", response_model=list[dict[str, object]])
+@router.get("/pets/{pet_id}/assets", response_model=list[PetAssetItemResponse])
 async def list_pet_assets(
     pet_id: UUID, identity: CurrentIdentity, session: SessionDependency
-) -> list[dict[str, object]]:
+) -> list[PetAssetItemResponse]:
     await _require_pet(session, identity.id, pet_id)
     assets = list(
         (
@@ -254,7 +325,7 @@ async def remove_pet_asset(
 
 @router.post(
     "/pets/{pet_id}/body-assessments",
-    response_model=dict[str, object],
+    response_model=BodyAssessmentMutationResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_body_assessment(
@@ -262,7 +333,7 @@ async def create_body_assessment(
     body: BodyAssessmentBody,
     identity: CurrentIdentity,
     session: SessionDependency,
-) -> dict[str, object]:
+) -> BodyAssessmentMutationResponse:
     await _require_pet(session, identity.id, pet_id)
     if body.assessed_at > utc_now():
         raise HTTPException(status_code=422, detail="assessment_cannot_be_in_future")
@@ -300,13 +371,18 @@ async def create_body_assessment(
             )
         )
     await session.commit()
-    return {"id": assessment.id, "assessment_source": assessment.assessment_source}
+    return BodyAssessmentMutationResponse(
+        id=assessment.id,
+        assessment_source=assessment.assessment_source,
+    )
 
 
-@router.get("/pets/{pet_id}/body-assessments", response_model=list[dict[str, object]])
+@router.get(
+    "/pets/{pet_id}/body-assessments", response_model=list[BodyAssessmentItemResponse]
+)
 async def list_body_assessments(
     pet_id: UUID, identity: CurrentIdentity, session: SessionDependency
-) -> list[dict[str, object]]:
+) -> list[BodyAssessmentItemResponse]:
     await _require_pet(session, identity.id, pet_id)
     assessments = list(
         (
@@ -319,33 +395,33 @@ async def list_body_assessments(
         ).all()
     )
     return [
-        {
-            "id": item.id,
-            "bcs_score": item.bcs_score,
-            "bcs_scale": item.bcs_scale,
-            "muscle_condition": item.muscle_condition,
-            "assessment_source": item.assessment_source,
-            "answers": item.answers,
-            "assessed_at": item.assessed_at,
-            "veterinarian_name": item.veterinarian_name,
-            "veterinarian_confirmed_at": item.veterinarian_confirmed_at,
-        }
+        BodyAssessmentItemResponse(
+            id=item.id,
+            bcs_score=item.bcs_score,
+            bcs_scale=item.bcs_scale,
+            muscle_condition=item.muscle_condition,
+            assessment_source=item.assessment_source,
+            answers=item.answers,
+            assessed_at=item.assessed_at,
+            veterinarian_name=item.veterinarian_name,
+            veterinarian_confirmed_at=item.veterinarian_confirmed_at,
+        )
         for item in assessments
     ]
 
 
-def _asset_item(asset: PetAsset) -> dict[str, object]:
-    return {
-        "id": asset.id,
-        "category": asset.category,
-        "purpose": asset.purpose,
-        "filename": asset.original_filename,
-        "media_type": asset.media_type,
-        "size_bytes": asset.size_bytes,
-        "checksum_sha256": asset.checksum_sha256,
-        "captured_at": asset.captured_at,
-        "created_at": asset.created_at,
-    }
+def _asset_item(asset: PetAsset) -> PetAssetItemResponse:
+    return PetAssetItemResponse(
+        id=asset.id,
+        category=asset.category,
+        purpose=asset.purpose,
+        filename=asset.original_filename,
+        media_type=asset.media_type,
+        size_bytes=asset.size_bytes,
+        checksum_sha256=asset.checksum_sha256,
+        captured_at=asset.captured_at,
+        created_at=asset.created_at,
+    )
 
 
 def _safe_filename(value: str) -> str:

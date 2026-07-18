@@ -30,6 +30,7 @@ class LaunchPolicies:
     reorder_safety_buffer_days: int | None
     reorder_snooze_early_break_worsening_days: int
     customer_request_acknowledgement_fa: str
+    pet_health_consent_policy_version: str
     storage_backend: str
     sourcing_start_rule: str
 
@@ -63,6 +64,7 @@ class LaunchPolicies:
                 settings.reorder_snooze_early_break_worsening_days
             ),
             customer_request_acknowledgement_fa=settings.customer_request_acknowledgement_fa,
+            pet_health_consent_policy_version=settings.pet_health_consent_policy_version,
             storage_backend=settings.storage_backend,
             sourcing_start_rule="supplier_financial_commitment_with_timestamp_and_evidence",
         )

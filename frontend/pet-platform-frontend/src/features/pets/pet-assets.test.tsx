@@ -6,12 +6,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createBodyAssessment,
   deletePetAsset,
+  getPolicies,
   grantPetConsent,
   listBodyAssessments,
   listPetAssets,
+  listPetConsents,
   uploadPetAsset,
+  withdrawPetConsent,
 } from "@/lib/api/client";
-import { bodyAssessmentFixture, petAssetFixture } from "@/test/fixtures/gate-fixtures";
+import {
+  bodyAssessmentFixture,
+  petAssetFixture,
+  petConsentFixture,
+  policyFixture,
+} from "@/test/fixtures/gate-fixtures";
 import { PetAssets } from "./pet-assets";
 
 vi.mock("next/navigation", () => ({
@@ -21,12 +29,15 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/api/client", () => ({
   createBodyAssessment: vi.fn(),
   deletePetAsset: vi.fn(),
+  getPolicies: vi.fn(),
   grantPetConsent: vi.fn(),
   listBodyAssessments: vi.fn(),
   listPetAssets: vi.fn(),
+  listPetConsents: vi.fn(),
   petAssetUrl: (petId: string, assetId: string) =>
     `/api/bff/pets/${petId}/assets/${assetId}`,
   uploadPetAsset: vi.fn(),
+  withdrawPetConsent: vi.fn(),
 }));
 
 function renderWithQuery(ui: ReactNode) {
@@ -43,6 +54,8 @@ describe("PetAssets", () => {
     vi.clearAllMocks();
     vi.mocked(listPetAssets).mockResolvedValue([petAssetFixture]);
     vi.mocked(listBodyAssessments).mockResolvedValue([bodyAssessmentFixture]);
+    vi.mocked(getPolicies).mockResolvedValue(policyFixture);
+    vi.mocked(listPetConsents).mockResolvedValue([]);
   });
 
   it("shows an empty gallery state, not an error, when no assets exist yet", async () => {
@@ -54,30 +67,84 @@ describe("PetAssets", () => {
     ).toBeInTheDocument();
   });
 
-  it("grants consent before uploading, and uploads with the granted consent id", async () => {
-    vi.mocked(grantPetConsent).mockResolvedValue({ id: "consent-1", status: "granted" });
+  it("requires an explicit, distinct consent step before any upload is possible, never granting consent as a side effect of the upload click", async () => {
+    vi.mocked(grantPetConsent).mockResolvedValue(petConsentFixture);
+    const user = userEvent.setup();
+
+    renderWithQuery(<PetAssets petId="pet-1" />);
+    await screen.findByAltText(petAssetFixture.filename);
+
+    expect(screen.getByTestId("consent-gate")).toBeInTheDocument();
+    expect(screen.queryByLabelText("فایل (jpg، png یا pdf)")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "موافقم و رضایت می‌دهم" }));
+
+    await waitFor(() =>
+      expect(grantPetConsent).toHaveBeenCalledWith("pet-1", {
+        policy_version: policyFixture.pet_health_consent_policy_version,
+        purpose: "body_photographs",
+      }),
+    );
+  });
+
+  it("uploads directly, without re-asking for consent, once a matching valid consent already exists", async () => {
+    vi.mocked(listPetConsents).mockResolvedValue([petConsentFixture]);
     vi.mocked(uploadPetAsset).mockResolvedValue({ id: "asset-2", status: "active" });
     const user = userEvent.setup();
     const file = new File(["fake-bytes"], "photo.jpg", { type: "image/jpeg" });
 
     renderWithQuery(<PetAssets petId="pet-1" />);
-    await screen.findByAltText(petAssetFixture.filename);
+    const input = await screen.findByLabelText("فایل (jpg، png یا pdf)");
+    expect(screen.queryByTestId("consent-gate")).not.toBeInTheDocument();
 
-    const input = screen.getByLabelText("فایل (jpg، png یا pdf)");
     await user.upload(input, file);
     await user.click(screen.getByRole("button", { name: "آپلود" }));
 
-    await waitFor(() =>
-      expect(grantPetConsent).toHaveBeenCalledWith("pet-1", {
-        policy_version: "1.0",
-        purpose: "body_photographs",
-      }),
-    );
+    expect(grantPetConsent).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(uploadPetAsset).toHaveBeenCalledWith("pet-1", file, {
         category: "body_top",
-        consentId: "consent-1",
+        consentId: petConsentFixture.id,
       }),
+    );
+  });
+
+  it("requires withdrawing a stale consent before a new policy version can be granted", async () => {
+    vi.mocked(listPetConsents).mockResolvedValue([
+      { ...petConsentFixture, policy_version: "0.9" },
+    ]);
+    vi.mocked(withdrawPetConsent).mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    renderWithQuery(<PetAssets petId="pet-1" />);
+    await screen.findByAltText(petAssetFixture.filename);
+
+    expect(
+      screen.getByRole("button", { name: "لغو رضایت قبلی" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "موافقم و رضایت می‌دهم" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "لغو رضایت قبلی" }));
+
+    await waitFor(() =>
+      expect(withdrawPetConsent).toHaveBeenCalledWith("pet-1", petConsentFixture.id),
+    );
+  });
+
+  it("supports withdrawing an active consent", async () => {
+    vi.mocked(listPetConsents).mockResolvedValue([petConsentFixture]);
+    vi.mocked(withdrawPetConsent).mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    renderWithQuery(<PetAssets petId="pet-1" />);
+    await screen.findByLabelText("فایل (jpg، png یا pdf)");
+
+    await user.click(screen.getByRole("button", { name: "لغو رضایت" }));
+
+    await waitFor(() =>
+      expect(withdrawPetConsent).toHaveBeenCalledWith("pet-1", petConsentFixture.id),
     );
   });
 

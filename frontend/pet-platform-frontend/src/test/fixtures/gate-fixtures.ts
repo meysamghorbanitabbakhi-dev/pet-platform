@@ -2,26 +2,25 @@ import type {
   AddressResponse,
   AvailabilitySubscriptionPage,
   AvailabilitySubscriptionResponse,
+  BodyAssessmentItem,
+  BreedDetailResponse,
+  BreedListResponse,
+  BreedSearchResponse,
+  CareGuidanceResponse,
   CustomerRequestPage,
   CustomerRequestResponse,
   DiaryEntryDetailResponse,
   DiaryListItem,
+  MeasurementItem,
   NotificationPage,
   OrderListPage,
+  PetAssetItem,
+  PetConsentResponse,
+  PetKnowledgeResponse,
   PrivacyRequestResponse,
   WalletSummaryResponse,
-} from "@/lib/api-types";
-import type {
-  BodyAssessmentItem,
-  BreedDetailResponse,
-  BreedListItem,
-  BreedSearchItem,
-  CareGuidanceResponse,
-  MeasurementItem,
-  PetAssetItem,
-  PetKnowledgeResponse,
   WeightTrendResponse,
-} from "@/lib/pet-health-types";
+} from "@/lib/api-types";
 import type {
   FoodEstimateResponse,
   GardenStateResponse,
@@ -78,6 +77,7 @@ export const policyFixture: PolicyResponse = {
   late_credit_customer_visible: false,
   late_credit_enabled: false,
   late_credit_expiry_months: 3,
+  pet_health_consent_policy_version: "1.0",
   push_notifications_enabled: false,
   refund_self_service_enabled: false,
   reorder_safety_buffer_days: 3,
@@ -515,7 +515,9 @@ export const journeyDetailFixture: JourneyDetailResponse = {
   check_ins: [],
   definition_id: ids.journeyDefinition,
   definition_version: 1,
+  diary_entry_id: null,
   ended_at: null,
+  garden_reward_id: null,
   id: ids.journey,
   pet_id: ids.petBishi,
   started_at: "2026-07-10T00:00:00Z",
@@ -645,12 +647,15 @@ export const privacyExportFixture: Record<string, unknown> = {
 
 export const measurementFixture: MeasurementItem = {
   confidence: "high",
+  correction_reason: null,
   id: "ffff5555-ffff-4fff-8fff-fffffffffff5",
   measured_at: "2026-07-15T08:00:00Z",
   measurement_method: null,
   measurement_type: "weight",
   notes: null,
   source: "owner_reported",
+  status: "active",
+  supersedes_measurement_id: null,
   unit: "kg",
   value: 12.4,
 };
@@ -679,6 +684,15 @@ export const petAssetFixture: PetAssetItem = {
   size_bytes: 204800,
 };
 
+export const petConsentFixture: PetConsentResponse = {
+  granted_at: "2026-07-10T08:00:00Z",
+  id: "cccc8888-cccc-4ccc-8ccc-ccccccccccc8",
+  policy_version: "1.0",
+  purpose: "body_photographs",
+  status: "granted",
+  withdrawn_at: null,
+};
+
 export const bodyAssessmentFixture: BodyAssessmentItem = {
   answers: {},
   assessed_at: "2026-07-10T08:10:00Z",
@@ -691,13 +705,18 @@ export const bodyAssessmentFixture: BodyAssessmentItem = {
   veterinarian_name: null,
 };
 
-export const breedListFixture: { items: BreedListItem[] } = {
+export const breedListFixture: BreedListResponse = {
   items: [
     { id: "persian", name_en: "Persian", name_fa: "پرشین", species: "cat" },
   ],
+  release: {
+    checksum_sha256: "def456",
+    dataset_version: "2026.1",
+    published_at: "2026-01-01T00:00:00Z",
+  },
 };
 
-export const breedSearchFixture: { items: BreedSearchItem[] } = {
+export const breedSearchFixture: BreedSearchResponse = {
   items: [
     {
       aliases_fa: [],
@@ -708,6 +727,7 @@ export const breedSearchFixture: { items: BreedSearchItem[] } = {
       species: "cat",
     },
   ],
+  release: { dataset_version: "2026.1" },
 };
 
 export const breedDetailFixture: BreedDetailResponse = {

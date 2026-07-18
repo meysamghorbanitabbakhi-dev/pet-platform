@@ -60,6 +60,7 @@ class Settings(BaseSettings):
         "درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. "
         "ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست."
     )
+    pet_health_consent_policy_version: str = Field(default="1.0", min_length=1, max_length=50)
     storage_backend: Literal["filesystem"] = "filesystem"
 
     zarinpal_sandbox: bool = True

@@ -445,6 +445,17 @@ async def test_k9_t10_t11_delay_ack_and_journey_effects_are_canonical(seed: Seed
         )
         assert check_in_a.status_code == 200
         assert check_in_b.status_code == 200
+        # Whichever request wins the race to insert and which one falls back to
+        # the IntegrityError replay path is non-deterministic; both must report
+        # the journey's real completion outcome (single-step journey, so this
+        # check-in alone satisfies completion_requires), not a stale default.
+        assert check_in_a.json()["id"] == check_in_b.json()["id"]
+        assert check_in_a.json()["completed"] is True
+        assert check_in_b.json()["completed"] is True
+        assert check_in_a.json()["diary_entry_id"] == check_in_b.json()["diary_entry_id"]
+        assert check_in_a.json()["diary_entry_id"] is not None
+        assert check_in_a.json()["garden_reward_id"] == check_in_b.json()["garden_reward_id"]
+        assert check_in_a.json()["garden_reward_id"] is not None
     async with SessionFactory() as session:
         assert (
             await session.scalar(
@@ -457,6 +468,21 @@ async def test_k9_t10_t11_delay_ack_and_journey_effects_are_canonical(seed: Seed
             await session.scalar(
                 select(func.count(JourneyCheckIn.id)).where(
                     JourneyCheckIn.journey_id == uuid.UUID(journey_id)
+                )
+            )
+        ) == 1
+        assert (
+            await session.scalar(
+                select(func.count(DiaryEntry.id)).where(
+                    DiaryEntry.source_id == journey_id, DiaryEntry.source_type == "journey"
+                )
+            )
+        ) == 1
+        assert (
+            await session.scalar(
+                select(func.count(GardenReward.id)).where(
+                    GardenReward.source_id == journey_id,
+                    GardenReward.source_type == "journey_completion",
                 )
             )
         ) == 1
@@ -563,6 +589,26 @@ async def test_approved_journey_delivery_lifecycle_today_and_replay(seed: Seed) 
         assert replay.status_code == 200
         assert first.json()["id"] == replay.json()["id"]
         assert conflict.status_code == 409
+        # This single-step journey's completion_requires is satisfied by the very
+        # first check-in, so the backend auto-completes it inline: the response
+        # must carry the completion transition, not just a bare check-in record.
+        assert first.json()["completed"] is True
+        assert first.json()["diary_entry_id"] is not None
+        assert first.json()["garden_reward_id"] is not None
+        # A replayed check-in (same idempotency key) must report the same
+        # completion outcome, not silently default back to completed=False.
+        assert replay.json()["completed"] is True
+        assert replay.json()["diary_entry_id"] == first.json()["diary_entry_id"]
+        assert replay.json()["garden_reward_id"] == first.json()["garden_reward_id"]
+        completed_detail = await client.get(
+            f"/api/v1/pet-life/journeys/{journey_id}"
+        )
+        assert completed_detail.status_code == 200
+        assert completed_detail.json()["status"] == "completed"
+        assert completed_detail.json()["diary_entry_id"] == first.json()["diary_entry_id"]
+        assert (
+            completed_detail.json()["garden_reward_id"] == first.json()["garden_reward_id"]
+        )
         garden = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/garden")
         assert {"xp", "streak", "decay", "purchase_reward"} & set(garden.json()) == set()
     app.dependency_overrides[get_current_identity] = lambda: seed.other_identity
@@ -588,6 +634,114 @@ async def test_approved_journey_delivery_lifecycle_today_and_replay(seed: Seed) 
         journey = await session.get(PetJourney, uuid.UUID(journey_id))
         assert journey is not None and journey.status == "completed"
     settings.care_journey_delivery_enabled = original
+    app.dependency_overrides.clear()
+
+
+async def test_pet_health_consent_lifecycle_is_explicit_and_governed(seed: Seed) -> None:
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    png_bytes = b"\x89PNG\r\n\x1a\nfakepngdata"
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        policies = await client.get("/api/v1/system/policies")
+        assert policies.status_code == 200
+        policy_version = policies.json()["pet_health_consent_policy_version"]
+        assert policy_version
+
+        empty = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/consents")
+        assert empty.status_code == 200
+        assert empty.json() == []
+
+        # Upload attempted before any consent is granted must fail closed.
+        blocked = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/assets",
+            content=png_bytes,
+            headers={
+                "content-type": "image/png",
+                "X-Filename": "body.png",
+                "X-Asset-Category": "body_top",
+                "X-Consent-ID": str(uuid.uuid4()),
+            },
+        )
+        assert blocked.status_code == 409
+
+        granted = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents",
+            json={"purpose": "body_photographs", "policy_version": policy_version},
+        )
+        assert granted.status_code == 201
+        consent_id = granted.json()["id"]
+        assert granted.json()["status"] == "granted"
+        assert granted.json()["policy_version"] == policy_version
+
+        # Re-granting the same purpose/version is idempotent: same row, not a
+        # second interruption or a duplicate consent record.
+        regranted = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents",
+            json={"purpose": "body_photographs", "policy_version": policy_version},
+        )
+        assert regranted.status_code == 201
+        assert regranted.json()["id"] == consent_id
+
+        listed = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/consents")
+        assert listed.status_code == 200
+        assert len(listed.json()) == 1
+        assert listed.json()[0]["id"] == consent_id
+
+        # A policy-version change while an active consent exists must not be
+        # silently accepted; it requires an explicit withdrawal first.
+        version_conflict = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents",
+            json={
+                "purpose": "body_photographs",
+                "policy_version": "policy-version-should-not-exist",
+            },
+        )
+        assert version_conflict.status_code == 409
+
+        upload = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/assets",
+            content=png_bytes,
+            headers={
+                "content-type": "image/png",
+                "X-Filename": "body.png",
+                "X-Asset-Category": "body_top",
+                "X-Consent-ID": consent_id,
+            },
+        )
+        assert upload.status_code == 201
+        asset_id = upload.json()["id"]
+
+        withdraw = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents/{consent_id}/withdraw"
+        )
+        assert withdraw.status_code == 204
+
+        withdrawn_list = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/consents")
+        assert withdrawn_list.json()[0]["status"] == "withdrawn"
+        assert withdrawn_list.json()[0]["withdrawn_at"] is not None
+
+        # Withdrawal removes the asset from customer-visible listing immediately.
+        assets_after_withdraw = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/assets")
+        assert asset_id not in {item["id"] for item in assets_after_withdraw.json()}
+
+        # Uploading again against the withdrawn consent must fail closed too.
+        reuse_withdrawn = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/assets",
+            content=png_bytes,
+            headers={
+                "content-type": "image/png",
+                "X-Filename": "body2.png",
+                "X-Asset-Category": "body_top",
+                "X-Consent-ID": consent_id,
+            },
+        )
+        assert reuse_withdrawn.status_code == 409
+
+    app.dependency_overrides[get_current_identity] = lambda: seed.other_identity
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        cross_household = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/consents")
+        assert cross_household.status_code == 404
     app.dependency_overrides.clear()
 
 

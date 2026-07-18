@@ -15,19 +15,17 @@ import {
 import {
   createBodyAssessment,
   deletePetAsset,
+  getPolicies,
   grantPetConsent,
   listBodyAssessments,
   listPetAssets,
+  listPetConsents,
   petAssetUrl,
   uploadPetAsset,
+  withdrawPetConsent,
 } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import { formatPersianNumber } from "@/lib/format";
-
-// A policy_version accompanies every consent grant per the backend contract
-// (ConsentBody.policy_version). It must stay stable: changing it would force
-// every existing consent to be withdrawn and re-granted.
-const CONSENT_POLICY_VERSION = "1.0";
 
 function errorText(error: unknown) {
   if (error instanceof ApiError) return error.message;
@@ -50,6 +48,17 @@ const categoryPurpose: Record<string, "body_photographs" | "medical_records"> = 
   other_medical: "medical_records",
 };
 
+// Explanation copy is derived from the approved product decisions in
+// backend/docs/architecture/pet-health-assets.md (purpose-limited use,
+// household-only access, versioned and revocable consent). Exact legal
+// wording is pending product/legal sign-off before this ships broadly.
+const purposeExplanationFa: Record<"body_photographs" | "medical_records", string> = {
+  body_photographs:
+    "تصاویر بدن پت فقط برای پیگیری شخصی وضعیت بدنی او در طول زمان استفاده می‌شود و فقط برای اعضای همین خانوار قابل مشاهده است.",
+  medical_records:
+    "مدارک پزشکی فقط برای نگهداری شخصی سوابق پت استفاده می‌شود و فقط برای اعضای همین خانوار قابل مشاهده است.",
+};
+
 const muscleConditionLabels: Record<string, string> = {
   mild_loss: "کاهش خفیف",
   moderate_loss: "کاهش متوسط",
@@ -62,15 +71,52 @@ function UploadForm({ petId }: { petId: string }) {
   const queryClient = useQueryClient();
   const [category, setCategory] = useState<keyof typeof categoryLabels>("body_top");
   const [file, setFile] = useState<File | null>(null);
+  const purpose = categoryPurpose[category];
+
+  const policyQuery = useQuery({ queryKey: ["policy"], queryFn: getPolicies });
+  const consentsQuery = useQuery({
+    queryKey: ["pet-life", "consents", petId],
+    queryFn: () => listPetConsents(petId),
+    enabled: Boolean(petId),
+  });
+
+  async function invalidateConsents() {
+    await queryClient.invalidateQueries({ queryKey: ["pet-life", "consents", petId] });
+  }
+
+  const currentPolicyVersion = policyQuery.data?.pet_health_consent_policy_version;
+  const grantedForPurpose = consentsQuery.data?.find(
+    (item) => item.purpose === purpose && item.status === "granted",
+  );
+  const activeConsent =
+    grantedForPurpose && grantedForPurpose.policy_version === currentPolicyVersion
+      ? grantedForPurpose
+      : undefined;
+  // Granted under an older policy_version: the backend requires an explicit
+  // withdrawal before a fresh consent can be granted (it never silently
+  // reinterprets an old grant as covering a new policy version).
+  const staleConsent = grantedForPurpose && !activeConsent ? grantedForPurpose : undefined;
+
+  const consentMutation = useMutation({
+    mutationFn: () => {
+      if (!currentPolicyVersion) throw new Error("policy not loaded");
+      return grantPetConsent(petId, { policy_version: currentPolicyVersion, purpose });
+    },
+    onSuccess: invalidateConsents,
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: (consentId: string) => withdrawPetConsent(petId, consentId),
+    onSuccess: async () => {
+      await invalidateConsents();
+      await queryClient.invalidateQueries({ queryKey: ["pet-life", "assets", petId] });
+    },
+  });
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
-      if (!file) throw new Error("no file selected");
-      const consent = await grantPetConsent(petId, {
-        policy_version: CONSENT_POLICY_VERSION,
-        purpose: categoryPurpose[category],
-      });
-      return uploadPetAsset(petId, file, { category, consentId: consent.id });
+      if (!file || !activeConsent) throw new Error("no file selected or consent missing");
+      return uploadPetAsset(petId, file, { category, consentId: activeConsent.id });
     },
     onSuccess: async () => {
       setFile(null);
@@ -97,26 +143,79 @@ function UploadForm({ petId }: { petId: string }) {
           </Button>
         ))}
       </div>
-      <div className="field">
-        <label htmlFor="asset-file">فایل (jpg، png یا pdf)</label>
-        <input
-          id="asset-file"
-          accept="image/jpeg,image/png,application/pdf"
-          className="input"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          type="file"
-        />
-      </div>
-      {uploadMutation.isError ? (
-        <Banner tone="error">{errorText(uploadMutation.error)}</Banner>
-      ) : null}
-      <Button
-        disabled={!file || uploadMutation.isPending}
-        loading={uploadMutation.isPending}
-        onClick={() => uploadMutation.mutate()}
-      >
-        آپلود
-      </Button>
+
+      {policyQuery.isLoading || consentsQuery.isLoading ? (
+        <Skeleton />
+      ) : !activeConsent ? (
+        <div className="stack" data-testid="consent-gate">
+          <div className="eyebrow">رضایت لازم است</div>
+          <p className="caption">{purposeExplanationFa[purpose]}</p>
+          <p className="caption">
+            رضایت شما نسخه‌دار است؛ در صورت تغییر نسخه سیاست، دوباره از شما
+            پرسیده می‌شود. می‌توانید هر زمان آن را لغو کنید؛ لغو رضایت،
+            دسترسی به فایل‌های آپلودشده را فوراً غیرفعال می‌کند.
+          </p>
+          {consentMutation.isError ? (
+            <Banner tone="error">{errorText(consentMutation.error)}</Banner>
+          ) : null}
+          {withdrawMutation.isError ? (
+            <Banner tone="error">{errorText(withdrawMutation.error)}</Banner>
+          ) : null}
+          {staleConsent ? (
+            <>
+              <p className="caption">
+                رضایت قبلی شما با نسخه فعلی سیاست همخوانی ندارد. برای ادامه،
+                ابتدا رضایت قبلی را لغو کنید.
+              </p>
+              <Button
+                variant="secondary"
+                loading={withdrawMutation.isPending}
+                onClick={() => withdrawMutation.mutate(staleConsent.id)}
+              >
+                لغو رضایت قبلی
+              </Button>
+            </>
+          ) : (
+            <Button
+              disabled={!currentPolicyVersion}
+              loading={consentMutation.isPending}
+              onClick={() => consentMutation.mutate()}
+            >
+              موافقم و رضایت می‌دهم
+            </Button>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="field">
+            <label htmlFor="asset-file">فایل (jpg، png یا pdf)</label>
+            <input
+              id="asset-file"
+              accept="image/jpeg,image/png,application/pdf"
+              className="input"
+              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              type="file"
+            />
+          </div>
+          {uploadMutation.isError ? (
+            <Banner tone="error">{errorText(uploadMutation.error)}</Banner>
+          ) : null}
+          <Button
+            disabled={!file || uploadMutation.isPending}
+            loading={uploadMutation.isPending}
+            onClick={() => uploadMutation.mutate()}
+          >
+            آپلود
+          </Button>
+          <Button
+            variant="ghost"
+            loading={withdrawMutation.isPending}
+            onClick={() => withdrawMutation.mutate(activeConsent.id)}
+          >
+            لغو رضایت
+          </Button>
+        </>
+      )}
     </Card>
   );
 }

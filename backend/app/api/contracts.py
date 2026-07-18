@@ -72,6 +72,7 @@ class PolicyResponse(BaseModel):
     reorder_safety_buffer_days: int | None = None
     reorder_snooze_early_break_worsening_days: int
     customer_request_acknowledgement_fa: str
+    pet_health_consent_policy_version: str
     storage_backend: Literal["filesystem"]
     sourcing_start_rule: Literal["supplier_financial_commitment_with_timestamp_and_evidence"]
 
@@ -338,6 +339,8 @@ class JourneyDetailResponse(BaseModel):
     title_fa: str
     steps: list[JourneyStepResponse]
     check_ins: list[JourneyCheckInResponse]
+    diary_entry_id: UUID | None = None
+    garden_reward_id: UUID | None = None
 
 
 class ReorderOptionResponse(BaseModel):

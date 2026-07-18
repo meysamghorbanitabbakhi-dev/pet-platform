@@ -813,6 +813,9 @@ async def journey_detail(
     )
     definition = await session.get(JourneyDefinition, journey.definition_id)
     content = journey.definition_snapshot or (definition.content if definition else {})
+    diary_id = reward_id = None
+    if journey.status == "completed":
+        diary_id, reward_id = await _journey_completion_effects(session, journey.id)
     return JourneyDetailResponse(
         id=journey.id,
         pet_id=journey.pet_id,
@@ -833,6 +836,8 @@ async def journey_detail(
             )
             for item in check_ins
         ],
+        diary_entry_id=diary_id,
+        garden_reward_id=reward_id,
     )
 
 
@@ -863,12 +868,20 @@ async def journey_check_in(
     if existing is not None:
         if existing.request_hash not in (None, request_hash):
             raise HTTPException(status_code=409, detail="idempotency_key_conflict")
+        replay_diary_id, replay_reward_id = (
+            await _journey_completion_effects(session, journey.id)
+            if journey.status == "completed"
+            else (None, None)
+        )
         return JourneyCheckInResponse(
             id=existing.id,
             journey_id=existing.journey_id,
             check_in_key=existing.check_in_key,
             answer_key=existing.answer_key,
             submitted_at=existing.submitted_at,
+            completed=journey.status == "completed",
+            diary_entry_id=replay_diary_id,
+            garden_reward_id=replay_reward_id,
         )
     if journey.status != "active":
         raise HTTPException(status_code=409, detail="journey_not_active")
@@ -900,12 +913,23 @@ async def journey_check_in(
         )
         if existing is None or existing.request_hash not in (None, request_hash):
             raise HTTPException(status_code=409, detail="idempotency_key_conflict") from exc
+        current_status = await session.scalar(
+            select(PetJourney.status).where(PetJourney.id == journey_id)
+        )
+        replay_diary_id, replay_reward_id = (
+            await _journey_completion_effects(session, journey_id)
+            if current_status == "completed"
+            else (None, None)
+        )
         return JourneyCheckInResponse(
             id=existing.id,
             journey_id=existing.journey_id,
             check_in_key=existing.check_in_key,
             answer_key=existing.answer_key,
             submitted_at=existing.submitted_at,
+            completed=current_status == "completed",
+            diary_entry_id=replay_diary_id,
+            garden_reward_id=replay_reward_id,
         )
     completed = completion_requirements_met(
         content,
@@ -1379,6 +1403,25 @@ async def _owned_journey(session: AsyncSession, identity_id: UUID, journey_id: U
         raise HTTPException(status_code=404, detail="journey_not_found")
     await _pet_access(session, identity_id, journey.pet_id)
     return journey
+
+
+async def _journey_completion_effects(
+    session: AsyncSession, journey_id: UUID
+) -> tuple[UUID | None, UUID | None]:
+    """Diary/Garden reward ids for an already-completed journey, or (None, None)."""
+    diary_id = await session.scalar(
+        select(DiaryEntry.id).where(
+            DiaryEntry.source_type == "journey",
+            DiaryEntry.source_id == str(journey_id),
+        )
+    )
+    reward_id = await session.scalar(
+        select(GardenReward.id).where(
+            GardenReward.source_type == "journey_completion",
+            GardenReward.source_id == str(journey_id),
+        )
+    )
+    return diary_id, reward_id
 
 
 async def _reorder_options(

@@ -5,7 +5,7 @@
     ]
   },
   "openapi": {
-    "operation_count": 144,
+    "operation_count": 145,
     "path_count": 133,
     "required_constants": {
       "OfferDetailResponse.authenticity": "supplier_verified",
@@ -311,8 +311,8 @@
         "expires_in_seconds"
       ]
     },
-    "schema_count": 158,
-    "sha256": "20df772c55009a3c8d50b91804416b580d96c761bf6720987ca4873b45d68d34"
+    "schema_count": 192,
+    "sha256": "db026c15f22ca1e7ba7e53ae259af2def43c09a88ac3e827e4e51ad2ca783a0c"
   },
   "policy_defaults": {
     "care_journey_delivery_enabled": true,

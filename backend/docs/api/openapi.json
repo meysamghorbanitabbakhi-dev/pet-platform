@@ -480,6 +480,247 @@
         "title": "BodyAssessmentConfirmationBody",
         "type": "object"
       },
+      "BodyAssessmentItemResponse": {
+        "properties": {
+          "answers": {
+            "additionalProperties": true,
+            "title": "Answers",
+            "type": "object"
+          },
+          "assessed_at": {
+            "format": "date-time",
+            "title": "Assessed At",
+            "type": "string"
+          },
+          "assessment_source": {
+            "title": "Assessment Source",
+            "type": "string"
+          },
+          "bcs_scale": {
+            "title": "Bcs Scale",
+            "type": "integer"
+          },
+          "bcs_score": {
+            "title": "Bcs Score",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "muscle_condition": {
+            "title": "Muscle Condition",
+            "type": "string"
+          },
+          "veterinarian_confirmed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Veterinarian Confirmed At"
+          },
+          "veterinarian_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Veterinarian Name"
+          }
+        },
+        "required": [
+          "id",
+          "bcs_score",
+          "bcs_scale",
+          "muscle_condition",
+          "assessment_source",
+          "answers",
+          "assessed_at"
+        ],
+        "title": "BodyAssessmentItemResponse",
+        "type": "object"
+      },
+      "BodyAssessmentMutationResponse": {
+        "properties": {
+          "assessment_source": {
+            "const": "owner_reported",
+            "title": "Assessment Source",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "assessment_source"
+        ],
+        "title": "BodyAssessmentMutationResponse",
+        "type": "object"
+      },
+      "BreedDetailResponse": {
+        "properties": {
+          "breed": {
+            "$ref": "#/components/schemas/BreedSummary"
+          },
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeClaimItem"
+            },
+            "title": "Claims",
+            "type": "array"
+          },
+          "guidance": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeGuidanceItem"
+            },
+            "title": "Guidance",
+            "type": "array"
+          },
+          "release": {
+            "$ref": "#/components/schemas/ReleaseSummary"
+          },
+          "varieties": {
+            "items": {
+              "$ref": "#/components/schemas/BreedVarietyItem"
+            },
+            "title": "Varieties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "release",
+          "breed",
+          "varieties",
+          "claims",
+          "guidance"
+        ],
+        "title": "BreedDetailResponse",
+        "type": "object"
+      },
+      "BreedListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BreedSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "release": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReleaseSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "release",
+          "items"
+        ],
+        "title": "BreedListResponse",
+        "type": "object"
+      },
+      "BreedSearchItem": {
+        "properties": {
+          "aliases_fa": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases Fa",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "matched_field": {
+            "title": "Matched Field",
+            "type": "string"
+          },
+          "name_en": {
+            "title": "Name En",
+            "type": "string"
+          },
+          "name_fa": {
+            "title": "Name Fa",
+            "type": "string"
+          },
+          "species": {
+            "enum": [
+              "dog",
+              "cat"
+            ],
+            "title": "Species",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "species",
+          "name_fa",
+          "name_en",
+          "aliases_fa",
+          "matched_field"
+        ],
+        "title": "BreedSearchItem",
+        "type": "object"
+      },
+      "BreedSearchReleaseSummary": {
+        "properties": {
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_version"
+        ],
+        "title": "BreedSearchReleaseSummary",
+        "type": "object"
+      },
+      "BreedSearchResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BreedSearchItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "release": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BreedSearchReleaseSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "release",
+          "items"
+        ],
+        "title": "BreedSearchResponse",
+        "type": "object"
+      },
       "BreedSelectionBody": {
         "properties": {
           "breed_reference_id": {
@@ -522,6 +763,270 @@
           "selection_mode"
         ],
         "title": "BreedSelectionBody",
+        "type": "object"
+      },
+      "BreedSelectionHistoryItem": {
+        "properties": {
+          "breed_reference_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breed Reference Id"
+          },
+          "breed_variety_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breed Variety Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "identification_source": {
+            "title": "Identification Source",
+            "type": "string"
+          },
+          "knowledge_release_id": {
+            "format": "uuid",
+            "title": "Knowledge Release Id",
+            "type": "string"
+          },
+          "selected_at": {
+            "format": "date-time",
+            "title": "Selected At",
+            "type": "string"
+          },
+          "selection_mode": {
+            "title": "Selection Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "selection_mode",
+          "identification_source",
+          "knowledge_release_id",
+          "selected_at"
+        ],
+        "title": "BreedSelectionHistoryItem",
+        "type": "object"
+      },
+      "BreedSelectionResponse": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/PetProfileResponse"
+          },
+          "release_version": {
+            "title": "Release Version",
+            "type": "string"
+          },
+          "selection_id": {
+            "format": "uuid",
+            "title": "Selection Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "selection_id",
+          "release_version",
+          "profile"
+        ],
+        "title": "BreedSelectionResponse",
+        "type": "object"
+      },
+      "BreedSummary": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name_en": {
+            "title": "Name En",
+            "type": "string"
+          },
+          "name_fa": {
+            "title": "Name Fa",
+            "type": "string"
+          },
+          "species": {
+            "enum": [
+              "dog",
+              "cat"
+            ],
+            "title": "Species",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "species",
+          "name_fa",
+          "name_en"
+        ],
+        "title": "BreedSummary",
+        "type": "object"
+      },
+      "BreedVarietyItem": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name_en": {
+            "title": "Name En",
+            "type": "string"
+          },
+          "name_fa": {
+            "title": "Name Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name_fa",
+          "name_en"
+        ],
+        "title": "BreedVarietyItem",
+        "type": "object"
+      },
+      "CareGuidanceItemResponse": {
+        "properties": {
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "emergency_classification": {
+            "title": "Emergency Classification",
+            "type": "string"
+          },
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interpretation": {
+            "const": "general_care_guidance_not_individual_medical_advice",
+            "default": "general_care_guidance_not_individual_medical_advice",
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "population_level_explanation_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Population Level Explanation Fa"
+          },
+          "professional_discussion_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Professional Discussion Fa"
+          },
+          "release": {
+            "$ref": "#/components/schemas/CareGuidanceReleaseSummary"
+          },
+          "reviewer_disclosure": {
+            "title": "Reviewer Disclosure",
+            "type": "string"
+          },
+          "supporting_claim_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Claim Ids",
+            "type": "array"
+          },
+          "text_fa": {
+            "title": "Text Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "external_id",
+          "domain",
+          "text_fa",
+          "emergency_classification",
+          "supporting_claim_ids",
+          "release",
+          "reviewer_disclosure"
+        ],
+        "title": "CareGuidanceItemResponse",
+        "type": "object"
+      },
+      "CareGuidanceReleaseSummary": {
+        "properties": {
+          "checksum_sha256": {
+            "title": "Checksum Sha256",
+            "type": "string"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_version",
+          "checksum_sha256"
+        ],
+        "title": "CareGuidanceReleaseSummary",
+        "type": "object"
+      },
+      "CareGuidanceResponse": {
+        "properties": {
+          "disclaimer_fa": {
+            "title": "Disclaimer Fa",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CareGuidanceItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "breed_specific_guidance_unavailable",
+              "no_eligible_guidance",
+              "available"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "items",
+          "disclaimer_fa"
+        ],
+        "title": "CareGuidanceResponse",
         "type": "object"
       },
       "CheckoutBody": {
@@ -2453,6 +2958,18 @@
             "title": "Definition Version",
             "type": "integer"
           },
+          "diary_entry_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diary Entry Id"
+          },
           "ended_at": {
             "anyOf": [
               {
@@ -2464,6 +2981,18 @@
               }
             ],
             "title": "Ended At"
+          },
+          "garden_reward_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Garden Reward Id"
           },
           "id": {
             "format": "uuid",
@@ -2838,6 +3367,59 @@
         "title": "KnowledgeBatchApprovalBody",
         "type": "object"
       },
+      "KnowledgeClaimItem": {
+        "properties": {
+          "claim_type": {
+            "title": "Claim Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "review_status": {
+            "title": "Review Status",
+            "type": "string"
+          },
+          "reviewer_disclosure": {
+            "title": "Reviewer Disclosure",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeSourceItem"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "text_fa": {
+            "title": "Text Fa",
+            "type": "string"
+          },
+          "variety_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variety Id"
+          }
+        },
+        "required": [
+          "id",
+          "claim_type",
+          "text_fa",
+          "variety_id",
+          "review_status",
+          "reviewer_disclosure",
+          "sources"
+        ],
+        "title": "KnowledgeClaimItem",
+        "type": "object"
+      },
       "KnowledgeClaimReviewBody": {
         "properties": {
           "credential_verified_privately": {
@@ -2928,6 +3510,54 @@
           "reason"
         ],
         "title": "KnowledgeGuidanceImportBody",
+        "type": "object"
+      },
+      "KnowledgeGuidanceItem": {
+        "properties": {
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "reviewer_disclosure": {
+            "title": "Reviewer Disclosure",
+            "type": "string"
+          },
+          "supporting_claim_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Claim Ids",
+            "type": "array"
+          },
+          "text_fa": {
+            "title": "Text Fa",
+            "type": "string"
+          },
+          "variety_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variety Id"
+          }
+        },
+        "required": [
+          "id",
+          "domain",
+          "text_fa",
+          "variety_id",
+          "supporting_claim_ids",
+          "reviewer_disclosure"
+        ],
+        "title": "KnowledgeGuidanceItem",
         "type": "object"
       },
       "KnowledgeImportBody": {
@@ -3038,6 +3668,95 @@
           "reason"
         ],
         "title": "KnowledgePublishBody",
+        "type": "object"
+      },
+      "KnowledgeSourceItem": {
+        "properties": {
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "pmid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pmid"
+          },
+          "publication_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publication Date"
+          },
+          "retrieval_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrieval Date"
+          },
+          "retrieved_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrieved At"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title"
+        ],
+        "title": "KnowledgeSourceItem",
         "type": "object"
       },
       "KnowledgeWithdrawBody": {
@@ -3378,6 +4097,120 @@
           "source"
         ],
         "title": "MeasurementBody",
+        "type": "object"
+      },
+      "MeasurementItemResponse": {
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "correction_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correction Reason"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "measurement_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurement Method"
+          },
+          "measurement_type": {
+            "title": "Measurement Type",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "supersedes_measurement_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Measurement Id"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "measurement_type",
+          "value",
+          "unit",
+          "measured_at",
+          "source",
+          "confidence",
+          "status"
+        ],
+        "title": "MeasurementItemResponse",
+        "type": "object"
+      },
+      "MeasurementMutationResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "MeasurementMutationResponse",
         "type": "object"
       },
       "NotificationListItem": {
@@ -4909,6 +5742,99 @@
         "title": "PaymentRequestBody",
         "type": "object"
       },
+      "PetAssetItemResponse": {
+        "properties": {
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "category": {
+            "enum": [
+              "body_top",
+              "body_side",
+              "medical_document",
+              "lab_result",
+              "other_medical"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "checksum_sha256": {
+            "title": "Checksum Sha256",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          },
+          "purpose": {
+            "enum": [
+              "body_photographs",
+              "medical_records"
+            ],
+            "title": "Purpose",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "purpose",
+          "filename",
+          "media_type",
+          "size_bytes",
+          "checksum_sha256",
+          "created_at"
+        ],
+        "title": "PetAssetItemResponse",
+        "type": "object"
+      },
+      "PetAssetMutationResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "active",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "PetAssetMutationResponse",
+        "type": "object"
+      },
       "PetBody": {
         "properties": {
           "birth_date": {
@@ -4940,6 +5866,154 @@
           "species"
         ],
         "title": "PetBody",
+        "type": "object"
+      },
+      "PetConsentResponse": {
+        "properties": {
+          "granted_at": {
+            "format": "date-time",
+            "title": "Granted At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "purpose": {
+            "enum": [
+              "body_photographs",
+              "medical_records"
+            ],
+            "title": "Purpose",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "granted",
+              "withdrawn"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn At"
+          }
+        },
+        "required": [
+          "id",
+          "purpose",
+          "policy_version",
+          "status",
+          "granted_at"
+        ],
+        "title": "PetConsentResponse",
+        "type": "object"
+      },
+      "PetKnowledgeAvailable": {
+        "properties": {
+          "breed": {
+            "$ref": "#/components/schemas/BreedSummary"
+          },
+          "breed_identification_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breed Identification Source"
+          },
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeClaimItem"
+            },
+            "title": "Claims",
+            "type": "array"
+          },
+          "disclaimer_fa": {
+            "title": "Disclaimer Fa",
+            "type": "string"
+          },
+          "guidance": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeGuidanceItem"
+            },
+            "title": "Guidance",
+            "type": "array"
+          },
+          "pet_id": {
+            "format": "uuid",
+            "title": "Pet Id",
+            "type": "string"
+          },
+          "release": {
+            "$ref": "#/components/schemas/ReleaseSummary"
+          },
+          "status": {
+            "const": "available",
+            "default": "available",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pet_id",
+          "breed_identification_source",
+          "release",
+          "breed",
+          "claims",
+          "guidance",
+          "disclaimer_fa"
+        ],
+        "title": "PetKnowledgeAvailable",
+        "type": "object"
+      },
+      "PetKnowledgeUnavailable": {
+        "properties": {
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeClaimItem"
+            },
+            "title": "Claims",
+            "type": "array"
+          },
+          "disclaimer_fa": {
+            "title": "Disclaimer Fa",
+            "type": "string"
+          },
+          "pet_id": {
+            "format": "uuid",
+            "title": "Pet Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "breed_not_recorded",
+            "default": "breed_not_recorded",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pet_id",
+          "disclaimer_fa"
+        ],
+        "title": "PetKnowledgeUnavailable",
         "type": "object"
       },
       "PetProfilePatch": {
@@ -5080,6 +6154,163 @@
         "title": "PetProfilePatch",
         "type": "object"
       },
+      "PetProfileResponse": {
+        "properties": {
+          "birth_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "birth_date_precision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date Precision"
+          },
+          "breed_identification_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breed Identification Source"
+          },
+          "breed_reference_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breed Reference Id"
+          },
+          "breed_selection_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breed Selection Mode"
+          },
+          "breed_variety_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breed Variety Id"
+          },
+          "expected_adult_size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Adult Size"
+          },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mixed_breed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mixed Breed"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "neuter_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neuter Status"
+          },
+          "reproductive_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reproductive State"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sex"
+          },
+          "species": {
+            "title": "Species",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "household_id",
+          "name",
+          "species",
+          "status"
+        ],
+        "title": "PetProfileResponse",
+        "type": "object"
+      },
       "PetSummary": {
         "properties": {
           "id": {
@@ -5178,6 +6409,10 @@
             "title": "Late Credit Expiry Months",
             "type": "integer"
           },
+          "pet_health_consent_policy_version": {
+            "title": "Pet Health Consent Policy Version",
+            "type": "string"
+          },
           "push_notifications_enabled": {
             "title": "Push Notifications Enabled",
             "type": "boolean"
@@ -5258,6 +6493,7 @@
           "semantic_level_estimation_enabled",
           "reorder_snooze_early_break_worsening_days",
           "customer_request_acknowledgement_fa",
+          "pet_health_consent_policy_version",
           "storage_backend",
           "sourcing_start_rule"
         ],
@@ -5391,6 +6627,52 @@
         "title": "ProductMediaResponse",
         "type": "object"
       },
+      "ProfileCompletenessResponse": {
+        "properties": {
+          "completed_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Completed Fields",
+            "type": "array"
+          },
+          "completion_percent": {
+            "title": "Completion Percent",
+            "type": "integer"
+          },
+          "guardrail": {
+            "const": "optional_progressive_profile",
+            "default": "optional_progressive_profile",
+            "title": "Guardrail",
+            "type": "string"
+          },
+          "missing_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Fields",
+            "type": "array"
+          },
+          "next_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Prompt"
+          }
+        },
+        "required": [
+          "completed_fields",
+          "missing_fields",
+          "completion_percent"
+        ],
+        "title": "ProfileCompletenessResponse",
+        "type": "object"
+      },
       "ReconciliationBody": {
         "properties": {
           "reason": {
@@ -5423,6 +6705,170 @@
           "order_id"
         ],
         "title": "ReconciliationResponse",
+        "type": "object"
+      },
+      "ReferenceComparisonItem": {
+        "properties": {
+          "age_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Days"
+          },
+          "benchmark_id": {
+            "format": "uuid",
+            "title": "Benchmark Id",
+            "type": "string"
+          },
+          "claim_id": {
+            "title": "Claim Id",
+            "type": "string"
+          },
+          "claim_text_fa": {
+            "title": "Claim Text Fa",
+            "type": "string"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "enum": [
+                  "below_reference",
+                  "above_reference",
+                  "within_reference"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification"
+          },
+          "interpretation": {
+            "anyOf": [
+              {
+                "const": "non_diagnostic_population_reference",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretation"
+          },
+          "measurement_definition_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurement Definition Fa"
+          },
+          "normalized_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Value"
+          },
+          "population_geography": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Population Geography"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "reference_purpose": {
+            "title": "Reference Purpose",
+            "type": "string"
+          },
+          "reference_range": {
+            "$ref": "#/components/schemas/ReferenceRange"
+          },
+          "release_version": {
+            "title": "Release Version",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "not_applicable",
+              "reference_only",
+              "compared"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "benchmark_id",
+          "claim_id",
+          "claim_text_fa",
+          "release_version",
+          "reference_purpose",
+          "reference_range",
+          "state",
+          "reasons"
+        ],
+        "title": "ReferenceComparisonItem",
+        "type": "object"
+      },
+      "ReferenceComparisonResponse": {
+        "properties": {
+          "disclaimer_fa": {
+            "title": "Disclaimer Fa",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceComparisonItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "measurement_id": {
+            "format": "uuid",
+            "title": "Measurement Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "no_applicable_reference"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "measurement_id",
+          "state",
+          "items",
+          "disclaimer_fa"
+        ],
+        "title": "ReferenceComparisonResponse",
         "type": "object"
       },
       "ReferenceEvidenceBody": {
@@ -5465,6 +6911,29 @@
         "title": "ReferenceEvidenceBody",
         "type": "object"
       },
+      "ReferenceRange": {
+        "properties": {
+          "maximum": {
+            "title": "Maximum",
+            "type": "number"
+          },
+          "minimum": {
+            "title": "Minimum",
+            "type": "number"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "minimum",
+          "maximum",
+          "unit"
+        ],
+        "title": "ReferenceRange",
+        "type": "object"
+      },
       "RefreshBody": {
         "properties": {
           "refresh_token": {
@@ -5478,6 +6947,30 @@
           "refresh_token"
         ],
         "title": "RefreshBody",
+        "type": "object"
+      },
+      "ReleaseSummary": {
+        "properties": {
+          "checksum_sha256": {
+            "title": "Checksum Sha256",
+            "type": "string"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "string"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_version",
+          "checksum_sha256",
+          "published_at"
+        ],
+        "title": "ReleaseSummary",
         "type": "object"
       },
       "RemainingGramsInput": {
@@ -5543,6 +7036,25 @@
           "due_at"
         ],
         "title": "ReminderBody",
+        "type": "object"
+      },
+      "ReminderMutationResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "ReminderMutationResponse",
         "type": "object"
       },
       "ReorderAssessmentResponse": {
@@ -6662,6 +8174,91 @@
         ],
         "title": "WebhookReplayBody",
         "type": "object"
+      },
+      "WeightTrendAvailable": {
+        "properties": {
+          "changes": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/WeightTrendChangeWindow"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Changes",
+            "type": "object"
+          },
+          "current_weight_kg": {
+            "title": "Current Weight Kg",
+            "type": "number"
+          },
+          "interpretation": {
+            "const": "personal_trend_only",
+            "default": "personal_trend_only",
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "state": {
+            "const": "available",
+            "default": "available",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_weight_kg",
+          "measured_at",
+          "changes"
+        ],
+        "title": "WeightTrendAvailable",
+        "type": "object"
+      },
+      "WeightTrendChangeWindow": {
+        "properties": {
+          "baseline_weight_kg": {
+            "title": "Baseline Weight Kg",
+            "type": "number"
+          },
+          "change_percent": {
+            "title": "Change Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "baseline_weight_kg",
+          "change_percent"
+        ],
+        "title": "WeightTrendChangeWindow",
+        "type": "object"
+      },
+      "WeightTrendUnavailable": {
+        "properties": {
+          "changes": {
+            "additionalProperties": true,
+            "title": "Changes",
+            "type": "object"
+          },
+          "current_weight_kg": {
+            "title": "Current Weight Kg",
+            "type": "null"
+          },
+          "state": {
+            "const": "no_measurements",
+            "default": "no_measurements",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "title": "WeightTrendUnavailable",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -7249,9 +8846,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Public Breeds Api V1 Knowledge Breeds Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BreedListResponse"
                 }
               }
             },
@@ -7293,9 +8888,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Public Breed Detail Api V1 Knowledge Breeds  Breed Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BreedDetailResponse"
                 }
               }
             },
@@ -7338,9 +8931,22 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Pet Knowledge Api V1 Knowledge Pets  Pet Id  Get",
-                  "type": "object"
+                  "discriminator": {
+                    "mapping": {
+                      "available": "#/components/schemas/PetKnowledgeAvailable",
+                      "breed_not_recorded": "#/components/schemas/PetKnowledgeUnavailable"
+                    },
+                    "propertyName": "status"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/PetKnowledgeUnavailable"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PetKnowledgeAvailable"
+                    }
+                  ],
+                  "title": "Response Pet Knowledge Api V1 Knowledge Pets  Pet Id  Get"
                 }
               }
             },
@@ -7418,9 +9024,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Search Breeds Api V1 Knowledge Search Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BreedSearchResponse"
                 }
               }
             },
@@ -12463,8 +14067,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/PetAssetItemResponse"
                   },
                   "title": "Response List Pet Assets Api V1 Pet Life Pets  Pet Id  Assets Get",
                   "type": "array"
@@ -12561,9 +14164,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Upload Pet Asset Api V1 Pet Life Pets  Pet Id  Assets Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/PetAssetMutationResponse"
                 }
               }
             },
@@ -12712,8 +14313,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/BodyAssessmentItemResponse"
                   },
                   "title": "Response List Body Assessments Api V1 Pet Life Pets  Pet Id  Body Assessments Get",
                   "type": "array"
@@ -12772,9 +14372,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Body Assessment Api V1 Pet Life Pets  Pet Id  Body Assessments Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BodyAssessmentMutationResponse"
                 }
               }
             },
@@ -12832,9 +14430,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Select Pet Breed Api V1 Pet Life Pets  Pet Id  Breed Selection Put",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BreedSelectionResponse"
                 }
               }
             },
@@ -12883,8 +14479,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/BreedSelectionHistoryItem"
                   },
                   "title": "Response Pet Breed Selection History Api V1 Pet Life Pets  Pet Id  Breed Selection History Get",
                   "type": "array"
@@ -12964,9 +14559,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Pet Care Guidance Api V1 Pet Life Pets  Pet Id  Care Guidance Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CareGuidanceResponse"
                 }
               }
             },
@@ -13056,6 +14649,56 @@
       }
     },
     "/api/v1/pet-life/pets/{pet_id}/consents": {
+      "get": {
+        "operationId": "list_pet_consents_api_v1_pet_life_pets__pet_id__consents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pet_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pet Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PetConsentResponse"
+                  },
+                  "title": "Response List Pet Consents Api V1 Pet Life Pets  Pet Id  Consents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Pet Consents",
+        "tags": [
+          "pet-health-assets"
+        ]
+      },
       "post": {
         "operationId": "grant_pet_consent_api_v1_pet_life_pets__pet_id__consents_post",
         "parameters": [
@@ -13085,9 +14728,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Grant Pet Consent Api V1 Pet Life Pets  Pet Id  Consents Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/PetConsentResponse"
                 }
               }
             },
@@ -13464,9 +15105,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Measurement Reminder Api V1 Pet Life Pets  Pet Id  Measurement Reminders Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ReminderMutationResponse"
                 }
               }
             },
@@ -13613,8 +15252,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/MeasurementItemResponse"
                   },
                   "title": "Response List Measurements Api V1 Pet Life Pets  Pet Id  Measurements Get",
                   "type": "array"
@@ -13673,9 +15311,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Record Measurement Api V1 Pet Life Pets  Pet Id  Measurements Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MeasurementMutationResponse"
                 }
               }
             },
@@ -13743,9 +15379,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Correct Measurement Api V1 Pet Life Pets  Pet Id  Measurements  Measurement Id  Corrections Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MeasurementMutationResponse"
                 }
               }
             },
@@ -13803,9 +15437,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Measurement Reference Comparison Api V1 Pet Life Pets  Pet Id  Measurements  Measurement Id  Reference Comparison Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ReferenceComparisonResponse"
                 }
               }
             },
@@ -13853,9 +15485,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Pet Profile Api V1 Pet Life Pets  Pet Id  Profile Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/PetProfileResponse"
                 }
               }
             },
@@ -13911,9 +15541,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Update Pet Profile Api V1 Pet Life Pets  Pet Id  Profile Patch",
-                  "type": "object"
+                  "$ref": "#/components/schemas/PetProfileResponse"
                 }
               }
             },
@@ -13961,9 +15589,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Pet Profile Completeness Api V1 Pet Life Pets  Pet Id  Profile Completeness Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProfileCompletenessResponse"
                 }
               }
             },
@@ -14059,9 +15685,22 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Weight Trend Api V1 Pet Life Pets  Pet Id  Weight Trend Get",
-                  "type": "object"
+                  "discriminator": {
+                    "mapping": {
+                      "available": "#/components/schemas/WeightTrendAvailable",
+                      "no_measurements": "#/components/schemas/WeightTrendUnavailable"
+                    },
+                    "propertyName": "state"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WeightTrendUnavailable"
+                    },
+                    {
+                      "$ref": "#/components/schemas/WeightTrendAvailable"
+                    }
+                  ],
+                  "title": "Response Weight Trend Api V1 Pet Life Pets  Pet Id  Weight Trend Get"
                 }
               }
             },

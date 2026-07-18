@@ -13,7 +13,7 @@ import {
   Skeleton,
   StatusChip,
 } from "@/components/primitives";
-import type { JourneyCompletionResponse, JourneyStepResponse } from "@/lib/api-types";
+import type { JourneyStepResponse } from "@/lib/api-types";
 import {
   completeJourney,
   getJourney,
@@ -110,6 +110,8 @@ export function JourneyActive({ journeyId }: { journeyId: string }) {
       queryKey: ["pet-life", "journeys", journeyId],
     });
     await queryClient.invalidateQueries({ queryKey: ["pet-life", "today"] });
+    await queryClient.invalidateQueries({ queryKey: ["pet-life", "diary"] });
+    await queryClient.invalidateQueries({ queryKey: ["pet-life", "garden"] });
   }
 
   const checkInMutation = useMutation({
@@ -123,6 +125,10 @@ export function JourneyActive({ journeyId }: { journeyId: string }) {
           variables.answerKey,
         ),
       ),
+    // The backend may auto-complete the journey on the check-in that satisfies
+    // completion_requires; invalidating refreshes journey/diary/garden/today so
+    // the completion transition below reflects that immediately, without relying
+    // on a separate manual completion call.
     onSuccess: () => invalidateJourney(),
   });
 
@@ -150,15 +156,11 @@ export function JourneyActive({ journeyId }: { journeyId: string }) {
     },
   });
 
-  const [completion, setCompletion] = useState<JourneyCompletionResponse | null>(
-    null,
-  );
   const completeMutation = useMutation({
     mutationFn: () =>
       completeJourney(journeyId, { memory_title_fa: memoryTitle }),
-    onSuccess: async (result) => {
+    onSuccess: async () => {
       setSheet(null);
-      setCompletion(result);
       await invalidateJourney();
     },
   });
@@ -197,6 +199,16 @@ export function JourneyActive({ journeyId }: { journeyId: string }) {
   const answeredKeys = new Set(journey.check_ins.map((c) => c.check_in_key));
   const currentStep = journey.steps.find((step) => !answeredKeys.has(step.key));
   const allStepsAnswered = !currentStep;
+  // Durable source of truth: the backend may complete the journey as a side
+  // effect of the check-in that satisfies completion_requires, so this must
+  // be derived from journey state (which survives reloads and replays), not
+  // from a one-off mutation response that only exists right after the call.
+  const completion =
+    journey.status === "completed" &&
+    journey.diary_entry_id &&
+    journey.garden_reward_id
+      ? { diary_entry_id: journey.diary_entry_id, garden_reward_id: journey.garden_reward_id }
+      : null;
 
   return (
     <AppShell>
