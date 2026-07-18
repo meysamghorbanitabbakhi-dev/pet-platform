@@ -12,19 +12,6 @@ these wait on backend ownership.
 
 ---
 
-## G5-ACC-13 — Notification destination/deep-link field
-
-- **user_goal**: Tap a notification in the inbox and land on the specific order/inventory/journey screen it refers to, instead of a dead-end inbox row.
-- **missing_operation**: not a new endpoint — `GET /api/v1/pet-life/notifications` and `GET /api/v1/pet-life/notifications/feed` exist, but `NotificationListItem` has no field describing where the notification should route to.
-- **required_request_shape**: n/a (existing list/feed operations).
-- **required_response_shape**: add a typed destination field to `NotificationListItem`, e.g. `destination: { kind: "order" | "inventory_unit" | "journey" | "none", id: string | null }` alongside the existing `{ id, event_key, payload, created_at, read_at }`. `payload` is currently an opaque object; do not have the frontend parse `event_key` strings to guess a route — that would be client-invented routing logic.
-- **authorization_scope**: same as existing notification list endpoints (pet/household-owner scope).
-- **idempotency_requirement**: none (read-only).
-- **policy_requirement**: none beyond existing `push_notifications_enabled` gating of the channel that generates these notifications in the first place.
-- **recommended_backend_owner**: notifications module — the destination is knowable server-side at notification-creation time (it already knows which order/unit/journey triggered the event), so this is a thin, unambiguous addition to an existing typed response, not a new product decision.
-
----
-
 ## G5-ACC-16 — Customer-facing privacy-request status read-back
 
 - **user_goal**: Come back to the privacy/account screen later and see whether a previously submitted disable/anonymize request is still pending, in review, or has been actioned, instead of only ever seeing the one-time creation response.
@@ -86,3 +73,4 @@ A few states looked backend-blocked at first glance but are not, for the record:
 - **All of JOURNEY-05 through JOURNEY-20 and BRIDGE-25 through BRIDGE-35 (care journeys, reorder, Garden)**: every backend operation these states need already exists and is policy-enabled (`care_journey_delivery_enabled=true`, `semantic_level_estimation_enabled=true`). Zero frontend code consumes any of them today. Wave 1/2/3 build work, not backend blockers.
 - **G5-ACC-03 (address edit/delete)**: closed 2026-07-18. `PATCH`/`DELETE /api/v1/pet-life/households/{household_id}/addresses/{address_id}` now exist (non-enumerating 404s, idempotent soft-delete through `active`, immutable order snapshots preserved — orders copy address fields into `delivery_address_snapshot` at checkout time and never hold a live reference), and `/account` has real edit/delete Sheets wired to them. No longer blocked; removed from the list above.
 - **G5-ACC-06 (SMS / quiet-hours preference read-back)**: closed 2026-07-18. `GET /api/v1/pet-life/notifications/preferences/{event_key}/sms` now exists, returning the same typed shape the existing `PUT` persists (empty/default when no row exists yet — `sms_enabled=true`, matching the model column default; a real value once one exists, including correctly round-tripping an overnight quiet-hours window like 22:30→07:00). `/account/notifications/preferences` reads and writes it for the one real SMS-preference-gated event (`wallet.late_delivery_credit_granted`), hidden behind the `late_credit_customer_visible` policy gate like every other disabled-by-policy feature. No longer blocked; removed from the list above.
+- **G5-ACC-13 (notification destination/deep-link field)**: closed 2026-07-18. `NotificationListItem.destination: { kind, id }` now exists (migration `20260718_0026` adds `destination_kind`/`destination_id` to `notifications_notifications`), populated server-side at notification-creation time for both real notification-creating paths (`catalog.offer_available` → `offer`, `wallet.late_delivery_credit_granted` → `order`). The inbox deep-links through an explicit allowlisted route mapper (`src/lib/notification-destination.ts`) — never by parsing `event_key` or trusting a backend-supplied URL. The kind enum was extended with `offer` beyond what this entry originally proposed (`order | inventory_unit | journey | none`): `catalog.offer_available` is the only other real notification-creating path today and genuinely has no home among the original four. `inventory_unit`/`journey`/`customer_request` remain valid kinds for forward-compatibility but nothing populates them yet, since no notification-creation code exists for those events. Existing/legacy rows correctly read back as `{kind: "none", id: null}` via the column default. No longer blocked; removed from the list above.

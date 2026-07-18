@@ -367,12 +367,18 @@ class WalletSummaryResponse(BaseModel):
     available_balance_irr: int
 
 
+class NotificationDestinationResponse(BaseModel):
+    kind: Literal["order", "inventory_unit", "journey", "customer_request", "offer", "none"]
+    id: UUID | None = None
+
+
 class NotificationListItem(BaseModel):
     id: UUID
     event_key: str
     payload: dict[str, Any]
     created_at: datetime
     read_at: datetime | None = None
+    destination: NotificationDestinationResponse
 
 
 class AvailabilitySubscriptionResponse(BaseModel):

@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     Time,
     UniqueConstraint,
+    Uuid,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -61,6 +62,11 @@ class Notification(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint(
             "status IN ('queued','deferred','sent','failed','suppressed')", name="valid_status"
         ),
+        CheckConstraint(
+            "destination_kind IN "
+            "('order','inventory_unit','journey','customer_request','offer','none')",
+            name="valid_notification_destination_kind",
+        ),
     )
 
     recipient_identity_id: Mapped[UUID] = mapped_column(
@@ -74,6 +80,8 @@ class Notification(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     attempt_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    destination_kind: Mapped[str] = mapped_column(String(20), default="none", nullable=False)
+    destination_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
 
 
 class NotificationAttempt(UUIDPrimaryKeyMixin, TimestampMixin, Base):

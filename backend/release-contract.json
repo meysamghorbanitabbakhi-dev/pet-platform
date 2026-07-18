@@ -1,7 +1,7 @@
 {
   "alembic": {
     "heads": [
-      "20260717_0025"
+      "20260718_0026"
     ]
   },
   "openapi": {
@@ -20,6 +20,14 @@
       "ContextPetSummary.species": [
         "dog",
         "cat"
+      ],
+      "NotificationDestinationResponse.kind": [
+        "order",
+        "inventory_unit",
+        "journey",
+        "customer_request",
+        "offer",
+        "none"
       ],
       "OfferDetailResponse.availability": [
         "available",
@@ -239,6 +247,17 @@
         "onboarding",
         "capabilities"
       ],
+      "NotificationDestinationResponse": [
+        "kind",
+        "id"
+      ],
+      "NotificationListItem": [
+        "id",
+        "event_key",
+        "payload",
+        "created_at",
+        "destination"
+      ],
       "OfferDetailResponse": [
         "id",
         "media",
@@ -381,8 +400,8 @@
         "expires_in_seconds"
       ]
     },
-    "schema_count": 194,
-    "sha256": "fabdf7b9aae95852988f0580095735ccd45a41c3d1fd1deba8c623514c399907"
+    "schema_count": 195,
+    "sha256": "753aaad0817aebb5da8d60714d1f4a0197f42201c276878132df3c937a943d3a"
   },
   "policy_defaults": {
     "care_journey_delivery_enabled": true,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -14,14 +15,20 @@ import {
   StatusChip,
 } from "@/components/primitives";
 import type { NotificationListItem } from "@/lib/api-types";
-import { getPolicies, listNotifications, markNotificationRead } from "@/lib/api/client";
+import {
+  getPolicies,
+  listNotifications,
+  markNotificationRead,
+} from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import { formatIranDateTime } from "@/lib/format";
+import { notificationDestinationHref } from "@/lib/notification-destination";
 import { enabled } from "@/lib/policy";
 
 const eventLabels: Record<string, string> = {
   "catalog.offer_available": "محصولی که منتظرش بودید موجود شد",
-  "wallet.late_delivery_credit_granted": "اعتبار کیف پول بابت تاخیر تحویل ثبت شد",
+  "wallet.late_delivery_credit_granted":
+    "اعتبار کیف پول بابت تاخیر تحویل ثبت شد",
 };
 
 function eventLabel(key: string) {
@@ -33,15 +40,24 @@ function NotificationRow({ item }: { item: NotificationListItem }) {
   const readMutation = useMutation({
     mutationFn: () => markNotificationRead(item.id),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["pet-life", "notifications"] }),
+      queryClient.invalidateQueries({
+        queryKey: ["pet-life", "notifications"],
+      }),
   });
   const read = Boolean(item.read_at);
+  const href = notificationDestinationHref(item.destination);
 
   return (
     <li>
       <Card className="stack">
         <div className="split">
-          <span className="title">{eventLabel(item.event_key)}</span>
+          {href ? (
+            <Link className="title" href={href}>
+              {eventLabel(item.event_key)}
+            </Link>
+          ) : (
+            <span className="title">{eventLabel(item.event_key)}</span>
+          )}
           <StatusChip tone={read ? "muted" : "info"}>
             {read ? "خوانده‌شده" : "خوانده‌نشده"}
           </StatusChip>
@@ -93,17 +109,20 @@ export function NotificationInbox() {
           <h1 className="display">اعلان‌ها</h1>
         </div>
 
-        {policyQuery.data && !enabled(policyQuery.data, "push_notifications_enabled") ? (
+        {policyQuery.data &&
+        !enabled(policyQuery.data, "push_notifications_enabled") ? (
           <Banner tone="info">
             اعلان‌های فوری (push) در حال حاضر فعال نیست. اعلان‌ها فقط در همین
             صندوق ورودی نمایش داده می‌شوند.
           </Banner>
         ) : null}
 
-        <Banner tone="info">
-          تنظیم ساعات سکوت و پیامک به‌ازای هر رویداد فعلاً قابل مشاهده در این
-          صفحه نیست.
-        </Banner>
+        <Link
+          className="button button--ghost"
+          href="/account/notifications/preferences"
+        >
+          تنظیمات پیامک
+        </Link>
 
         {notificationsQuery.isLoading ? (
           <Card className="stack">

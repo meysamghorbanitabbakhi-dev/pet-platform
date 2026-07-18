@@ -458,7 +458,9 @@ export const inventoryListFixture: InventoryListItem[] = [
 
 export const reorderAssessmentFixture: ReorderAssessmentResponse = {
   latest_delivery_days: 15,
-  options: [{ available: true, offer_id: ids.offerDog, sku: "royal-canin-3kg" }],
+  options: [
+    { available: true, offer_id: ids.offerDog, sku: "royal-canin-3kg" },
+  ],
   outcome: "not_yet",
   provenance: [],
   recommendation: "موجودی فعلی برای روزهای پیش رو کافی است.",
@@ -569,25 +571,31 @@ export const gardenStateFixture: GardenStateResponse = {
     },
   ],
   pet_id: ids.petBishi,
-  slot_rules: { decay_enabled: false, source: "server_milestone_rules", xp_enabled: false },
+  slot_rules: {
+    decay_enabled: false,
+    source: "server_milestone_rules",
+    xp_enabled: false,
+  },
   unlocked_quadrants: [1],
   visible_slot_count: 12,
 };
 
-export const availabilitySubscriptionFixture: AvailabilitySubscriptionResponse = {
-  cancelled_at: null,
-  created_at: "2026-07-17T08:00:00Z",
-  id: "aaaa1111-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
-  notified_at: null,
-  offer_id: ids.offerUnavailable,
-  order_created: false,
-  status: "active",
-};
+export const availabilitySubscriptionFixture: AvailabilitySubscriptionResponse =
+  {
+    cancelled_at: null,
+    created_at: "2026-07-17T08:00:00Z",
+    id: "aaaa1111-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    notified_at: null,
+    offer_id: ids.offerUnavailable,
+    order_created: false,
+    status: "active",
+  };
 
-export const availabilitySubscriptionPageFixture: AvailabilitySubscriptionPage = {
-  items: [],
-  page: { has_more: false, limit: 25, offset: 0, total: 0 },
-};
+export const availabilitySubscriptionPageFixture: AvailabilitySubscriptionPage =
+  {
+    items: [],
+    page: { has_more: false, limit: 25, offset: 0, total: 0 },
+  };
 
 export const customerRequestFixture: CustomerRequestResponse = {
   acknowledgement_fa:
@@ -625,6 +633,7 @@ export const notificationPageFixture: NotificationPage = {
   items: [
     {
       created_at: "2026-07-17T08:00:00Z",
+      destination: { id: ids.offerUnavailable, kind: "offer" },
       event_key: "catalog.offer_available",
       id: "cccc3333-cccc-4ccc-8ccc-ccccccccccc3",
       payload: { offer_id: ids.offerUnavailable },
@@ -731,7 +740,12 @@ export const breedSearchFixture: BreedSearchResponse = {
 };
 
 export const breedDetailFixture: BreedDetailResponse = {
-  breed: { id: "persian", name_en: "Persian", name_fa: "پرشین", species: "cat" },
+  breed: {
+    id: "persian",
+    name_en: "Persian",
+    name_fa: "پرشین",
+    species: "cat",
+  },
   claims: [
     {
       claim_type: "grooming",
@@ -762,7 +776,12 @@ export const breedDetailFixture: BreedDetailResponse = {
 };
 
 export const petKnowledgeFixture: PetKnowledgeResponse = {
-  breed: { id: "persian", name_en: "Persian", name_fa: "پرشین", species: "cat" },
+  breed: {
+    id: "persian",
+    name_en: "Persian",
+    name_fa: "پرشین",
+    species: "cat",
+  },
   breed_identification_source: "owner_reported",
   claims: breedDetailFixture.claims,
   disclaimer_fa: "این اطلاعات عمومی است و جایگزین نظر دامپزشک نیست.",

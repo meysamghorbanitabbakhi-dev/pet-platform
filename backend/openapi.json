@@ -4309,12 +4309,48 @@
         "title": "MeasurementMutationResponse",
         "type": "object"
       },
+      "NotificationDestinationResponse": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "enum": [
+              "order",
+              "inventory_unit",
+              "journey",
+              "customer_request",
+              "offer",
+              "none"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "NotificationDestinationResponse",
+        "type": "object"
+      },
       "NotificationListItem": {
         "properties": {
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/NotificationDestinationResponse"
           },
           "event_key": {
             "title": "Event Key",
@@ -4347,7 +4383,8 @@
           "id",
           "event_key",
           "payload",
-          "created_at"
+          "created_at",
+          "destination"
         ],
         "title": "NotificationListItem",
         "type": "object"

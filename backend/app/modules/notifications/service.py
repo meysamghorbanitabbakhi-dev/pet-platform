@@ -75,6 +75,8 @@ async def enqueue_wallet_credit_notification(
                     channel=channel,
                     payload=payload,
                     status=status,
+                    destination_kind="order",
+                    destination_id=UUID(source_id),
                 )
             )
         await session.commit()

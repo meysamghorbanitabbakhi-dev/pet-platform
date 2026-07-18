@@ -63,6 +63,8 @@ export type CustomerRequestBody = Schema<"CustomerRequestBody">;
 export type CustomerRequestResponse = Schema<"CustomerRequestResponse">;
 export type OffsetPageMetadata = Schema<"OffsetPageMetadata">;
 export type WalletSummaryResponse = Schema<"WalletSummaryResponse">;
+export type NotificationDestinationResponse =
+  Schema<"NotificationDestinationResponse">;
 export type NotificationListItem = Schema<"NotificationListItem">;
 export type NotificationPage = Schema<"OffsetPage_NotificationListItem_">;
 export type SmsPreferenceResponse = Schema<"SmsPreferenceResponse">;

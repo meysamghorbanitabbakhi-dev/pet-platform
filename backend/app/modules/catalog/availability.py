@@ -54,6 +54,8 @@ async def notify_available_subscribers(session: AsyncSession, offer: Offer) -> i
                         channel=channel,
                         payload={"offer_id": str(offer.id), "order_created": False},
                         status="sent" if channel == "in_app" else "queued",
+                        destination_kind="offer",
+                        destination_id=offer.id,
                     )
                 )
         subscription.status = "notified"

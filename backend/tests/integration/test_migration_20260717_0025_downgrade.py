@@ -101,20 +101,27 @@ async def _current_alembic_version() -> str:
 
 
 def test_downgrade_fails_closed_with_unmatched_rows_then_succeeds_after_cleanup() -> None:
+    # Target the revision explicitly rather than a relative "-1": later
+    # migrations may stack on top of 20260717_0025, and this test exercises
+    # that specific migration's downgrade behavior regardless of how many
+    # steps separate it from whatever the current head happens to be.
     config = _alembic_config()
+    original_head = _run(_current_alembic_version())
     try:
         _run(_seed_unmatched_row())
         assert _run(_count_unmatched_rows()) >= 1
 
         with pytest.raises(RuntimeError, match=_REVISION):
-            command.downgrade(config, "-1")
+            command.downgrade(config, _DOWN_REVISION)
 
-        # The controlled failure must happen before any DDL runs, so the
-        # migration must not be left half-applied.
-        assert _run(_current_alembic_version()) == _REVISION
+        # The controlled failure must abort the whole downgrade batch, not
+        # leave it partially applied -- alembic runs the full requested
+        # range in one transaction by default, so a failure anywhere in it
+        # must roll back to the version we started from.
+        assert _run(_current_alembic_version()) == original_head
 
         _run(_delete_unmatched_rows())
-        command.downgrade(config, "-1")
+        command.downgrade(config, _DOWN_REVISION)
         assert _run(_current_alembic_version()) == _DOWN_REVISION
     finally:
         command.upgrade(config, "head")

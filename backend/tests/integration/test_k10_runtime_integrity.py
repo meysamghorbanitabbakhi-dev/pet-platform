@@ -22,7 +22,7 @@ from app.integrations.payment.port import (
 )
 from app.main import create_app
 from app.modules.catalog.availability import notify_available_subscribers
-from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.catalog.models import CatalogAvailabilitySubscription, Offer, Product, Supplier
 from app.modules.checkout.service import CheckoutItem, CheckoutService
 from app.modules.diary.models import DiaryEntry
 from app.modules.garden.models import GardenReward
@@ -30,6 +30,7 @@ from app.modules.households.models import Household, HouseholdAddress, Household
 from app.modules.identity.models import AuthIdentity
 from app.modules.journeys.models import JourneyCheckIn, JourneyDefinition, PetJourney
 from app.modules.notifications.models import Notification
+from app.modules.notifications.service import enqueue_wallet_credit_notification
 from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderDelayAcknowledgement
 from app.modules.payments.service import PaymentService
@@ -1172,4 +1173,65 @@ async def test_sms_preference_read_back_default_update_and_overnight_quiet_hours
             "/api/v1/pet-life/notifications/preferences/some-other-event/sms"
         )
         assert other_event_default.json()["sms_enabled"] is True
+    app.dependency_overrides.clear()
+
+
+async def test_notification_destinations_are_typed_and_server_populated(seed: Seed) -> None:
+    order_id = uuid.uuid4()
+    async with SessionFactory() as session:
+        # A notification whose creation path never sets a destination
+        # (simulating a pre-migration row, since destination_kind defaults to
+        # 'none' both at the Python and column level) must read back as
+        # {kind: "none", id: null}, not error or fabricate a destination.
+        session.add(
+            Notification(
+                recipient_identity_id=seed.identity.id,
+                event_key="some.legacy.event",
+                source_id="legacy-1",
+                channel="in_app",
+                payload={},
+                status="sent",
+            )
+        )
+
+        # catalog.offer_available must destination to the offer.
+        session.add(
+            CatalogAvailabilitySubscription(
+                identity_id=seed.identity.id,
+                household_id=seed.household.id,
+                offer_id=seed.offer.id,
+            )
+        )
+        await session.commit()
+        offer = await session.get(Offer, seed.offer.id)
+        assert offer is not None
+        await notify_available_subscribers(session, offer)
+        await session.commit()
+
+        # wallet.late_delivery_credit_granted must destination to the order.
+        await enqueue_wallet_credit_notification(
+            SessionFactory,
+            {"household_id": str(seed.household.id), "order_id": str(order_id)},
+            customer_visible=True,
+        )
+
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        inbox = await client.get("/api/v1/pet-life/notifications")
+        assert inbox.status_code == 200
+        by_event = {item["event_key"]: item for item in inbox.json()["items"]}
+
+        legacy = by_event["some.legacy.event"]
+        assert legacy["destination"] == {"kind": "none", "id": None}
+
+        offer_available = by_event["catalog.offer_available"]
+        assert offer_available["destination"] == {
+            "kind": "offer",
+            "id": str(seed.offer.id),
+        }
+
+        wallet_credit = by_event["wallet.late_delivery_credit_granted"]
+        assert wallet_credit["destination"] == {"kind": "order", "id": str(order_id)}
     app.dependency_overrides.clear()

@@ -3879,6 +3879,16 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** NotificationDestinationResponse */
+        NotificationDestinationResponse: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "order" | "inventory_unit" | "journey" | "customer_request" | "offer" | "none";
+        };
         /** NotificationListItem */
         NotificationListItem: {
             /**
@@ -3886,6 +3896,7 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            destination: components["schemas"]["NotificationDestinationResponse"];
             /** Event Key */
             event_key: string;
             /**

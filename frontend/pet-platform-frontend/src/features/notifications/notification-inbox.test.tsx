@@ -3,7 +3,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getPolicies, listNotifications, markNotificationRead } from "@/lib/api/client";
+import {
+  getPolicies,
+  listNotifications,
+  markNotificationRead,
+} from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import {
   notificationPageFixture,
@@ -62,6 +66,37 @@ describe("NotificationInbox", () => {
     );
   });
 
+  it("deep-links a notification with a typed destination to its real screen", async () => {
+    vi.mocked(listNotifications).mockResolvedValue(notificationPageFixture);
+    renderWithQuery(<NotificationInbox />);
+
+    const link = await screen.findByRole("link", {
+      name: "محصولی که منتظرش بودید موجود شد",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      `/shop/offer/${notificationPageFixture.items[0].destination.id}`,
+    );
+  });
+
+  it("renders a notification with no destination as plain text, not a dead link", async () => {
+    vi.mocked(listNotifications).mockResolvedValue({
+      items: [
+        {
+          ...notificationPageFixture.items[0],
+          destination: { id: null, kind: "none" },
+        },
+      ],
+      page: { has_more: false, limit: 25, offset: 0, total: 1 },
+    });
+    renderWithQuery(<NotificationInbox />);
+
+    await screen.findByText("محصولی که منتظرش بودید موجود شد");
+    expect(
+      screen.queryByRole("link", { name: "محصولی که منتظرش بودید موجود شد" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a push-disabled banner when the policy has push notifications off", async () => {
     vi.mocked(listNotifications).mockResolvedValue({
       items: [],
@@ -87,7 +122,9 @@ describe("NotificationInbox", () => {
   });
 
   it("redirects to the session-expired screen on a 401", async () => {
-    vi.mocked(listNotifications).mockRejectedValue(new ApiError("expired", 401));
+    vi.mocked(listNotifications).mockRejectedValue(
+      new ApiError("expired", 401),
+    );
     renderWithQuery(<NotificationInbox />);
 
     await waitFor(() =>

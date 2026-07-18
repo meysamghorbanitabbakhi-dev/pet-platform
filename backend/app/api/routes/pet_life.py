@@ -32,6 +32,7 @@ from app.api.contracts import (
     JourneyExceptionBehaviorResponse,
     JourneyOfferResponse,
     JourneyStepResponse,
+    NotificationDestinationResponse,
     NotificationListItem,
     OffsetPage,
     PetSummary,
@@ -1378,6 +1379,13 @@ async def set_sms_preference(
     await session.commit()
 
 
+def _notification_destination(item: Notification) -> NotificationDestinationResponse:
+    return NotificationDestinationResponse(
+        kind=item.destination_kind,
+        id=item.destination_id,
+    )
+
+
 @router.get("/notifications", response_model=OffsetPage[NotificationListItem])
 async def notification_inbox(
     identity: CurrentIdentity, session: SessionDependency, pagination: PaginationDependency
@@ -1405,6 +1413,7 @@ async def notification_inbox(
             payload=item.payload,
             created_at=item.created_at,
             read_at=item.read_at,
+            destination=_notification_destination(item),
         )
         for item in notifications
     ]
@@ -1462,6 +1471,7 @@ async def notification_feed(
             payload=item.payload,
             created_at=item.created_at,
             read_at=item.read_at,
+            destination=_notification_destination(item),
         )
         for item in visible
     ]
