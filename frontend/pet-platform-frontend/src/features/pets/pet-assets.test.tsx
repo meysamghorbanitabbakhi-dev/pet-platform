@@ -205,4 +205,45 @@ describe("PetAssets", () => {
       ),
     );
   });
+
+  it("shows a distinct error state with retry, not a silent blank card, when the body-assessment history fails to load", async () => {
+    vi.mocked(listBodyAssessments).mockRejectedValue(new Error("network"));
+    const user = userEvent.setup();
+
+    renderWithQuery(<PetAssets petId="pet-1" />);
+
+    expect(
+      await screen.findByText("تاریخچه وضعیت بدنی در دسترس نیست"),
+    ).toBeInTheDocument();
+
+    vi.mocked(listBodyAssessments).mockResolvedValue([bodyAssessmentFixture]);
+    await user.click(screen.getByRole("button", { name: "تلاش دوباره" }));
+
+    expect(await screen.findByText("ثبت‌شده توسط مالک")).toBeInTheDocument();
+  });
+
+  it("resets the file input after a successful upload so the same file can be selected again", async () => {
+    vi.mocked(listPetConsents).mockResolvedValue([petConsentFixture]);
+    vi.mocked(uploadPetAsset).mockResolvedValue({
+      id: "asset-2",
+      status: "active",
+    });
+    const user = userEvent.setup();
+    const file = new File(["fake-bytes"], "photo.jpg", { type: "image/jpeg" });
+
+    renderWithQuery(<PetAssets petId="pet-1" />);
+    const input = (await screen.findByLabelText(
+      "فایل (jpg، png یا pdf)",
+    )) as HTMLInputElement;
+
+    await user.upload(input, file);
+    expect(input.files?.[0]).toBe(file);
+    await user.click(screen.getByRole("button", { name: "آپلود" }));
+
+    await waitFor(() => expect(uploadPetAsset).toHaveBeenCalled());
+    const resetInput = (await screen.findByLabelText(
+      "فایل (jpg، png یا pdf)",
+    )) as HTMLInputElement;
+    expect(resetInput.files?.length ?? 0).toBe(0);
+  });
 });

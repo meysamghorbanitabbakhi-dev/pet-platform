@@ -77,6 +77,10 @@ function UploadForm({ petId }: { petId: string }) {
   const [category, setCategory] =
     useState<keyof typeof categoryLabels>("body_top");
   const [file, setFile] = useState<File | null>(null);
+  // Bumped on a successful upload to remount the native file input --
+  // otherwise its displayed filename stays stale even after `file` is reset
+  // to null, and re-selecting the same file would not fire onChange again.
+  const [fileInputResetKey, setFileInputResetKey] = useState(0);
   const purpose = categoryPurpose[category];
 
   const policyQuery = useQuery({ queryKey: ["policy"], queryFn: getPolicies });
@@ -140,6 +144,7 @@ function UploadForm({ petId }: { petId: string }) {
     },
     onSuccess: async () => {
       setFile(null);
+      setFileInputResetKey((key) => key + 1);
       await queryClient.invalidateQueries({
         queryKey: ["pet-life", "assets", petId],
       });
@@ -213,6 +218,7 @@ function UploadForm({ petId }: { petId: string }) {
             <label htmlFor="asset-file">فایل (jpg، png یا pdf)</label>
             <input
               id="asset-file"
+              key={fileInputResetKey}
               accept="image/jpeg,image/png,application/pdf"
               className="input"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
@@ -420,6 +426,20 @@ export function PetAssets({ petId }: { petId: string }) {
 
         <Card className="stack">
           <h2 className="title">تاریخچه وضعیت بدنی</h2>
+          {assessmentsQuery.isLoading ? <Skeleton /> : null}
+          {assessmentsQuery.isError ? (
+            <ErrorState
+              title="تاریخچه وضعیت بدنی در دسترس نیست"
+              action={
+                <Button
+                  variant="secondary"
+                  onClick={() => void assessmentsQuery.refetch()}
+                >
+                  تلاش دوباره
+                </Button>
+              }
+            />
+          ) : null}
           {assessmentsQuery.data?.length === 0 ? (
             <p className="caption">هنوز ارزیابی ثبت نشده است.</p>
           ) : null}
