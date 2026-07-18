@@ -14,6 +14,7 @@ import {
 } from "@/lib/format";
 import { AddToCartButton } from "./add-to-cart-button";
 import { AvailabilitySubscribe } from "./availability-subscribe";
+import { CompareToggleButton } from "./compare-toggle-button";
 
 export function OfferDetail({
   offer,
@@ -115,6 +116,7 @@ export function OfferDetail({
               مشاهده سبد
             </Link>
           </div>
+          <CompareToggleButton offerId={offer.id} />
         </Card>
       </div>
     </div>
