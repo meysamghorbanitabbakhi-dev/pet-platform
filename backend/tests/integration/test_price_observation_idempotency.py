@@ -1,17 +1,41 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
-from app.db.session import SessionFactory
+from app.core.config import get_settings
+from app.db.session import SessionFactory, close_database
+from app.integrations.price_intelligence import worker as worker_module
+from app.integrations.price_intelligence.petmall_am import CollectedPage, PetmallAmCollector
+from app.integrations.price_intelligence.petmall_am_parser import (
+    ParsedExternalProduct,
+    ParsedPackaging,
+    ParsedPrice,
+    ParsedProductError,
+)
 from app.integrations.price_intelligence.service import (
     ObservationIdentityConflict,
     PriceIntelligenceService,
 )
-from app.modules.price_intelligence.models import ExternalPriceObservation
+from app.integrations.price_intelligence.worker import run_petmall_am_collection
+from app.modules.price_intelligence.models import (
+    ExternalCollectionRun,
+    ExternalPriceObservation,
+)
 from sqlalchemy import func, select, update
+
+
+@pytest.fixture(autouse=True)
+async def dispose_engine_between_event_loops() -> AsyncIterator[None]:
+    """SessionFactory's engine binds to the event loop of the first connection
+    it opens; pytest-asyncio gives each test function a fresh loop, so the
+    engine must be disposed after every test or later tests reuse
+    now-invalid connections from a closed loop."""
+    yield
+    await close_database()
 
 
 async def create_product() -> tuple[UUID, UUID, UUID]:
@@ -128,3 +152,105 @@ async def test_legacy_key_replays_and_identity_conflict_does_not_poison_session(
         )
         await session.commit()
         assert valid.created is True
+
+
+@pytest.mark.asyncio
+async def test_worker_counts_only_new_observations_and_preserves_partial_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The collection worker must not double-count duplicate observations, and a
+    single product's parse failure must not discard the products collected
+    around it in the same run."""
+    token = uuid4().hex
+    source_code = f"test-worker-{token}"
+    monkeypatch.setattr(PetmallAmCollector, "SOURCE_CODE", source_code)
+
+    async with SessionFactory() as session:
+        service = PriceIntelligenceService(session)
+        source = await service.get_or_create_source(
+            source_code,
+            name="Test worker source",
+            base_url="https://example.test",
+            country_code="AM",
+            default_currency="AMD",
+        )
+        source.collection_enabled = True
+        source.robots_status = "allowed"
+        source.terms_status = "accepted"
+        await session.commit()
+        source_id = source.id
+
+    collected_at = datetime.now(UTC)
+    external_id = f"product-{token}"
+    good_product = ParsedExternalProduct(
+        external_product_id=external_id,
+        url=f"https://example.test/{external_id}",
+        title="Royal Canin Test Food",
+        description=None,
+        brand="Royal Canin",
+        sku=None,
+        image_url=None,
+        availability="available",
+        price=ParsedPrice(
+            currency="AMD", currency_exponent=0, amount_minor=1000, raw_text="1000 AMD"
+        ),
+        packaging=ParsedPackaging(
+            pack_count=None, unit_weight_g=None, total_weight_g=None, raw_text=None
+        ),
+        seller_name="Test seller",
+        collected_at=collected_at,
+        raw_data={},
+    )
+    urls = [
+        f"https://example.test/{external_id}/ok-1",
+        f"https://example.test/{external_id}/broken",
+        f"https://example.test/{external_id}/ok-dup",
+    ]
+
+    async def fake_discover(self: PetmallAmCollector, page: int = 1) -> list[str]:
+        return urls if page == 1 else []
+
+    async def fake_fetch(self: PetmallAmCollector, product_url: str) -> CollectedPage:
+        return CollectedPage(url=product_url, content="<html></html>", collected_at="")
+
+    def fake_parse(content: str, url: str) -> ParsedExternalProduct:
+        if "broken" in url:
+            raise ParsedProductError("simulated parse failure")
+        # Same natural identity (external_product_id + observed_at) both times,
+        # so the second successful parse is a genuine duplicate, not a new row.
+        return good_product
+
+    monkeypatch.setattr(PetmallAmCollector, "discover_product_urls", fake_discover)
+    monkeypatch.setattr(PetmallAmCollector, "fetch_product_detail", fake_fetch)
+    monkeypatch.setattr(worker_module, "parse_product_detail_page", fake_parse)
+
+    settings = get_settings()
+    original_enabled = settings.price_intelligence_collection_enabled
+    settings.price_intelligence_collection_enabled = True
+    try:
+        async with SessionFactory() as session:
+            result = await run_petmall_am_collection(session, settings)
+    finally:
+        settings.price_intelligence_collection_enabled = original_enabled
+
+    assert result["status"] == "failed"
+    assert result["products"] == 2
+    assert result["observations"] == 1
+
+    async with SessionFactory() as session:
+        run = await session.scalar(
+            select(ExternalCollectionRun).where(
+                ExternalCollectionRun.source_id == source_id
+            )
+        )
+        assert run is not None
+        assert run.products_seen == 2
+        assert run.prices_inserted == 1
+        assert run.errors_count == 1
+        assert run.status == "failed"
+        observation_count = await session.scalar(
+            select(func.count())
+            .select_from(ExternalPriceObservation)
+            .where(ExternalPriceObservation.collection_run_id == run.id)
+        )
+        assert observation_count == 1

@@ -234,7 +234,7 @@ class ExternalProductMatch(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint(
             "match_method IN "
-            "('ean','exact_formula_weight','normalized_attributes','manual')",
+            "('unmatched','ean','exact_formula_weight','normalized_attributes','manual')",
             name="valid_match_method",
         ),
         CheckConstraint(
