@@ -135,6 +135,18 @@
       [
         "POST",
         "/api/v1/pet-life/inventory/{unit_id}/open"
+      ],
+      [
+        "GET",
+        "/api/v1/pet-life/pets/{pet_id}/consents"
+      ],
+      [
+        "POST",
+        "/api/v1/pet-life/pets/{pet_id}/consents"
+      ],
+      [
+        "POST",
+        "/api/v1/pet-life/pets/{pet_id}/consents/{consent_id}/withdraw"
       ]
     ],
     "required_patterns": {
@@ -157,6 +169,14 @@
         "province",
         "city",
         "address_line"
+      ],
+      "BodyAssessmentItemResponse": [
+        "id",
+        "bcs_score",
+        "bcs_scale",
+        "muscle_condition",
+        "assessment_source",
+        "assessed_at"
       ],
       "CheckoutBody": [
         "household_id",
@@ -183,6 +203,22 @@
         "household_id",
         "assignments",
         "shares_known"
+      ],
+      "JourneyCheckInResponse": [
+        "id",
+        "journey_id",
+        "check_in_key",
+        "answer_key",
+        "completed",
+        "diary_entry_id",
+        "garden_reward_id"
+      ],
+      "JourneyDetailResponse": [
+        "id",
+        "pet_id",
+        "status",
+        "diary_entry_id",
+        "garden_reward_id"
       ],
       "MeContextResponse": [
         "identity",
@@ -277,9 +313,24 @@
       "PaymentRequestBody": [
         "callback_url"
       ],
+      "PetAssetItemResponse": [
+        "id",
+        "category",
+        "purpose",
+        "media_type",
+        "size_bytes",
+        "checksum_sha256"
+      ],
       "PetBody": [
         "name",
         "species"
+      ],
+      "PetConsentResponse": [
+        "id",
+        "purpose",
+        "policy_version",
+        "status",
+        "granted_at"
       ],
       "PetProfilePatch": [
         "birth_date",
@@ -295,7 +346,8 @@
         "reserve_now_enabled",
         "care_journey_delivery_enabled",
         "semantic_level_estimation_enabled",
-        "sourcing_start_rule"
+        "sourcing_start_rule",
+        "pet_health_consent_policy_version"
       ],
       "RefreshBody": [
         "refresh_token"

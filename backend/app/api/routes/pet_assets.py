@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import CurrentIdentity
@@ -146,8 +147,11 @@ async def grant_pet_consent(
     body: ConsentBody,
     identity: CurrentIdentity,
     session: SessionDependency,
+    settings: SettingsDependency,
 ) -> PetConsentResponse:
     await _require_pet(session, identity.id, pet_id)
+    if body.policy_version != settings.pet_health_consent_policy_version:
+        raise HTTPException(status_code=409, detail="consent_policy_version_stale")
     existing = await session.scalar(
         select(PetConsent).where(
             PetConsent.pet_id == pet_id,
@@ -171,7 +175,20 @@ async def grant_pet_consent(
         granted_at=utc_now(),
     )
     session.add(consent)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        existing = await session.scalar(
+            select(PetConsent).where(
+                PetConsent.pet_id == pet_id,
+                PetConsent.purpose == body.purpose,
+                PetConsent.status == "granted",
+            )
+        )
+        if existing is None:
+            raise
+        return _consent_response(existing)
     return _consent_response(consent)
 
 
@@ -231,6 +248,8 @@ async def upload_pet_asset(
         or consent.status != "granted"
     ):
         raise HTTPException(status_code=409, detail="active_matching_consent_required")
+    if consent.policy_version != settings.pet_health_consent_policy_version:
+        raise HTTPException(status_code=409, detail="consent_policy_version_stale")
     media_type = request.headers.get("content-type", "").split(";", 1)[0].lower()
     if media_type not in _ALLOWED_TYPES:
         raise HTTPException(status_code=415, detail="unsupported_pet_asset_media_type")

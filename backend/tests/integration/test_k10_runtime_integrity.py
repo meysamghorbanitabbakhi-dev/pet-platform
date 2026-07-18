@@ -745,6 +745,169 @@ async def test_pet_health_consent_lifecycle_is_explicit_and_governed(seed: Seed)
     app.dependency_overrides.clear()
 
 
+async def test_pet_consent_grant_rejects_non_current_policy_version(seed: Seed) -> None:
+    # A brand-new grant (no existing consent row yet) with an arbitrary
+    # client-supplied policy_version must be rejected server-side, not just
+    # trusted because the frontend happens to send the right value.
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        rejected = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents",
+            json={"purpose": "body_photographs", "policy_version": "not-the-current-version"},
+        )
+        assert rejected.status_code == 409
+        assert rejected.json()["error"]["code"] == "consent_policy_version_stale"
+
+        empty = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/consents")
+        assert empty.status_code == 200
+        assert empty.json() == []
+    app.dependency_overrides.clear()
+
+
+async def test_pet_consent_upload_rejects_stale_policy_version(seed: Seed) -> None:
+    # A consent granted under the current policy must stop authorizing
+    # uploads the moment the active policy version advances, even though the
+    # consent row itself was never withdrawn.
+    settings = get_settings()
+    original_version = settings.pet_health_consent_policy_version
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    try:
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            policies = await client.get("/api/v1/system/policies")
+            current_version = policies.json()["pet_health_consent_policy_version"]
+            granted = await client.post(
+                f"/api/v1/pet-life/pets/{seed.pet.id}/consents",
+                json={"purpose": "body_photographs", "policy_version": current_version},
+            )
+            assert granted.status_code == 201
+            consent_id = granted.json()["id"]
+
+            settings.pet_health_consent_policy_version = f"{original_version}-superseded"
+
+            blocked = await client.post(
+                f"/api/v1/pet-life/pets/{seed.pet.id}/assets",
+                content=b"\x89PNG\r\n\x1a\nfakepngdata",
+                headers={
+                    "content-type": "image/png",
+                    "X-Filename": "body.png",
+                    "X-Asset-Category": "body_top",
+                    "X-Consent-ID": consent_id,
+                },
+            )
+            assert blocked.status_code == 409
+            assert blocked.json()["error"]["code"] == "consent_policy_version_stale"
+    finally:
+        settings.pet_health_consent_policy_version = original_version
+    app.dependency_overrides.clear()
+
+
+async def test_pet_consent_concurrent_identical_grants_return_one_consent(seed: Seed) -> None:
+    # Two racing grant requests for the same pet/purpose/current-version must
+    # not surface the underlying partial-unique-index violation as an
+    # unhandled 500; both must resolve to the same consent row.
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        policies = await client.get("/api/v1/system/policies")
+        policy_version = policies.json()["pet_health_consent_policy_version"]
+
+        first, second = await asyncio.gather(
+            client.post(
+                f"/api/v1/pet-life/pets/{seed.pet.id}/consents",
+                json={"purpose": "medical_records", "policy_version": policy_version},
+            ),
+            client.post(
+                f"/api/v1/pet-life/pets/{seed.pet.id}/consents",
+                json={"purpose": "medical_records", "policy_version": policy_version},
+            ),
+        )
+        assert first.status_code == 201
+        assert second.status_code == 201
+        assert first.json()["id"] == second.json()["id"]
+
+        listed = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/consents")
+        assert len(listed.json()) == 1
+    app.dependency_overrides.clear()
+
+
+async def test_pet_consent_withdrawal_is_idempotent(seed: Seed) -> None:
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        policies = await client.get("/api/v1/system/policies")
+        policy_version = policies.json()["pet_health_consent_policy_version"]
+        granted = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents",
+            json={"purpose": "body_photographs", "policy_version": policy_version},
+        )
+        consent_id = granted.json()["id"]
+
+        first_withdraw = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents/{consent_id}/withdraw"
+        )
+        assert first_withdraw.status_code == 204
+        second_withdraw = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents/{consent_id}/withdraw"
+        )
+        assert second_withdraw.status_code == 204
+
+        listed = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/consents")
+        assert listed.json()[0]["status"] == "withdrawn"
+    app.dependency_overrides.clear()
+
+
+async def test_pet_consent_purposes_are_independent(seed: Seed) -> None:
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    png_bytes = b"\x89PNG\r\n\x1a\nfakepngdata"
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        policies = await client.get("/api/v1/system/policies")
+        policy_version = policies.json()["pet_health_consent_policy_version"]
+
+        photo_consent = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents",
+            json={"purpose": "body_photographs", "policy_version": policy_version},
+        )
+        medical_consent = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents",
+            json={"purpose": "medical_records", "policy_version": policy_version},
+        )
+        assert photo_consent.status_code == 201
+        assert medical_consent.status_code == 201
+        assert photo_consent.json()["id"] != medical_consent.json()["id"]
+
+        withdraw_photo = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents/{photo_consent.json()['id']}/withdraw"
+        )
+        assert withdraw_photo.status_code == 204
+
+        listed = {item["id"]: item for item in (await client.get(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/consents"
+        )).json()}
+        assert listed[photo_consent.json()["id"]]["status"] == "withdrawn"
+        assert listed[medical_consent.json()["id"]]["status"] == "granted"
+
+        upload = await client.post(
+            f"/api/v1/pet-life/pets/{seed.pet.id}/assets",
+            content=png_bytes,
+            headers={
+                "content-type": "image/png",
+                "X-Filename": "lab.png",
+                "X-Asset-Category": "lab_result",
+                "X-Consent-ID": medical_consent.json()["id"],
+            },
+        )
+        assert upload.status_code == 201
+    app.dependency_overrides.clear()
+
+
 async def test_journey_stop_and_empty_offers_do_not_fabricate_content(seed: Seed) -> None:
     settings = get_settings()
     original = settings.care_journey_delivery_enabled
