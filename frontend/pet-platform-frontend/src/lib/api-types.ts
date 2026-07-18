@@ -22,6 +22,7 @@ export type FoodEstimateResponse = Schema<"FoodEstimateResponse">;
 export type HouseholdBody = Schema<"HouseholdBody">;
 export type PetBody = Schema<"PetBody">;
 export type AddressBody = Schema<"AddressBody">;
+export type AddressUpdateBody = Schema<"AddressUpdateBody">;
 export type AddressResponse = Schema<"AddressResponse">;
 export type IdResponse = Schema<"IdResponse">;
 export type RefreshBody = Schema<"RefreshBody">;
@@ -74,7 +75,8 @@ export type PetConsentResponse = Schema<"PetConsentResponse">;
 export type BodyAssessmentBody = Schema<"BodyAssessmentBody">;
 export type OrderListItem = Schema<"OrderListItem">;
 export type OrderListPage = Schema<"OffsetPage_OrderListItem_">;
-export type DelayAcknowledgementResponse = Schema<"DelayAcknowledgementResponse">;
+export type DelayAcknowledgementResponse =
+  Schema<"DelayAcknowledgementResponse">;
 export type SourcedUnitResponse = Schema<"SourcedUnitResponse">;
 export type AvailabilitySubscriptionPage =
   Schema<"OffsetPage_AvailabilitySubscriptionResponse_">;
@@ -83,12 +85,12 @@ export type CustomerRequestPage = Schema<"OffsetPage_CustomerRequestResponse_">;
 export type MeasurementItem = Schema<"MeasurementItemResponse">;
 export type MeasurementMutationResponse = Schema<"MeasurementMutationResponse">;
 export type WeightTrendResponse =
-  | Schema<"WeightTrendUnavailable">
-  | Schema<"WeightTrendAvailable">;
+  Schema<"WeightTrendUnavailable"> | Schema<"WeightTrendAvailable">;
 export type PetAssetItem = Schema<"PetAssetItemResponse">;
 export type PetAssetMutationResponse = Schema<"PetAssetMutationResponse">;
 export type BodyAssessmentItem = Schema<"BodyAssessmentItemResponse">;
-export type BodyAssessmentMutationResponse = Schema<"BodyAssessmentMutationResponse">;
+export type BodyAssessmentMutationResponse =
+  Schema<"BodyAssessmentMutationResponse">;
 export type BreedListItem = Schema<"BreedSummary">;
 export type BreedListResponse = Schema<"BreedListResponse">;
 export type BreedSearchItem = Schema<"BreedSearchItem">;
@@ -97,8 +99,7 @@ export type BreedDetailResponse = Schema<"BreedDetailResponse">;
 export type KnowledgeClaimItem = Schema<"KnowledgeClaimItem">;
 export type KnowledgeGuidanceItem = Schema<"KnowledgeGuidanceItem">;
 export type PetKnowledgeResponse =
-  | Schema<"PetKnowledgeUnavailable">
-  | Schema<"PetKnowledgeAvailable">;
+  Schema<"PetKnowledgeUnavailable"> | Schema<"PetKnowledgeAvailable">;
 export type CareGuidanceItem = Schema<"CareGuidanceItemResponse">;
 export type CareGuidanceResponse = Schema<"CareGuidanceResponse">;
 export type PetProfileResponse = Schema<"PetProfileResponse">;

@@ -5,7 +5,7 @@ import os
 import uuid
 from collections.abc import Coroutine
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any
 
 import app.db.models  # noqa: F401
 import pytest
@@ -25,8 +25,6 @@ _MATCHES_TABLE = "price_intelligence_external_product_matches"
 _REVISION = "20260717_0025"
 _DOWN_REVISION = "20260716_0024"
 
-_T = TypeVar("_T")
-
 
 def _alembic_config() -> Config:
     config = Config(str(BACKEND_DIR / "alembic.ini"))
@@ -34,14 +32,14 @@ def _alembic_config() -> Config:
     return config
 
 
-def _run(coro: Coroutine[Any, Any, _T]) -> _T:
+def _run[T](coro: Coroutine[Any, Any, T]) -> T:
     # SessionFactory's engine binds to the event loop of its first
     # connection. asyncio.run() opens a fresh loop every call, so the engine
     # must be disposed inside the SAME loop it was created in, before that
     # loop closes -- otherwise the next asyncio.run() call reuses a
     # now-invalid connection bound to a closed loop (see the identical note
     # on test_price_observation_idempotency.py's dispose fixture).
-    async def _with_dispose() -> _T:
+    async def _with_dispose() -> T:
         try:
             return await coro
         finally:

@@ -1403,6 +1403,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pet-life/households/{household_id}/addresses/{address_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Address */
+        delete: operations["delete_address_api_v1_pet_life_households__household_id__addresses__address_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Address */
+        patch: operations["update_address_api_v1_pet_life_households__household_id__addresses__address_id__patch"];
+        trace?: never;
+    };
     "/api/v1/pet-life/households/{household_id}/inventory": {
         parameters: {
             query?: never;
@@ -2319,6 +2337,23 @@ export interface components {
             recipient_mobile: string;
             /** Recipient Name */
             recipient_name: string;
+        };
+        /** AddressUpdateBody */
+        AddressUpdateBody: {
+            /** Address Line */
+            address_line?: string | null;
+            /** City */
+            city?: string | null;
+            /** Label */
+            label?: string | null;
+            /** Postal Code */
+            postal_code?: string | null;
+            /** Province */
+            province?: string | null;
+            /** Recipient Mobile */
+            recipient_mobile?: string | null;
+            /** Recipient Name */
+            recipient_name?: string | null;
         };
         /** AssessmentAssetBody */
         AssessmentAssetBody: {
@@ -8165,6 +8200,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IdResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_address_api_v1_pet_life_households__household_id__addresses__address_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                household_id: string;
+                address_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_address_api_v1_pet_life_households__household_id__addresses__address_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                household_id: string;
+                address_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressUpdateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressResponse"];
                 };
             };
             /** @description Validation Error */

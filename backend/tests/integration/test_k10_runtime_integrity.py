@@ -996,3 +996,111 @@ async def test_outbox_registry_retries_dead_letter_and_audit_only(
         assert unknown is not None and unknown.status == "dead_letter"
     await redis_client.set("pet-platform:test:heartbeat", "alive", ex=30)
     assert await redis_client.get("pet-platform:test:heartbeat") == "alive"
+
+
+async def test_household_address_update_and_delete_lifecycle(seed: Seed) -> None:
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        updated = await client.patch(
+            f"/api/v1/pet-life/households/{seed.household.id}/addresses/{seed.address.id}",
+            json={"label": "محل کار", "recipient_mobile": "09121234567"},
+        )
+        assert updated.status_code == 200
+        assert updated.json()["label"] == "محل کار"
+        assert updated.json()["recipient_mobile"] == "+989121234567"
+        # Untouched fields survive a partial update.
+        assert updated.json()["city"] == seed.address.city
+
+        invalid_mobile = await client.patch(
+            f"/api/v1/pet-life/households/{seed.household.id}/addresses/{seed.address.id}",
+            json={"recipient_mobile": "not-a-number"},
+        )
+        assert invalid_mobile.status_code == 422
+
+        first_delete = await client.delete(
+            f"/api/v1/pet-life/households/{seed.household.id}/addresses/{seed.address.id}"
+        )
+        assert first_delete.status_code == 204
+
+        listed = await client.get(f"/api/v1/pet-life/households/{seed.household.id}/addresses")
+        assert seed.address.id not in {item["id"] for item in listed.json()}
+
+        # Deleting an already-deleted address is idempotent, not an error.
+        second_delete = await client.delete(
+            f"/api/v1/pet-life/households/{seed.household.id}/addresses/{seed.address.id}"
+        )
+        assert second_delete.status_code == 204
+
+        # An inactive (deleted) address is not editable -- non-enumerating 404,
+        # same as a fully unknown id.
+        patch_after_delete = await client.patch(
+            f"/api/v1/pet-life/households/{seed.household.id}/addresses/{seed.address.id}",
+            json={"label": "بعد از حذف"},
+        )
+        assert patch_after_delete.status_code == 404
+        unknown_id_patch = await client.patch(
+            f"/api/v1/pet-life/households/{seed.household.id}/addresses/{uuid.uuid4()}",
+            json={"label": "x"},
+        )
+        assert unknown_id_patch.status_code == 404
+        deleted_code = patch_after_delete.json()["error"]["code"]
+        unknown_code = unknown_id_patch.json()["error"]["code"]
+        assert deleted_code == unknown_code
+    app.dependency_overrides.clear()
+
+
+async def test_household_address_mutation_rejects_another_household(seed: Seed) -> None:
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.other_identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        patch_attempt = await client.patch(
+            f"/api/v1/pet-life/households/{seed.household.id}/addresses/{seed.address.id}",
+            json={"label": "دستکاری"},
+        )
+        assert patch_attempt.status_code == 404
+        delete_attempt = await client.delete(
+            f"/api/v1/pet-life/households/{seed.household.id}/addresses/{seed.address.id}"
+        )
+        assert delete_attempt.status_code == 404
+    app.dependency_overrides.clear()
+
+    async with SessionFactory() as session:
+        address = await session.get(HouseholdAddress, seed.address.id)
+        assert address is not None and address.active is True
+
+
+async def test_household_address_deletion_preserves_order_history(seed: Seed) -> None:
+    async with SessionFactory() as session:
+        order = await CheckoutService().create_order(
+            session,
+            customer_identity_id=seed.identity.id,
+            household_id=seed.household.id,
+            address_id=seed.address.id,
+            items=[CheckoutItem(seed.offer.id, 1)],
+            idempotency_key=f"address-deletion-{uuid.uuid4()}",
+        )
+        original_snapshot = dict(order.delivery_address_snapshot)
+
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        deleted = await client.delete(
+            f"/api/v1/pet-life/households/{seed.household.id}/addresses/{seed.address.id}"
+        )
+        assert deleted.status_code == 204
+
+        order_detail = await client.get(f"/api/v1/orders/{order.id}")
+        assert order_detail.status_code == 200
+        delivery_address = order_detail.json()["delivery_address"]
+        assert delivery_address["address_line"] == original_snapshot["address_line"]
+        assert delivery_address["recipient_name"] == original_snapshot["recipient_name"]
+    app.dependency_overrides.clear()
+
+    async with SessionFactory() as session:
+        order_after = await session.get(Order, order.id)
+        assert order_after is not None
+        assert order_after.delivery_address_snapshot == original_snapshot

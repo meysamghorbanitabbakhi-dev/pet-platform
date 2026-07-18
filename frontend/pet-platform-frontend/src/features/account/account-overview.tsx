@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,19 +10,29 @@ import {
   Button,
   Card,
   ErrorState,
+  Input,
   Money,
   Sheet,
   Skeleton,
   StatusChip,
 } from "@/components/primitives";
 import {
+  deleteAddress,
   getMeContext,
   getWallet,
   listAddresses,
   listHouseholdPets,
   logout,
+  updateAddress,
 } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
+import type { AddressResponse } from "@/lib/api-types";
+
+function addressErrorText(error: unknown) {
+  return error instanceof ApiError
+    ? error.message
+    : "خطا در ارتباط با سرویس. دوباره تلاش کنید.";
+}
 
 const speciesLabelFa: Record<string, string> = {
   cat: "گربه",
@@ -31,9 +41,15 @@ const speciesLabelFa: Record<string, string> = {
 
 export function AccountOverview() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [loggingOut, setLoggingOut] = useState(false);
   const [showLogoutSheet, setShowLogoutSheet] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [editingAddress, setEditingAddress] = useState<AddressResponse | null>(
+    null,
+  );
+  const [deletingAddress, setDeletingAddress] =
+    useState<AddressResponse | null>(null);
 
   const contextQuery = useQuery({
     queryKey: ["me", "context"],
@@ -85,7 +101,10 @@ export function AccountOverview() {
           title="خطا در دریافت حساب"
           body="اتصال را بررسی کنید و دوباره تلاش کنید."
           action={
-            <Button variant="secondary" onClick={() => void contextQuery.refetch()}>
+            <Button
+              variant="secondary"
+              onClick={() => void contextQuery.refetch()}
+            >
               تلاش دوباره
             </Button>
           }
@@ -192,7 +211,23 @@ export function AccountOverview() {
             <ul className="stack" aria-label="فهرست آدرس‌ها">
               {addressesQuery.data.map((address) => (
                 <li className="stack" key={address.id}>
-                  <span>{address.label}</span>
+                  <div className="split">
+                    <span>{address.label}</span>
+                    <div className="cluster">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setEditingAddress(address)}
+                      >
+                        ویرایش
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setDeletingAddress(address)}
+                      >
+                        حذف
+                      </Button>
+                    </div>
+                  </div>
                   <span className="caption">
                     {address.province}، {address.city}، {address.address_line}
                   </span>
@@ -273,7 +308,191 @@ export function AccountOverview() {
             </div>
           </Sheet>
         ) : null}
+
+        {editingAddress && householdId ? (
+          <AddressEditSheet
+            address={editingAddress}
+            householdId={householdId}
+            onClose={() => setEditingAddress(null)}
+            onSaved={async () => {
+              setEditingAddress(null);
+              await queryClient.invalidateQueries({
+                queryKey: ["households", householdId, "addresses"],
+              });
+            }}
+          />
+        ) : null}
+
+        {deletingAddress && householdId ? (
+          <AddressDeleteSheet
+            address={deletingAddress}
+            householdId={householdId}
+            onClose={() => setDeletingAddress(null)}
+            onDeleted={async () => {
+              setDeletingAddress(null);
+              await queryClient.invalidateQueries({
+                queryKey: ["households", householdId, "addresses"],
+              });
+            }}
+          />
+        ) : null}
       </div>
     </AppShell>
+  );
+}
+
+function AddressEditSheet({
+  address,
+  householdId,
+  onClose,
+  onSaved,
+}: {
+  address: AddressResponse;
+  householdId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [label, setLabel] = useState(address.label);
+  const [recipientName, setRecipientName] = useState(address.recipient_name);
+  const [recipientMobile, setRecipientMobile] = useState(
+    address.recipient_mobile,
+  );
+  const [province, setProvince] = useState(address.province);
+  const [city, setCity] = useState(address.city);
+  const [addressLine, setAddressLine] = useState(address.address_line);
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      updateAddress(householdId, address.id, {
+        label,
+        recipient_name: recipientName,
+        recipient_mobile: recipientMobile,
+        province,
+        city,
+        address_line: addressLine,
+      }),
+    onSuccess: onSaved,
+  });
+
+  return (
+    <Sheet title="ویرایش آدرس" onClose={onClose}>
+      <form
+        className="stack"
+        onSubmit={(event) => {
+          event.preventDefault();
+          updateMutation.mutate();
+        }}
+      >
+        {updateMutation.isError ? (
+          <Banner tone="error">{addressErrorText(updateMutation.error)}</Banner>
+        ) : null}
+        <Input
+          id="edit-address-label"
+          label="برچسب"
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+          required
+        />
+        <Input
+          id="edit-address-recipient-name"
+          label="نام گیرنده"
+          value={recipientName}
+          onChange={(event) => setRecipientName(event.target.value)}
+          required
+        />
+        <Input
+          id="edit-address-recipient-mobile"
+          label="موبایل گیرنده"
+          value={recipientMobile}
+          onChange={(event) => setRecipientMobile(event.target.value)}
+          required
+        />
+        <Input
+          id="edit-address-province"
+          label="استان"
+          value={province}
+          onChange={(event) => setProvince(event.target.value)}
+          required
+        />
+        <Input
+          id="edit-address-city"
+          label="شهر"
+          value={city}
+          onChange={(event) => setCity(event.target.value)}
+          required
+        />
+        <Input
+          id="edit-address-line"
+          label="آدرس کامل"
+          value={addressLine}
+          onChange={(event) => setAddressLine(event.target.value)}
+          required
+        />
+        <div className="cluster">
+          <Button
+            type="submit"
+            variant="primary"
+            loading={updateMutation.isPending}
+          >
+            ذخیره
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={updateMutation.isPending}
+            onClick={onClose}
+          >
+            انصراف
+          </Button>
+        </div>
+      </form>
+    </Sheet>
+  );
+}
+
+function AddressDeleteSheet({
+  address,
+  householdId,
+  onClose,
+  onDeleted,
+}: {
+  address: AddressResponse;
+  householdId: string;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteAddress(householdId, address.id),
+    onSuccess: onDeleted,
+  });
+
+  return (
+    <Sheet title="حذف آدرس" onClose={onClose}>
+      <div className="stack">
+        <p className="caption">
+          آدرس «{address.label}» حذف می‌شود. سفارش‌های قبلی که با این آدرس ثبت
+          شده‌اند تغییری نمی‌کنند.
+        </p>
+        {deleteMutation.isError ? (
+          <Banner tone="error">{addressErrorText(deleteMutation.error)}</Banner>
+        ) : null}
+        <div className="cluster">
+          <Button
+            variant="primary"
+            loading={deleteMutation.isPending}
+            onClick={() => deleteMutation.mutate()}
+          >
+            حذف
+          </Button>
+          <Button
+            variant="ghost"
+            disabled={deleteMutation.isPending}
+            onClick={onClose}
+          >
+            انصراف
+          </Button>
+        </div>
+      </div>
+    </Sheet>
   );
 }

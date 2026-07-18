@@ -5,8 +5,8 @@
     ]
   },
   "openapi": {
-    "operation_count": 145,
-    "path_count": 133,
+    "operation_count": 147,
+    "path_count": 134,
     "required_constants": {
       "OfferDetailResponse.authenticity": "supplier_verified",
       "TodayFoodEstimated.state": "estimated",
@@ -79,6 +79,14 @@
       [
         "GET",
         "/api/v1/pet-life/households/{household_id}/addresses"
+      ],
+      [
+        "PATCH",
+        "/api/v1/pet-life/households/{household_id}/addresses/{address_id}"
+      ],
+      [
+        "DELETE",
+        "/api/v1/pet-life/households/{household_id}/addresses/{address_id}"
       ],
       [
         "POST",
@@ -363,8 +371,8 @@
         "expires_in_seconds"
       ]
     },
-    "schema_count": 192,
-    "sha256": "db026c15f22ca1e7ba7e53ae259af2def43c09a88ac3e827e4e51ad2ca783a0c"
+    "schema_count": 193,
+    "sha256": "6cf7a5b500f9594a3375f497a7d95d8b12dcfa22f2dae2468e8a845ed9aea8c7"
   },
   "policy_defaults": {
     "care_journey_delivery_enabled": true,

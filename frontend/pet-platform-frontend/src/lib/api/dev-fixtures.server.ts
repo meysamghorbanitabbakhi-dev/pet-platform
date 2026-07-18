@@ -3,6 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import type {
   AddressBody,
+  AddressUpdateBody,
   BodyAssessmentBody,
   BreedSelectionBody,
   CheckoutBody,
@@ -158,7 +159,10 @@ export async function loadDevelopmentApi() {
       void _petId;
       return fixtures.gardenStateFixture;
     },
-    placeGardenObject: async (_rewardId: string, _body: GardenPlacementBody) => {
+    placeGardenObject: async (
+      _rewardId: string,
+      _body: GardenPlacementBody,
+    ) => {
       void _rewardId;
       void _body;
       return undefined;
@@ -374,6 +378,34 @@ export async function loadDevelopmentApi() {
       void _householdId;
       const stage = await readDevStage();
       return stage === "complete" ? [fixtures.addressFixture] : [];
+    },
+    updateAddress: async (
+      _householdId: string,
+      _addressId: string,
+      body: AddressUpdateBody,
+    ) => {
+      void _householdId;
+      void _addressId;
+      return {
+        ...fixtures.addressFixture,
+        label: body.label ?? fixtures.addressFixture.label,
+        recipient_name:
+          body.recipient_name ?? fixtures.addressFixture.recipient_name,
+        recipient_mobile:
+          body.recipient_mobile ?? fixtures.addressFixture.recipient_mobile,
+        province: body.province ?? fixtures.addressFixture.province,
+        city: body.city ?? fixtures.addressFixture.city,
+        address_line: body.address_line ?? fixtures.addressFixture.address_line,
+        postal_code:
+          body.postal_code !== undefined
+            ? body.postal_code
+            : fixtures.addressFixture.postal_code,
+      };
+    },
+    deleteAddress: async (_householdId: string, _addressId: string) => {
+      void _householdId;
+      void _addressId;
+      return undefined;
     },
     listHouseholdPets: async (_householdId: string) => {
       void _householdId;

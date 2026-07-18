@@ -3,6 +3,7 @@
 import type {
   AddressResponse,
   AddressBody,
+  AddressUpdateBody,
   AvailabilitySubscriptionPage,
   AvailabilitySubscriptionResponse,
   BodyAssessmentBody,
@@ -164,6 +165,24 @@ export function listAddresses(householdId: string) {
   return bff<AddressResponse[]>(`/api/bff/households/${householdId}/addresses`);
 }
 
+export function updateAddress(
+  householdId: string,
+  addressId: string,
+  body: AddressUpdateBody,
+) {
+  return bff<AddressResponse>(
+    `/api/bff/households/${householdId}/addresses/${addressId}`,
+    { method: "PATCH", body },
+  );
+}
+
+export function deleteAddress(householdId: string, addressId: string) {
+  return bff<void>(
+    `/api/bff/households/${householdId}/addresses/${addressId}`,
+    { method: "DELETE" },
+  );
+}
+
 export function listHouseholdPets(householdId: string) {
   return bff<PetSummary[]>(`/api/bff/households/${householdId}/pets`);
 }
@@ -260,7 +279,9 @@ export function cancelAvailabilitySubscription(offerId: string) {
 }
 
 export function listAvailabilitySubscriptions() {
-  return bff<AvailabilitySubscriptionPage>("/api/bff/me/availability-subscriptions");
+  return bff<AvailabilitySubscriptionPage>(
+    "/api/bff/me/availability-subscriptions",
+  );
 }
 
 export function createCustomerRequest(
@@ -278,11 +299,15 @@ export function listCustomerRequests() {
 }
 
 export function getCustomerRequest(requestId: string) {
-  return bff<CustomerRequestResponse>(`/api/bff/customer-requests/${requestId}`);
+  return bff<CustomerRequestResponse>(
+    `/api/bff/customer-requests/${requestId}`,
+  );
 }
 
 export function getWallet(householdId: string) {
-  return bff<WalletSummaryResponse>(`/api/bff/households/${householdId}/wallet`);
+  return bff<WalletSummaryResponse>(
+    `/api/bff/households/${householdId}/wallet`,
+  );
 }
 
 export function listNotifications() {
@@ -471,7 +496,10 @@ export async function uploadPetAsset(
     method: "POST",
   });
   if (!response.ok) {
-    throw mapApiError(response.status, await response.json().catch(() => undefined));
+    throw mapApiError(
+      response.status,
+      await response.json().catch(() => undefined),
+    );
   }
   return response.json();
 }

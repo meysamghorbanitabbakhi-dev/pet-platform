@@ -98,6 +98,16 @@ class AddressBody(BaseModel):
     postal_code: str | None = Field(default=None, max_length=20)
 
 
+class AddressUpdateBody(BaseModel):
+    label: str | None = Field(default=None, min_length=1, max_length=100)
+    recipient_name: str | None = Field(default=None, min_length=1, max_length=200)
+    recipient_mobile: str | None = Field(default=None, min_length=10, max_length=32)
+    province: str | None = Field(default=None, min_length=1, max_length=100)
+    city: str | None = Field(default=None, min_length=1, max_length=100)
+    address_line: str | None = Field(default=None, min_length=5, max_length=1000)
+    postal_code: str | None = Field(default=None, max_length=20)
+
+
 class PetBody(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     species: str = Field(pattern=r"^(dog|cat)$")
@@ -261,19 +271,76 @@ async def list_addresses(
             )
         ).all()
     )
-    return [
-        AddressResponse(
-            id=item.id,
-            label=item.label,
-            recipient_name=item.recipient_name,
-            recipient_mobile=item.recipient_mobile_e164,
-            province=item.province,
-            city=item.city,
-            address_line=item.address_line,
-            postal_code=item.postal_code,
-        )
-        for item in addresses
-    ]
+    return [_address_response(item) for item in addresses]
+
+
+def _address_response(address: HouseholdAddress) -> AddressResponse:
+    return AddressResponse(
+        id=address.id,
+        label=address.label,
+        recipient_name=address.recipient_name,
+        recipient_mobile=address.recipient_mobile_e164,
+        province=address.province,
+        city=address.city,
+        address_line=address.address_line,
+        postal_code=address.postal_code,
+    )
+
+
+async def _owned_active_address(
+    session: AsyncSession, household_id: UUID, address_id: UUID, *, for_update: bool = False
+) -> HouseholdAddress:
+    address = await session.get(HouseholdAddress, address_id, with_for_update=for_update)
+    if address is None or address.household_id != household_id or not address.active:
+        raise HTTPException(status_code=404, detail="address_not_found")
+    return address
+
+
+@router.patch("/households/{household_id}/addresses/{address_id}", response_model=AddressResponse)
+async def update_address(
+    household_id: UUID,
+    address_id: UUID,
+    body: AddressUpdateBody,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+) -> AddressResponse:
+    await _household_access(session, identity.id, household_id)
+    address = await _owned_active_address(session, household_id, address_id, for_update=True)
+    updates = body.model_dump(exclude_unset=True)
+    if "recipient_mobile" in updates:
+        try:
+            updates["recipient_mobile_e164"] = normalize_iranian_mobile(
+                updates.pop("recipient_mobile")
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="invalid_mobile_number") from exc
+    for field, value in updates.items():
+        setattr(address, field, value)
+    await session.commit()
+    return _address_response(address)
+
+
+@router.delete(
+    "/households/{household_id}/addresses/{address_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_address(
+    household_id: UUID,
+    address_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+) -> None:
+    # Orders never hold a live reference to a HouseholdAddress row -- create_order
+    # (checkout/service.py) copies the address fields into an immutable
+    # delivery_address_snapshot at order-creation time and never reads the row
+    # again. Deleting (soft) an address therefore cannot affect any existing
+    # order; it only removes the address from future checkout eligibility.
+    await _household_access(session, identity.id, household_id)
+    address = await session.get(HouseholdAddress, address_id, with_for_update=True)
+    if address is None or address.household_id != household_id:
+        raise HTTPException(status_code=404, detail="address_not_found")
+    if address.active:
+        address.active = False
+        await session.commit()
 
 
 @router.post(

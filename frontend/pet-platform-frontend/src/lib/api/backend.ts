@@ -4,6 +4,7 @@ import createClient from "openapi-fetch";
 import type {
   AddressResponse,
   AddressBody,
+  AddressUpdateBody,
   ApiPaths,
   CheckoutBody,
   HouseholdBody,
@@ -322,6 +323,44 @@ export async function listAddressesBackend(
   );
 }
 
+export async function updateAddressBackend(
+  householdId: string,
+  addressId: string,
+  body: AddressUpdateBody,
+): Promise<AddressResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi)
+    return developmentApi.updateAddress(householdId, addressId, body);
+  return withAuth((headers) =>
+    backendClient.PATCH(
+      "/api/v1/pet-life/households/{household_id}/addresses/{address_id}",
+      {
+        params: { path: { household_id: householdId, address_id: addressId } },
+        body,
+        headers,
+      },
+    ),
+  );
+}
+
+export async function deleteAddressBackend(
+  householdId: string,
+  addressId: string,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi)
+    return developmentApi.deleteAddress(householdId, addressId);
+  return withAuthVoid((headers) =>
+    backendClient.DELETE(
+      "/api/v1/pet-life/households/{household_id}/addresses/{address_id}",
+      {
+        params: { path: { household_id: householdId, address_id: addressId } },
+        headers,
+      },
+    ),
+  );
+}
+
 export async function getTodayBackend(petId: string): Promise<TodayResponse> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) return developmentApi.getToday(petId);
@@ -366,11 +405,14 @@ export async function correctEstimateBackend(
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) return developmentApi.correctEstimate(unitId, body);
   return withAuth((headers) =>
-    backendClient.POST("/api/v1/pet-life/inventory/{unit_id}/estimate/correct", {
-      params: { path: { unit_id: unitId } },
-      body,
-      headers,
-    }),
+    backendClient.POST(
+      "/api/v1/pet-life/inventory/{unit_id}/estimate/correct",
+      {
+        params: { path: { unit_id: unitId } },
+        body,
+        headers,
+      },
+    ),
   );
 }
 
@@ -391,10 +433,13 @@ export async function assessReorderBackend(
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) return developmentApi.assessReorder(unitId);
   return withAuth((headers) =>
-    backendClient.POST("/api/v1/pet-life/inventory/{unit_id}/reorder-assessment", {
-      params: { path: { unit_id: unitId } },
-      headers,
-    }),
+    backendClient.POST(
+      "/api/v1/pet-life/inventory/{unit_id}/reorder-assessment",
+      {
+        params: { path: { unit_id: unitId } },
+        headers,
+      },
+    ),
   );
 }
 
@@ -527,7 +572,9 @@ export async function completeJourneyBackend(
   );
 }
 
-export async function listDiaryBackend(petId: string): Promise<DiaryListItem[]> {
+export async function listDiaryBackend(
+  petId: string,
+): Promise<DiaryListItem[]> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) return developmentApi.listDiary(petId);
   return withAuth((headers) =>
@@ -692,12 +739,16 @@ export async function markNotificationReadBackend(
   notificationId: string,
 ): Promise<void> {
   const developmentApi = await loadDevelopmentApi();
-  if (developmentApi) return developmentApi.markNotificationRead(notificationId);
+  if (developmentApi)
+    return developmentApi.markNotificationRead(notificationId);
   return withAuthVoid((headers) =>
-    backendClient.POST("/api/v1/pet-life/notifications/{notification_id}/read", {
-      params: { path: { notification_id: notificationId } },
-      headers,
-    }),
+    backendClient.POST(
+      "/api/v1/pet-life/notifications/{notification_id}/read",
+      {
+        params: { path: { notification_id: notificationId } },
+        headers,
+      },
+    ),
   );
 }
 
@@ -806,7 +857,8 @@ export async function withdrawPetConsentBackend(
   consentId: string,
 ): Promise<void> {
   const developmentApi = await loadDevelopmentApi();
-  if (developmentApi) return developmentApi.withdrawPetConsent(petId, consentId);
+  if (developmentApi)
+    return developmentApi.withdrawPetConsent(petId, consentId);
   await withAuthVoid((headers) =>
     backendClient.POST(
       "/api/v1/pet-life/pets/{pet_id}/consents/{consent_id}/withdraw",
@@ -841,7 +893,10 @@ export async function uploadPetAssetBackend(
     }),
   );
   if (!response.ok) {
-    throw new BackendApiError(response.status, await response.json().catch(() => undefined));
+    throw new BackendApiError(
+      response.status,
+      await response.json().catch(() => undefined),
+    );
   }
   return response.json();
 }
@@ -1106,7 +1161,9 @@ export async function paymentCallbackBackend(
 export async function listOrdersBackend(): Promise<OrderListPage> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) return developmentApi.listOrders();
-  return withAuth((headers) => backendClient.GET("/api/v1/orders", { headers }));
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/orders", { headers }),
+  );
 }
 
 export async function acknowledgeOrderDelayBackend(

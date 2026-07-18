@@ -51,19 +51,6 @@ these wait on backend ownership.
 
 ---
 
-## G5-ACC-03 — Address edit/delete
-
-- **user_goal**: Correct a typo in a saved delivery address, or remove one that's no longer used, from the account addresses screen.
-- **missing_operation**: `PATCH /api/v1/pet-life/households/{household_id}/addresses/{address_id}` and `DELETE /api/v1/pet-life/households/{household_id}/addresses/{address_id}`. Only `GET` (list) and `POST` (create) exist today.
-- **required_request_shape**: `PATCH` — a partial `AddressBody`-shaped update (subset of `label, recipient_name, recipient_mobile, province, city, address_line`). `DELETE` — no body.
-- **required_response_shape**: `PATCH` returns the updated `AddressResponse`; `DELETE` returns 204.
-- **authorization_scope**: household-member identity scope (same boundary as the existing `GET`/`POST` on this path); must reject another household's address with a non-enumerating not-found, not a 403 that confirms the address exists.
-- **idempotency_requirement**: `DELETE` must be idempotent (deleting an already-deleted/already-inactive address is a no-op, not an error). Deletion must be soft (through the existing `active` state), and must never mutate an address snapshot already captured on a placed order.
-- **policy_requirement**: none.
-- **recommended_backend_owner**: households module (same owner as the existing address `GET`/`POST` in `app/api/routes/pet_life.py`) — this is standard CRUD completion on an existing resource, not a new product decision.
-
----
-
 ## G5-SHOP-13 — Product alternatives
 
 - **user_goal**: When a desired product is unavailable or doesn't fit a pet's needs, see other products the platform considers reasonable substitutes.
@@ -110,3 +97,4 @@ A few states looked backend-blocked at first glance but are not, for the record:
 - **G5-CHK-13/14/15 (payment cancelled vs. failed vs. ambiguous)**: the Zarinpal callback route (`app/api/routes/commerce.py`) intentionally returns one merged `cancelled_or_failed` state. This matches `GATE52C_RESIDUAL` #1 ("Uncertain payment... Calm pending-verification state; never routes directly to retry") — an accepted design limitation, not a missing operation, and not a backend blocker. As of the 2026-07-18 matrix reconciliation, G5-CHK-13 is IMPLEMENTED (it represents the real merged screen) and G5-CHK-14 is OBSOLETE_BY_CONTRACT (superseded by CHK-13 — the provider genuinely cannot support a second, separately-toned state). G5-CHK-15's remaining gap (no nav-to-order/support-contact link on ambiguous verification failure) stays PARTIAL — that one is a real frontend build gap, tracked in the matrix, not here.
 - **G5-ACC-02/07/10/14 (pet list, wallet, notification inbox, privacy export)**: all have real, working backend operations (`GET .../pets`, `GET .../wallet`, `GET .../notifications`, `GET /privacy/export`) that are simply unconsumed by any frontend code today. These are Wave 5/7 build work, not backend blockers.
 - **All of JOURNEY-05 through JOURNEY-20 and BRIDGE-25 through BRIDGE-35 (care journeys, reorder, Garden)**: every backend operation these states need already exists and is policy-enabled (`care_journey_delivery_enabled=true`, `semantic_level_estimation_enabled=true`). Zero frontend code consumes any of them today. Wave 1/2/3 build work, not backend blockers.
+- **G5-ACC-03 (address edit/delete)**: closed 2026-07-18. `PATCH`/`DELETE /api/v1/pet-life/households/{household_id}/addresses/{address_id}` now exist (non-enumerating 404s, idempotent soft-delete through `active`, immutable order snapshots preserved — orders copy address fields into `delivery_address_snapshot` at checkout time and never hold a live reference), and `/account` has real edit/delete Sheets wired to them. No longer blocked; removed from the list above.
