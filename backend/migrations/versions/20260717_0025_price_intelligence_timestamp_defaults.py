@@ -24,6 +24,19 @@ Two schema/domain-model mismatches in the price_intelligence tables:
 
 Existing rows are unaffected: ALTER COLUMN ... SET DEFAULT only applies to
 future inserts, and the constraint is only widened, never narrowed.
+
+Downgrade safety: recreating the narrower CHECK constraint on downgrade would
+make Postgres validate it against every existing row, and any row already
+written with match_method='unmatched' (the normal, common matcher outcome --
+see above) would fail that validation and abort the downgrade with a raw,
+unactionable constraint-violation error. 'unmatched' has no correct narrower
+equivalent to remap it to -- it is not a wrong value, it is a true statement
+that no canonical match was found, and silently rewriting it to e.g. 'manual'
+would misstate those rows' provenance. So downgrade() checks for existing
+'unmatched' rows first and fails early with an explicit, actionable error
+instead of letting the constraint creation fail unpredictably; the operator
+must then decide (and execute) whether to delete the affected derived match
+rows before downgrading, or stay on this migration's wider constraint.
 """
 
 from collections.abc import Sequence
@@ -65,6 +78,21 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    unmatched_count = bind.execute(
+        sa.text(f"SELECT COUNT(*) FROM {_MATCHES_TABLE} WHERE match_method = 'unmatched'")
+    ).scalar_one()
+    if unmatched_count:
+        raise RuntimeError(
+            f"Cannot downgrade past 20260717_0025: {unmatched_count} row(s) in "
+            f"{_MATCHES_TABLE} have match_method='unmatched', which the narrower "
+            "pre-migration constraint does not allow. 'unmatched' has no correct "
+            "narrower equivalent (it is a true statement, not an error), so this "
+            "downgrade will not remap it automatically. Before downgrading, either "
+            "delete the affected rows (if they are safe to discard) or stay on this "
+            "migration's wider constraint."
+        )
+
     op.drop_constraint("valid_match_method", _MATCHES_TABLE, type_="check")
     op.create_check_constraint(
         "valid_match_method",
