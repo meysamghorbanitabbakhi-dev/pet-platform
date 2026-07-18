@@ -4,6 +4,8 @@ These files are the final visual and interaction references for coding.
 
 ## Canonical system references
 
+Files in this section are checksum-governed historical snapshots (see `canonical-manifest.sha256`). Any migration head, path/operation count, or hash quoted inside them reflects the moment they were authored, not the current release. Current release facts live only in `backend/release-contract.json` — never edit these files to "correct" a stale-looking number or to add a current-authority banner.
+
 - `Gate 5.0 - K9-K10-JC1 Integration Matrix R7.dc.html`: capability-to-screen traceability.
 - `Gate 5.2B - Contract Correction R4.dc.html`: final policy/contract correction record.
 - `Gate 5.2C - Production Hi-Fi System R3.dc.html`: production visual system.

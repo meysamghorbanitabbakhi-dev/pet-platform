@@ -16,6 +16,10 @@ When sources disagree, use this order:
 
 Design fixtures never override the backend. Never invent missing API fields or operational policy.
 
+## Canonical file integrity
+
+Every file under `design-pages/` is checksum-governed by `canonical-manifest.sha256` (`sha256sum -c canonical-manifest.sha256`, also run as part of `pnpm check:contract`). These files are frozen point-in-time snapshots — including any migration head, path/operation counts, or hash they mention in their own text. **Never edit a canonical `.dc.html` file to add a "current authority" banner or any other live annotation; that both falsifies the checksum and makes the file lie about being unmodified.** If a canonical file needs a historical/no-longer-current-authority notice, add it here or in `ACCEPTED_PAGE_REGISTER.md` instead — never inside the file itself. The only current-release authority is `backend/release-contract.json`; nothing in `design-pages/` is ever a source of current release facts, however it reads.
+
 ## Accepted product model
 
 - Persian RTL, mobile-first, Iran-first hybrid architecture.

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "generate:api": "node scripts/generate-openapi.mjs",
-    "check:contract": "node scripts/check-openapi.mjs",
+    "check:contract": "node scripts/check-openapi.mjs && node scripts/check-design-contract.mjs",
+    "check:design-contract": "node scripts/check-design-contract.mjs",
     "check:api": "pnpm run check:contract",
     "typecheck": "tsc --noEmit",
     "build": "next build",
