@@ -33,9 +33,11 @@ import type {
   InventoryListItem,
   JourneyCheckInBody,
   NotificationPage,
+  NotificationPreferenceBody,
   OrderListPage,
   PrivacyRequestBody,
   PrivacyRequestResponse,
+  SmsPreferenceResponse,
   WalletSummaryResponse,
   JourneyCheckInResponse,
   JourneyCompleteBody,
@@ -746,6 +748,40 @@ export async function markNotificationReadBackend(
       "/api/v1/pet-life/notifications/{notification_id}/read",
       {
         params: { path: { notification_id: notificationId } },
+        headers,
+      },
+    ),
+  );
+}
+
+export async function getSmsPreferenceBackend(
+  eventKey: string,
+): Promise<SmsPreferenceResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.getSmsPreference(eventKey);
+  return withAuth((headers) =>
+    backendClient.GET(
+      "/api/v1/pet-life/notifications/preferences/{event_key}/sms",
+      {
+        params: { path: { event_key: eventKey } },
+        headers,
+      },
+    ),
+  );
+}
+
+export async function updateSmsPreferenceBackend(
+  eventKey: string,
+  body: NotificationPreferenceBody,
+): Promise<void> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.updateSmsPreference(eventKey, body);
+  return withAuthVoid((headers) =>
+    backendClient.PUT(
+      "/api/v1/pet-life/notifications/preferences/{event_key}/sms",
+      {
+        params: { path: { event_key: eventKey } },
+        body,
         headers,
       },
     ),

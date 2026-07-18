@@ -12,19 +12,6 @@ these wait on backend ownership.
 
 ---
 
-## G5-ACC-06 — SMS / quiet-hours preference read-back
-
-- **user_goal**: See the current SMS-notification and quiet-hours preference for a given `event_key` before changing it, so the settings screen can show current state instead of a blind write form.
-- **missing_operation**: `GET /api/v1/pet-life/notifications/preferences/{event_key}/sms` (only `PUT` exists today).
-- **required_request_shape**: path param `event_key: string`; no body.
-- **required_response_shape**: an `SmsPreferenceResponse` with at minimum `{ event_key: string, sms_enabled: boolean, quiet_hours_start: string | null, quiet_hours_end: string | null }`. Quiet-hours read-back was already flagged as an accepted gap in the design package itself (`GATE52C_RESIDUAL` #3: "No GET exists in checked K9 openapi.json. Launch-hidden/deferred.") — this row formalizes that residual note.
-- **authorization_scope**: household/pet-owner identity scope (same auth boundary as the existing `PUT` on this path).
-- **idempotency_requirement**: none (GET is naturally idempotent).
-- **policy_requirement**: gated behind `push_notifications_enabled` only insofar as push channel toggles are shown in the same settings screen; SMS preference itself is not policy-disabled today.
-- **recommended_backend_owner**: notifications module (same owner as the existing `PUT .../preferences/{event_key}/sms` in `app/api/routes/pet_life.py`) — add a paired `GET` returning the same preference row the `PUT` already persists.
-
----
-
 ## G5-ACC-13 — Notification destination/deep-link field
 
 - **user_goal**: Tap a notification in the inbox and land on the specific order/inventory/journey screen it refers to, instead of a dead-end inbox row.
@@ -98,3 +85,4 @@ A few states looked backend-blocked at first glance but are not, for the record:
 - **G5-ACC-02/07/10/14 (pet list, wallet, notification inbox, privacy export)**: all have real, working backend operations (`GET .../pets`, `GET .../wallet`, `GET .../notifications`, `GET /privacy/export`) that are simply unconsumed by any frontend code today. These are Wave 5/7 build work, not backend blockers.
 - **All of JOURNEY-05 through JOURNEY-20 and BRIDGE-25 through BRIDGE-35 (care journeys, reorder, Garden)**: every backend operation these states need already exists and is policy-enabled (`care_journey_delivery_enabled=true`, `semantic_level_estimation_enabled=true`). Zero frontend code consumes any of them today. Wave 1/2/3 build work, not backend blockers.
 - **G5-ACC-03 (address edit/delete)**: closed 2026-07-18. `PATCH`/`DELETE /api/v1/pet-life/households/{household_id}/addresses/{address_id}` now exist (non-enumerating 404s, idempotent soft-delete through `active`, immutable order snapshots preserved — orders copy address fields into `delivery_address_snapshot` at checkout time and never hold a live reference), and `/account` has real edit/delete Sheets wired to them. No longer blocked; removed from the list above.
+- **G5-ACC-06 (SMS / quiet-hours preference read-back)**: closed 2026-07-18. `GET /api/v1/pet-life/notifications/preferences/{event_key}/sms` now exists, returning the same typed shape the existing `PUT` persists (empty/default when no row exists yet — `sms_enabled=true`, matching the model column default; a real value once one exists, including correctly round-tripping an overnight quiet-hours window like 22:30→07:00). `/account/notifications/preferences` reads and writes it for the one real SMS-preference-gated event (`wallet.late_delivery_credit_granted`), hidden behind the `late_credit_customer_visible` policy gate like every other disabled-by-policy feature. No longer blocked; removed from the list above.

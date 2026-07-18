@@ -7457,6 +7457,48 @@
         "title": "SafePaymentSummaryResponse",
         "type": "object"
       },
+      "SmsPreferenceResponse": {
+        "properties": {
+          "event_key": {
+            "title": "Event Key",
+            "type": "string"
+          },
+          "quiet_hours_end": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet Hours End"
+          },
+          "quiet_hours_start": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet Hours Start"
+          },
+          "sms_enabled": {
+            "title": "Sms Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "event_key",
+          "sms_enabled"
+        ],
+        "title": "SmsPreferenceResponse",
+        "type": "object"
+      },
       "SourcePolicyUpdate": {
         "properties": {
           "collection_enabled": {
@@ -14169,6 +14211,51 @@
       }
     },
     "/api/v1/pet-life/notifications/preferences/{event_key}/sms": {
+      "get": {
+        "operationId": "get_sms_preference_api_v1_pet_life_notifications_preferences__event_key__sms_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_key",
+            "required": true,
+            "schema": {
+              "title": "Event Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsPreferenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Sms Preference",
+        "tags": [
+          "pet-life"
+        ]
+      },
       "put": {
         "operationId": "set_sms_preference_api_v1_pet_life_notifications_preferences__event_key__sms_put",
         "parameters": [

@@ -1104,3 +1104,72 @@ async def test_household_address_deletion_preserves_order_history(seed: Seed) ->
         order_after = await session.get(Order, order.id)
         assert order_after is not None
         assert order_after.delivery_address_snapshot == original_snapshot
+
+
+async def test_sms_preference_read_back_default_update_and_overnight_quiet_hours(
+    seed: Seed,
+) -> None:
+    app = create_app()
+    app.dependency_overrides[get_current_identity] = lambda: seed.identity
+    transport = httpx.ASGITransport(app=app)
+    event_key = f"reorder-{uuid.uuid4().hex[:8]}"
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        # Empty/default: no PUT has ever happened for this event_key.
+        default = await client.get(
+            f"/api/v1/pet-life/notifications/preferences/{event_key}/sms"
+        )
+        assert default.status_code == 200
+        assert default.json() == {
+            "event_key": event_key,
+            "sms_enabled": True,
+            "quiet_hours_start": None,
+            "quiet_hours_end": None,
+        }
+
+        # Update then read back a plain daytime window.
+        put_daytime = await client.put(
+            f"/api/v1/pet-life/notifications/preferences/{event_key}/sms",
+            json={
+                "enabled": False,
+                "quiet_start_local": "09:00:00",
+                "quiet_end_local": "17:00:00",
+            },
+        )
+        assert put_daytime.status_code == 204
+        read_back = await client.get(
+            f"/api/v1/pet-life/notifications/preferences/{event_key}/sms"
+        )
+        assert read_back.json() == {
+            "event_key": event_key,
+            "sms_enabled": False,
+            "quiet_hours_start": "09:00:00",
+            "quiet_hours_end": "17:00:00",
+        }
+
+        # An overnight window (start after end, wrapping past midnight) must
+        # be accepted, not rejected as an "invalid range".
+        put_overnight = await client.put(
+            f"/api/v1/pet-life/notifications/preferences/{event_key}/sms",
+            json={
+                "enabled": True,
+                "quiet_start_local": "22:30:00",
+                "quiet_end_local": "07:00:00",
+            },
+        )
+        assert put_overnight.status_code == 204
+        overnight_read_back = await client.get(
+            f"/api/v1/pet-life/notifications/preferences/{event_key}/sms"
+        )
+        assert overnight_read_back.json() == {
+            "event_key": event_key,
+            "sms_enabled": True,
+            "quiet_hours_start": "22:30:00",
+            "quiet_hours_end": "07:00:00",
+        }
+
+        # A different event_key is an independent preference.
+        other_event_default = await client.get(
+            "/api/v1/pet-life/notifications/preferences/some-other-event/sms"
+        )
+        assert other_event_default.json()["sms_enabled"] is True
+    app.dependency_overrides.clear()

@@ -17,6 +17,7 @@ import type {
   JourneyStartBody,
   JourneyStopBody,
   MeasurementBody,
+  NotificationPreferenceBody,
   OpenInventoryBody,
   OrderPetPlanBody,
   OtpVerifyBody,
@@ -210,6 +211,22 @@ export async function loadDevelopmentApi() {
     requestPrivacyAction: async (_body: PrivacyRequestBody) => {
       void _body;
       return fixtures.privacyRequestFixture;
+    },
+    getSmsPreference: async (eventKey: string) => {
+      return {
+        event_key: eventKey,
+        sms_enabled: true,
+        quiet_hours_start: null,
+        quiet_hours_end: null,
+      };
+    },
+    updateSmsPreference: async (
+      _eventKey: string,
+      _body: NotificationPreferenceBody,
+    ) => {
+      void _eventKey;
+      void _body;
+      return undefined;
     },
     exportMyData: async () => fixtures.privacyExportFixture,
     listMeasurements: async (_petId: string) => {

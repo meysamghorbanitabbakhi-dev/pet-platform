@@ -200,6 +200,13 @@ class NotificationPreferenceBody(BaseModel):
     quiet_end_local: time | None = None
 
 
+class SmsPreferenceResponse(BaseModel):
+    event_key: str
+    sms_enabled: bool
+    quiet_hours_start: time | None = None
+    quiet_hours_end: time | None = None
+
+
 class IdResponse(BaseModel):
     id: UUID
 
@@ -1306,6 +1313,36 @@ async def list_household_inventory(
         )
         for unit in units
     ]
+
+
+@router.get(
+    "/notifications/preferences/{event_key}/sms",
+    response_model=SmsPreferenceResponse,
+)
+async def get_sms_preference(
+    event_key: str,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+) -> SmsPreferenceResponse:
+    preference = await session.scalar(
+        select(NotificationPreference).where(
+            NotificationPreference.identity_id == identity.id,
+            NotificationPreference.channel == "sms",
+            NotificationPreference.event_key == event_key,
+        )
+    )
+    if preference is None:
+        # No row yet: the same default an unconfigured PUT-created row would
+        # have (NotificationPreference.enabled defaults to True), not a
+        # separate "unset" tri-state that doesn't exist anywhere else in the
+        # schema.
+        return SmsPreferenceResponse(event_key=event_key, sms_enabled=True)
+    return SmsPreferenceResponse(
+        event_key=event_key,
+        sms_enabled=preference.enabled,
+        quiet_hours_start=preference.quiet_start_local,
+        quiet_hours_end=preference.quiet_end_local,
+    )
 
 
 @router.put(

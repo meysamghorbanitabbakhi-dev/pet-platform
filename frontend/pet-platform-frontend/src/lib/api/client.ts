@@ -41,6 +41,7 @@ import type {
   MeasurementItem,
   MeContextResponse,
   NotificationPage,
+  NotificationPreferenceBody,
   OfferDetailResponse,
   OpenInventoryBody,
   DelayAcknowledgementResponse,
@@ -67,6 +68,7 @@ import type {
   PrivacyRequestResponse,
   ReorderAssessmentResponse,
   ReorderSnoozeBody,
+  SmsPreferenceResponse,
   TodayResponse,
   WalletSummaryResponse,
   WeightTrendResponse,
@@ -323,6 +325,22 @@ export function markNotificationRead(notificationId: string) {
 export function requestPrivacyAction(body: PrivacyRequestBody) {
   return bff<PrivacyRequestResponse>("/api/bff/privacy/requests", {
     method: "POST",
+    body,
+  });
+}
+
+export function getSmsPreference(eventKey: string) {
+  return bff<SmsPreferenceResponse>(
+    `/api/bff/notifications/preferences/${eventKey}/sms`,
+  );
+}
+
+export function updateSmsPreference(
+  eventKey: string,
+  body: NotificationPreferenceBody,
+) {
+  return bff<void>(`/api/bff/notifications/preferences/${eventKey}/sms`, {
+    method: "PUT",
     body,
   });
 }

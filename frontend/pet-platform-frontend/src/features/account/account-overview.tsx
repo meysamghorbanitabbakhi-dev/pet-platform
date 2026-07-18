@@ -268,6 +268,12 @@ export function AccountOverview() {
             <Link className="button button--secondary" href="/notifications">
               اعلان‌ها
             </Link>
+            <Link
+              className="button button--secondary"
+              href="/account/notifications/preferences"
+            >
+              تنظیمات پیامک
+            </Link>
             <Link className="button button--secondary" href="/privacy">
               حریم خصوصی
             </Link>

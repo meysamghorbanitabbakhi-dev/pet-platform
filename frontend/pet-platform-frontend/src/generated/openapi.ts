@@ -1769,7 +1769,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Sms Preference */
+        get: operations["get_sms_preference_api_v1_pet_life_notifications_preferences__event_key__sms_get"];
         /** Set Sms Preference */
         put: operations["set_sms_preference_api_v1_pet_life_notifications_preferences__event_key__sms_put"];
         post?: never;
@@ -4998,6 +4999,17 @@ export interface components {
             paid_at?: string | null;
             /** Status */
             status: string;
+        };
+        /** SmsPreferenceResponse */
+        SmsPreferenceResponse: {
+            /** Event Key */
+            event_key: string;
+            /** Quiet Hours End */
+            quiet_hours_end?: string | null;
+            /** Quiet Hours Start */
+            quiet_hours_start?: string | null;
+            /** Sms Enabled */
+            sms_enabled: boolean;
         };
         /** SourcePolicyUpdate */
         SourcePolicyUpdate: {
@@ -8945,6 +8957,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CursorPage_NotificationListItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sms_preference_api_v1_pet_life_notifications_preferences__event_key__sms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmsPreferenceResponse"];
                 };
             };
             /** @description Validation Error */
