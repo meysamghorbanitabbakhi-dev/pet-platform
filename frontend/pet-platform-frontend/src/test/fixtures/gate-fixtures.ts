@@ -33,12 +33,14 @@ import type {
   MeContextResponse,
   OfferDetailResponse,
   OfferListItem,
+  OfferSearchPage,
   OrderDetailResponse,
   OrderJourneyResponse,
   OrderResponse,
   PaymentCallbackResponse,
   PaymentRedirectResponse,
   PolicyResponse,
+  ProductAlternativeResponse,
   ReorderAssessmentResponse,
   TodayResponse,
 } from "@/lib/api-types";
@@ -175,6 +177,26 @@ export const offersFixture: OfferListItem[] = [
     supplier_country: "فرانسه",
     title_fa: "رویال کنین کت - ۲ کیلوگرم",
     unit_label_fa: "کیسه",
+  },
+];
+
+export const offerSearchFixture: OfferSearchPage = {
+  items: offersFixture,
+  page: {
+    has_more: false,
+    limit: 25,
+    offset: 0,
+    total: offersFixture.length,
+  },
+};
+
+export const productAlternativesFixture: ProductAlternativeResponse[] = [
+  {
+    compatibility_notes_fa: null,
+    id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    offer: offersFixture[1],
+    rank: 0,
+    rationale_fa: "فرمول مشابه و از همان تامین‌کننده تایید شده",
   },
 ];
 

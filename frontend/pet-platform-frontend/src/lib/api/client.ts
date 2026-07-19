@@ -43,10 +43,12 @@ import type {
   NotificationPage,
   NotificationPreferenceBody,
   OfferDetailResponse,
+  OfferSearchPage,
   OpenInventoryBody,
   DelayAcknowledgementResponse,
   OrderDetailResponse,
   OrderJourneyResponse,
+  ProductAlternativeResponse,
   OrderListPage,
   OrderPetPlanBody,
   OrderResponse,
@@ -412,6 +414,21 @@ export function completeJourney(journeyId: string, body: JourneyCompleteBody) {
 
 export function getOfferDetail(offerId: string) {
   return bff<OfferDetailResponse>(`/api/bff/catalog/offers/${offerId}`);
+}
+
+export function searchOffers(q: string, limit = 25, offset = 0) {
+  const params = new URLSearchParams({
+    q,
+    limit: String(limit),
+    offset: String(offset),
+  });
+  return bff<OfferSearchPage>(`/api/bff/catalog/offers/search?${params}`);
+}
+
+export function listProductAlternatives(productId: string) {
+  return bff<ProductAlternativeResponse[]>(
+    `/api/bff/catalog/products/${productId}/alternatives`,
+  );
 }
 
 export function createOrder(body: CheckoutBody, idempotencyKey: string) {

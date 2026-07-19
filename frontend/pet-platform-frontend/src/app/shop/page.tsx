@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ErrorState } from "@/components/primitives";
 import { OfferList } from "@/features/commerce/offer-list";
@@ -21,9 +22,14 @@ export default async function ShopPage() {
   return (
     <AppShell wide>
       <div className="stack">
-        <div>
-          <div className="eyebrow">فروشگاه</div>
-          <h1 className="display">کشف محصول</h1>
+        <div className="split">
+          <div>
+            <div className="eyebrow">فروشگاه</div>
+            <h1 className="display">کشف محصول</h1>
+          </div>
+          <Link className="button button--secondary" href="/shop/search">
+            جستجو در فروشگاه
+          </Link>
         </div>
         <p className="caption">
           این صفحه داده محصول را از سرویس می‌خواند. قیمت در سرویس به ریال ذخیره

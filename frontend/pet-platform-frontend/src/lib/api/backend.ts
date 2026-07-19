@@ -13,7 +13,9 @@ import type {
   MeContextResponse,
   OfferDetailResponse,
   OfferListItem,
+  OfferSearchPage,
   OpenInventoryBody,
+  ProductAlternativeResponse,
   OrderDetailResponse,
   OrderJourneyResponse,
   OrderPetPlanBody,
@@ -1163,6 +1165,37 @@ export async function getOfferDetailBackend(
       params: { path: { offer_id: offerId } },
       cache: "no-store",
     }),
+  );
+}
+
+export async function searchOffersBackend(
+  q: string,
+  limit: number,
+  offset: number,
+): Promise<OfferSearchPage> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.searchOffers(q, limit, offset);
+  return unwrap(
+    await backendClient.GET("/api/v1/catalog/offers/search", {
+      params: { query: { q, limit, offset } },
+      cache: "no-store",
+    }),
+  );
+}
+
+export async function listProductAlternativesBackend(
+  productId: string,
+): Promise<ProductAlternativeResponse[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listProductAlternatives(productId);
+  return unwrap(
+    await backendClient.GET(
+      "/api/v1/catalog/products/{product_id}/alternatives",
+      {
+        params: { path: { product_id: productId } },
+        cache: "no-store",
+      },
+    ),
   );
 }
 

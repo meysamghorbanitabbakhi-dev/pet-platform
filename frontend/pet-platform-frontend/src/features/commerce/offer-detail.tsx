@@ -15,6 +15,7 @@ import {
 import { AddToCartButton } from "./add-to-cart-button";
 import { AvailabilitySubscribe } from "./availability-subscribe";
 import { CompareToggleButton } from "./compare-toggle-button";
+import { ProductAlternatives } from "./product-alternatives";
 
 export function OfferDetail({
   offer,
@@ -119,6 +120,10 @@ export function OfferDetail({
           <CompareToggleButton offerId={offer.id} />
         </Card>
       </div>
+
+      {unavailable ? (
+        <ProductAlternatives productId={offer.product_id} policy={policy} />
+      ) : null}
     </div>
   );
 }

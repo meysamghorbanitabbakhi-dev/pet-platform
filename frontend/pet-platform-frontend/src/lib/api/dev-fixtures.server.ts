@@ -440,6 +440,16 @@ export async function loadDevelopmentApi() {
           ? fixtures.rexTodayFixture
           : fixtures.returningTodayFixture,
     listOffers: async () => fixtures.offersFixture,
+    searchOffers: async (_q: string, _limit: number, _offset: number) => {
+      void _q;
+      void _limit;
+      void _offset;
+      return fixtures.offerSearchFixture;
+    },
+    listProductAlternatives: async (_productId: string) => {
+      void _productId;
+      return fixtures.productAlternativesFixture;
+    },
     createOrder: async (_body: CheckoutBody, _idempotencyKey: string) => {
       void _body;
       void _idempotencyKey;
