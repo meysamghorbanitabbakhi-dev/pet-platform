@@ -13,10 +13,7 @@ def get_redis() -> Redis:
 
 
 async def ping_redis() -> None:
-    # redis-py's async Redis.ping() is typed `Awaitable[bool] | bool` because
-    # the command is defined once and shared with the sync client -- it is
-    # always awaitable here, this is an upstream stub imprecision.
-    await get_redis().ping()  # type: ignore[misc]
+    await get_redis().ping()
 
 
 async def close_redis() -> None:
