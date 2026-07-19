@@ -4,7 +4,7 @@ import pytest
 from app.core.config import Settings
 from app.integrations.otp.dev_console import ConsoleOtpProvider
 from app.integrations.otp.factory import OtpProviderNotConfiguredError, build_otp_provider
-from app.integrations.otp.payamak_panel import PayamakPanelOtpProvider
+from app.integrations.otp.payamak_panel import PayamakPanelConfig, PayamakPanelOtpProvider
 from app.modules.identity.models import OtpChallenge
 from app.modules.identity.otp import generate_otp_code, hash_otp_code, otp_matches
 from pydantic import ValidationError
@@ -99,6 +99,16 @@ def test_real_provider_takes_precedence_over_dev_console_fallback() -> None:
     )
 
     assert isinstance(build_otp_provider(settings), PayamakPanelOtpProvider)
+
+
+def test_no_configured_otp_provider_claims_delivery_receipt_support() -> None:
+    # ADR-005: neither integrated provider can report a post-submission
+    # delivery outcome; supports_delivery_receipts must stay False until a
+    # provider that genuinely offers DLR/webhook/poll is integrated.
+    assert PayamakPanelOtpProvider(
+        PayamakPanelConfig(username="u", password="p", sender_number="10001234")
+    ).supports_delivery_receipts is False
+    assert ConsoleOtpProvider().supports_delivery_receipts is False
 
 
 def test_otp_dev_console_fallback_can_never_be_enabled_in_production() -> None:

@@ -16,6 +16,8 @@ class ConsoleOtpProvider:
     (app.workers.scheduler._run_pending_sms_job) for general transactional
     SMS, not just OTP codes."""
 
+    supports_delivery_receipts = False
+
     async def aclose(self) -> None:
         return None
 

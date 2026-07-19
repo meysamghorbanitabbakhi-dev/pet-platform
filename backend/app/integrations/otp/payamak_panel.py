@@ -23,6 +23,10 @@ class PayamakPanelConfig:
 
 
 class PayamakPanelOtpProvider:
+    # See ADR-005: SendSMS returns only a synchronous accepted/rejected
+    # result, no delivery receipt of any kind.
+    supports_delivery_receipts = False
+
     def __init__(self, config: PayamakPanelConfig, client: httpx.AsyncClient | None = None) -> None:
         self._config = config
         self._client = client or httpx.AsyncClient(timeout=config.timeout_seconds)
