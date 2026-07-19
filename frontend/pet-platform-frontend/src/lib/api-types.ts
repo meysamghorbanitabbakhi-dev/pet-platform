@@ -1,0 +1,115 @@
+import type { components, paths } from "@/generated/openapi";
+
+export type ApiPaths = paths;
+export type Schema<Name extends keyof components["schemas"]> =
+  components["schemas"][Name];
+
+export type PolicyResponse = Schema<"PolicyResponse">;
+export type OtpRequestBody = Schema<"OtpRequestBody">;
+export type OtpRequestResponse = Schema<"OtpRequestResponse">;
+export type OtpVerifyBody = Schema<"OtpVerifyBody">;
+export type OtpVerifyResponse = Schema<"OtpVerifyResponse">;
+export type MeContextResponse = Schema<"MeContextResponse">;
+export type ContextPetSummary = Schema<"ContextPetSummary">;
+export type OfferListItem = Schema<"OfferListItem">;
+export type OfferDetailResponse = Schema<"OfferDetailResponse">;
+export type TodayResponse = Schema<"TodayResponse">;
+export type TodayFood = TodayResponse["food"];
+export type JourneyOfferResponse = Schema<"JourneyOfferResponse">;
+export type InventoryDetailResponse = Schema<"InventoryDetailResponse">;
+export type OpenInventoryBody = Schema<"OpenInventoryBody">;
+export type FoodEstimateResponse = Schema<"FoodEstimateResponse">;
+export type HouseholdBody = Schema<"HouseholdBody">;
+export type PetBody = Schema<"PetBody">;
+export type AddressBody = Schema<"AddressBody">;
+export type AddressUpdateBody = Schema<"AddressUpdateBody">;
+export type AddressResponse = Schema<"AddressResponse">;
+export type IdResponse = Schema<"IdResponse">;
+export type RefreshBody = Schema<"RefreshBody">;
+export type TokenResponse = Schema<"TokenResponse">;
+export type PetProfilePatch = Schema<"PetProfilePatch">;
+export type CheckoutBody = Schema<"CheckoutBody">;
+export type CheckoutItemBody = Schema<"CheckoutItemBody">;
+export type OrderResponse = Schema<"OrderResponse">;
+export type OrderDetailResponse = Schema<"OrderDetailResponse">;
+export type OrderJourneyResponse = Schema<"OrderJourneyResponse">;
+export type PaymentRequestBody = Schema<"PaymentRequestBody">;
+export type PaymentRedirectResponse = Schema<"PaymentRedirectResponse">;
+export type PaymentCallbackResponse = Schema<"PaymentCallbackResponse">;
+export type OrderPetPlanBody = Schema<"OrderPetPlanBody">;
+export type PetSummary = Schema<"PetSummary">;
+export type InventoryListItem = Schema<"InventoryListItem">;
+export type ReorderAssessmentResponse = Schema<"ReorderAssessmentResponse">;
+export type ReorderSnoozeBody = Schema<"ReorderSnoozeBody">;
+export type InventoryAssignmentResponse = Schema<"InventoryAssignmentResponse">;
+export type JourneyDefinitionResponse = Schema<"JourneyDefinitionResponse">;
+export type JourneyDetailResponse = Schema<"JourneyDetailResponse">;
+export type JourneyStepResponse = Schema<"JourneyStepResponse">;
+export type JourneyAnswerOptionResponse = Schema<"JourneyAnswerOptionResponse">;
+export type JourneyCheckInBody = Schema<"JourneyCheckInBody">;
+export type JourneyCheckInResponse = Schema<"JourneyCheckInResponse">;
+export type JourneyStartBody = Schema<"JourneyStartBody">;
+export type JourneyCompleteBody = Schema<"JourneyCompleteBody">;
+export type JourneyCompletionResponse = Schema<"JourneyCompletionResponse">;
+export type JourneyStopBody = Schema<"JourneyStopBody">;
+export type DiaryListItem = Schema<"DiaryListItem">;
+export type DiaryEntryDetailResponse = Schema<"DiaryEntryDetailResponse">;
+export type GardenStateResponse = Schema<"GardenStateResponse">;
+export type GardenObjectResponse = Schema<"GardenObjectResponse">;
+export type GardenPlacementBody = Schema<"GardenPlacementBody">;
+export type AvailabilitySubscriptionResponse =
+  Schema<"AvailabilitySubscriptionResponse">;
+export type CustomerRequestBody = Schema<"CustomerRequestBody">;
+export type CustomerRequestResponse = Schema<"CustomerRequestResponse">;
+export type OffsetPageMetadata = Schema<"OffsetPageMetadata">;
+export type WalletSummaryResponse = Schema<"WalletSummaryResponse">;
+export type NotificationDestinationResponse =
+  Schema<"NotificationDestinationResponse">;
+export type NotificationListItem = Schema<"NotificationListItem">;
+export type NotificationPage = Schema<"OffsetPage_NotificationListItem_">;
+export type SmsPreferenceResponse = Schema<"SmsPreferenceResponse">;
+export type NotificationPreferenceBody = Schema<"NotificationPreferenceBody">;
+export type PrivacyRequestBody = Schema<"PrivacyRequestBody">;
+export type PrivacyRequestResponse = Schema<"PrivacyRequestResponse">;
+export type PrivacyRequestPage = Schema<"OffsetPage_PrivacyRequestResponse_">;
+export type MeasurementBody = Schema<"MeasurementBody">;
+export type BreedSelectionBody = Schema<"BreedSelectionBody">;
+export type GuidancePreferenceBody = Schema<"GuidancePreferenceBody">;
+export type ConsentBody = Schema<"ConsentBody">;
+export type PetConsentResponse = Schema<"PetConsentResponse">;
+export type BodyAssessmentBody = Schema<"BodyAssessmentBody">;
+export type OrderListItem = Schema<"OrderListItem">;
+export type OrderListPage = Schema<"OffsetPage_OrderListItem_">;
+export type DelayAcknowledgementResponse =
+  Schema<"DelayAcknowledgementResponse">;
+export type SourcedUnitResponse = Schema<"SourcedUnitResponse">;
+export type AvailabilitySubscriptionPage =
+  Schema<"OffsetPage_AvailabilitySubscriptionResponse_">;
+export type CustomerRequestPage = Schema<"OffsetPage_CustomerRequestResponse_">;
+
+export type MeasurementItem = Schema<"MeasurementItemResponse">;
+export type MeasurementMutationResponse = Schema<"MeasurementMutationResponse">;
+export type WeightTrendResponse =
+  Schema<"WeightTrendUnavailable"> | Schema<"WeightTrendAvailable">;
+export type PetAssetItem = Schema<"PetAssetItemResponse">;
+export type PetAssetMutationResponse = Schema<"PetAssetMutationResponse">;
+export type BodyAssessmentItem = Schema<"BodyAssessmentItemResponse">;
+export type BodyAssessmentMutationResponse =
+  Schema<"BodyAssessmentMutationResponse">;
+export type BreedListItem = Schema<"BreedSummary">;
+export type BreedListResponse = Schema<"BreedListResponse">;
+export type BreedSearchItem = Schema<"BreedSearchItem">;
+export type BreedSearchResponse = Schema<"BreedSearchResponse">;
+export type BreedDetailResponse = Schema<"BreedDetailResponse">;
+export type KnowledgeClaimItem = Schema<"KnowledgeClaimItem">;
+export type KnowledgeGuidanceItem = Schema<"KnowledgeGuidanceItem">;
+export type PetKnowledgeResponse =
+  Schema<"PetKnowledgeUnavailable"> | Schema<"PetKnowledgeAvailable">;
+export type CareGuidanceItem = Schema<"CareGuidanceItemResponse">;
+export type CareGuidanceResponse = Schema<"CareGuidanceResponse">;
+export type PetProfileResponse = Schema<"PetProfileResponse">;
+export type BreedSelectionResponse = Schema<"BreedSelectionResponse">;
+export type BreedSelectionHistoryItem = Schema<"BreedSelectionHistoryItem">;
+export type ProfileCompletenessResponse = Schema<"ProfileCompletenessResponse">;
+export type ReferenceComparisonResponse = Schema<"ReferenceComparisonResponse">;
+export type ReminderMutationResponse = Schema<"ReminderMutationResponse">;

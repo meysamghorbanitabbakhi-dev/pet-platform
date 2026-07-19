@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800&family=Vazirmatn:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:oklch(0.93 0.006 90);}*{box-sizing:border-box;font-family:'Vazirmatn',system-ui,sans-serif;}</style>
+</helmet>
+<div dir="rtl" lang="fa" style="min-height:100vh;padding:32px;">
+  <div style="max-width:1400px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:22px;">
+      <div>
+        <div style="font-family:'IBM Plex Mono';direction:ltr;text-align:left;font-size:10.5px;letter-spacing:0.06em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;margin-bottom:4px;">Gate 5.2C-R3</div>
+        <h1 style="font-family:'Estedad';font-size:22px;font-weight:800;margin:0;color:oklch(0.22 0.01 265);">تخته صفحه واکنش‌گرا R3 — ترکیب‌بندی‌های واقعی</h1>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <sc-for list="{{ widthOptions }}" as="w" hint-placeholder-count="4">
+          <button onClick="{{ w.select }}" style="border:1px solid {{ w.border }};background:{{ w.bg }};color:{{ w.fg }};border-radius:8px;padding:8px 14px;font-size:12.5px;cursor:pointer;">{{ w.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;">
+      <sc-for list="{{ compositions }}" as="c" hint-placeholder-count="14">
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="font-family:'IBM Plex Mono';direction:ltr;text-align:left;font-size:9.5px;color:oklch(0.5 0.005 90);">{{ c.route }}</div>
+          <div style="width:{{ width }}px;background:{{ c.frameBg }};border-radius:18px;border:2px solid oklch(0.2 0.005 90);box-shadow:0 12px 26px oklch(0.3 0.02 265 / 0.14);padding:16px;">
+            <div style="display:{{ c.gridDisplay }};grid-template-columns:{{ c.gridCols }};gap:12px;">
+              <sc-for list="{{ c.blocks }}" as="b" hint-placeholder-count="5">
+                <sc-if value="{{ b.isH1 }}"><div style="font-family:'Estedad';font-size:15px;font-weight:800;color:{{ c.frameInk }};">{{ b.label }}</div></sc-if>
+                <sc-if value="{{ b.isP }}"><div style="font-size:12.5px;line-height:1.8;color:{{ c.frameMuted }};min-height:44px;">{{ b.label }}</div></sc-if>
+                <sc-if value="{{ b.isCard }}"><div style="border:1px solid {{ c.frameBorder }};border-radius:12px;padding:12px;background:{{ c.frameCard }};font-size:12.5px;color:{{ c.frameInk }};min-height:44px;">{{ b.label }}</div></sc-if>
+                <sc-if value="{{ b.isBtn }}"><button style="border:none;background:{{ b.btnBg }};color:{{ b.btnFg }};font-weight:700;border-radius:10px;padding:12px;font-size:13px;min-height:44px;cursor:pointer;width:100%;">{{ b.label }}</button></sc-if>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size:11.5px;color:oklch(0.45 0.01 265);margin-top:16px;">≥768px reflows to a 2-column grid; all cards/buttons retain ≥44px min-height at every width. Journey composition now shows a real allowed_answers step instead of a generic placeholder.</div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { width: 390 };
+  b(t, extra) { return { t, ...extra, isH1: t === 'h1', isP: t === 'p', isCard: t === 'card', isBtn: t === 'btn' }; }
+  data() {
+    const midnight = { bg: 'oklch(0.28 0.04 270)', fg: 'oklch(0.97 0.01 270)' };
+    const brass = { bg: 'oklch(0.72 0.13 75)', fg: 'oklch(0.24 0.07 75)' };
+    const jade = { bg: 'oklch(0.28 0.06 150)', card: 'oklch(0.34 0.06 150)', border: 'oklch(0.4 0.06 150)', ink: 'oklch(0.95 0.02 150)', muted: 'oklch(0.8 0.03 150)' };
+    const paper = { bg: '#fff', card: 'oklch(0.98 0.006 80)', border: 'oklch(0.86 0.01 80)', ink: 'oklch(0.22 0.01 265)', muted: 'oklch(0.45 0.01 265)' };
+    return [
+      { route: 'app shell', theme: paper, blocks: [this.b('h1', { label: 'امروز' }), this.b('card', { label: 'بیشی (فعال) · رکس' }), this.b('card', { label: '۵ آیتم ناوبری' })] },
+      { route: '/auth/mobile', theme: paper, blocks: [this.b('h1', { label: 'ورود با شماره موبایل' }), this.b('btn', { label: 'ارسال کد', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { route: '/onboarding/household', theme: paper, blocks: [this.b('h1', { label: 'نام خانوار (الزامی)' }), this.b('btn', { label: 'ادامه', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { route: '/shop/offer/:offerId', theme: paper, blocks: [this.b('h1', { label: 'رویال کنین ادالت — ۳ کیلوگرم' }), this.b('card', { label: '۴۸۰٬۰۰۰ تومان · ۳۶٪ صرفه‌جویی · حداقل ماندگاری ۶ ماه' }), this.b('btn', { label: 'افزودن به سبد', btnBg: brass.bg, btnFg: brass.fg })] },
+      { route: '/cart', theme: paper, blocks: [this.b('h1', { label: 'سبد خرید' }), this.b('card', { label: 'قلم × ۱ — ۴۸۰٬۰۰۰ تومان' }), this.b('btn', { label: 'ادامه به پرداخت', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { route: '/checkout/review', theme: paper, blocks: [this.b('h1', { label: 'بازبینی نهایی' }), this.b('btn', { label: 'پرداخت', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { route: '/today', theme: paper, blocks: [this.b('h1', { label: 'امروز' }), this.b('card', { label: 'تخمین فعال — اطمینان بالا' })] },
+      { route: '/inventory/:unitId', theme: paper, blocks: [this.b('h1', { label: 'باز کردن بسته' }), this.b('btn', { label: 'باز کردن', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { route: '/account', theme: paper, blocks: [this.b('h1', { label: 'حساب' }), this.b('card', { label: 'خانوار · پت‌ها · آدرس‌ها · کیف پول · حریم خصوصی' })] },
+      { route: '/support/new', theme: paper, blocks: [this.b('h1', { label: 'ثبت درخواست' }), this.b('btn', { label: 'ارسال درخواست', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { route: '/orders/:orderId', theme: paper, blocks: [this.b('h1', { label: 'جزئیات سفارش' }), this.b('card', { label: 'پرداخت‌شده → در حال تأمین → در مسیر ارسال' })] },
+      { route: '/diary/:petId', theme: paper, blocks: [this.b('h1', { label: 'دفترچه' }), this.b('card', { label: 'خاطره: تکمیل مسیر مراقبتی' })] },
+      { route: '/garden/:petId', theme: jade, blocks: [this.b('h1', { label: 'باغ برقرارشده' }), this.b('p', { label: 'بدون XP، رشته امتیاز یا افت' })] },
+      { route: '/journeys', theme: paper, blocks: [this.b('h1', { label: 'مسیر مراقبتی پیشنهادی' }), this.b('card', { label: 'گام: اشتهای پت امروز چطور بود؟ (خوب/متوسط/ضعیف)' }), this.b('btn', { label: 'شروع مسیر', btnBg: midnight.bg, btnFg: midnight.fg })] }
+    ];
+  }
+  renderVals() {
+    const w = this.state.width;
+    const widths = [320, 390, 768, 1024];
+    const isWide = w >= 768;
+    const compositions = this.data().map(c => ({
+      route: c.route, frameBg: c.theme.bg, frameInk: c.theme.ink, frameMuted: c.theme.muted, frameBorder: c.theme.border, frameCard: c.theme.card,
+      gridDisplay: 'grid', gridCols: isWide ? 'repeat(2, 1fr)' : '1fr', blocks: c.blocks
+    }));
+    return {
+      width: w,
+      widthOptions: widths.map(x => ({ label: x + 'px', select: () => this.setState({ width: x }), bg: x === w ? 'oklch(0.72 0.13 75 / 0.15)' : '#fff', border: x === w ? 'oklch(0.72 0.13 75)' : 'oklch(0.8 0.01 80)', fg: x === w ? 'oklch(0.3 0.08 75)' : 'oklch(0.35 0.005 90)' })),
+      compositions
+    };
+  }
+}
+
+</script>
+</body>
+</html>

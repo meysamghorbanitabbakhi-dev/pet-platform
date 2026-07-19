@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800&family=Vazirmatn:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:oklch(0.93 0.006 90);}*{box-sizing:border-box;font-family:'Vazirmatn',system-ui,sans-serif;}</style>
+</helmet>
+<div dir="rtl" lang="fa" style="min-height:100vh;padding:32px;display:flex;flex-direction:column;align-items:center;gap:18px;">
+  <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
+    <div style="font-family:'IBM Plex Mono';direction:ltr;font-size:10.5px;letter-spacing:0.06em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;">Gate 5.2D · wave 3</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+        <button onClick="{{ t.select }}" style="border:1px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }};border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:36px;">{{ t.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="width:390px;background:{{ frameBg }};border:2px solid oklch(0.2 0.005 90);border-radius:26px;padding:0;box-shadow:0 20px 40px oklch(0.3 0.01 90 / 0.18);overflow:hidden;">
+    <div style="height:16px;display:flex;align-items:center;justify-content:center;background:{{ frameBg }};"><div style="width:56px;height:5px;border-radius:3px;background:oklch(0.85 0.005 90 / 0.5);"></div></div>
+
+    <sc-if value="{{ isAccount }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:18px;">حساب</div>
+        <sc-for list="{{ accountRows }}" as="r" hint-placeholder-count="7">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 4px;border-bottom:1px solid oklch(0.92 0.005 80);min-height:44px;">
+            <span style="font-size:13.5px;color:oklch(0.22 0.01 265);">{{ r.label }}</span>
+            <span style="font-size:14px;color:oklch(0.6 0.01 90);">‹</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSupport }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">ثبت درخواست پشتیبانی</div>
+        <label style="font-size:12.5px;font-weight:600;color:oklch(0.35 0.01 265);margin-bottom:6px;">موضوع</label>
+        <input value="سؤال درباره سفارش #۱۰۲۴" style="border:1.5px solid oklch(0.86 0.01 80);border-radius:8px;padding:13px 14px;font-size:14px;font-family:inherit;margin-bottom:14px;min-height:48px;background:#fff;color:oklch(0.22 0.01 265);"/>
+        <label style="font-size:12.5px;font-weight:600;color:oklch(0.35 0.01 265);margin-bottom:6px;">توضیحات</label>
+        <div style="border:1.5px solid oklch(0.86 0.01 80);border-radius:8px;padding:13px 14px;font-size:13.5px;color:oklch(0.22 0.01 265);min-height:100px;background:#fff;margin-bottom:16px;line-height:1.8;">سفارش هنوز به مرحله ارسال نرسیده و می‌خواستم وضعیت را جویا شوم.</div>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;">ارسال درخواست</button>
+        <div style="background:oklch(0.94 0.02 250);border-radius:10px;padding:12px 14px;margin-top:16px;font-size:12px;line-height:1.85;color:oklch(0.3 0.08 250);">درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست.</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDiary }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">دفترچه</div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:14px;padding:16px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:600;color:oklch(0.5 0.01 265);margin-bottom:6px;">۱۴۰۵/۰۲/۰۸</div>
+          <div style="font-family:'Estedad';font-size:14.5px;font-weight:700;color:oklch(0.22 0.01 265);margin-bottom:6px;">تکمیل مسیر مراقبتی: پایش وزن هفتگی</div>
+          <div style="font-size:12.5px;color:oklch(0.45 0.01 265);line-height:1.8;">بیشی مسیر ۴ هفته‌ای پایش وزن را با موفقیت به پایان رساند.</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isGarden }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.95 0.02 150);margin-bottom:6px;">باغ ایرانی بیشی</div>
+        <div style="font-size:12px;color:oklch(0.8 0.03 150);margin-bottom:18px;">بدون XP، رشته امتیاز، افت یا پاداش خرید</div>
+        <div style="background:oklch(0.34 0.06 150);border-radius:16px;height:340px;position:relative;overflow:hidden;">
+          <div style="position:absolute;bottom:20px;right:40px;width:52px;height:52px;border-radius:12px;background:oklch(0.72 0.13 75 / 0.35);box-shadow:0 0 24px oklch(0.72 0.13 70 / 0.4);"></div>
+          <div style="position:absolute;bottom:20px;left:60px;width:44px;height:44px;border-radius:50%;background:oklch(0.72 0.13 75 / 0.25);"></div>
+        </div>
+        <div style="font-size:11.5px;color:oklch(0.8 0.03 150);margin-top:12px;">۲ شیء جای‌گذاری‌شده · لمس‌کنید و بکشید برای جابه‌جایی</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isJourney }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">مسیر مراقبتی — پایش اشتها</div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:14px;padding:16px;margin-bottom:16px;">
+          <div style="font-size:13.5px;font-weight:700;color:oklch(0.22 0.01 265);margin-bottom:6px;">اشتهای پت امروز چطور بود؟</div>
+          <div style="font-size:11.5px;color:oklch(0.5 0.01 265);">check_in_key: appetite_check</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+          <button style="border:1.5px solid oklch(0.72 0.13 75);background:oklch(0.72 0.13 75 / 0.15);color:oklch(0.28 0.07 75);border-radius:999px;padding:10px 18px;font-size:13px;font-weight:700;min-height:44px;cursor:pointer;">خوب</button>
+          <button style="border:1px solid oklch(0.86 0.01 80);background:#fff;color:oklch(0.3 0.01 265);border-radius:999px;padding:10px 18px;font-size:13px;min-height:44px;cursor:pointer;">متوسط</button>
+          <button style="border:1px solid oklch(0.86 0.01 80);background:#fff;color:oklch(0.3 0.01 265);border-radius:999px;padding:10px 18px;font-size:13px;min-height:44px;cursor:pointer;">ضعیف</button>
+        </div>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;margin-top:auto;">ثبت پاسخ</button>
+      </div>
+    </sc-if>
+  </div>
+  <div style="font-size:11px;color:oklch(0.4 0.01 265);max-width:390px;text-align:center;">توکن‌های G5.2C-R2 · حداقل هدف لمسی ۴۴px همه‌جا</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { tab: 'account' };
+  renderVals() {
+    const tabs = [
+      { id: 'account', label: 'حساب' },
+      { id: 'support', label: 'پشتیبانی' },
+      { id: 'diary', label: 'دفترچه' },
+      { id: 'garden', label: 'باغ ایرانی' },
+      { id: 'journey', label: 'مسیر مراقبتی' }
+    ].map(t => ({ ...t, select: () => this.setState({ tab: t.id }), bg: this.state.tab === t.id ? 'oklch(0.72 0.13 75 / 0.15)' : '#fff', border: this.state.tab === t.id ? 'oklch(0.72 0.13 75)' : 'oklch(0.8 0.01 80)', fg: this.state.tab === t.id ? 'oklch(0.3 0.08 75)' : 'oklch(0.35 0.005 90)' }));
+    const accountRows = ['خانوار', 'پت‌ها', 'آدرس‌ها', 'سفارش‌ها', 'اعلان‌ها', 'کیف پول', 'حریم خصوصی'].map(label => ({ label }));
+    const isGarden = this.state.tab === 'garden';
+    return {
+      tabs, accountRows,
+      isAccount: this.state.tab === 'account', isSupport: this.state.tab === 'support',
+      isDiary: this.state.tab === 'diary', isGarden, isJourney: this.state.tab === 'journey',
+      frameBg: isGarden ? 'oklch(0.28 0.06 150)' : 'oklch(0.98 0.006 80)'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

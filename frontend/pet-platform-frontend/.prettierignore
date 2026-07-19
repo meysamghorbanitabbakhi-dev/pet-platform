@@ -1,0 +1,7 @@
+.next
+.next-e2e-real-backend
+node_modules
+coverage
+playwright-report
+test-results
+src/generated/openapi.ts

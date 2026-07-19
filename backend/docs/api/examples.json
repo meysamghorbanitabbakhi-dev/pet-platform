@@ -1,0 +1,319 @@
+{
+  "error": {
+    "error": {
+      "code": "invalid_cursor",
+      "message": "invalid cursor",
+      "details": null,
+      "request_id": "01J-example-request"
+    }
+  },
+  "offset_page": {
+    "items": [],
+    "page": { "limit": 25, "offset": 0, "total": 0, "has_more": false }
+  },
+  "cursor_page": {
+    "items": [],
+    "page": { "next_cursor": null, "has_more": false }
+  },
+  "me_context": {
+    "identity": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "mobile_e164": "+989121234567",
+      "identity_type": "customer"
+    },
+    "households": [
+      {
+        "id": "00000000-0000-4000-8000-000000000101",
+        "name": "خانه میلو",
+        "role": "owner",
+        "pet_count": 2,
+        "active_address_count": 1
+      }
+    ],
+    "default_household_id": "00000000-0000-4000-8000-000000000101",
+    "pets": [
+      {
+        "id": "00000000-0000-4000-8000-000000000201",
+        "household_id": "00000000-0000-4000-8000-000000000101",
+        "name": "میلو",
+        "species": "cat",
+        "avatar_reference": null
+      }
+    ],
+    "onboarding": { "needs_household": false, "needs_pet": false, "needs_address": false },
+    "capabilities": {
+      "availability_subscriptions_enabled": true,
+      "concierge_requests_enabled": true,
+      "care_journey_delivery_enabled": true
+    }
+  },
+  "household_pets": [
+    {
+      "id": "00000000-0000-4000-8000-000000000201",
+      "name": "میلو",
+      "species": "cat"
+    }
+  ],
+  "offer_detail": {
+    "id": "00000000-0000-4000-8000-000000000301",
+    "product_id": "00000000-0000-4000-8000-000000000401",
+    "sku": "FOOD-DE-001",
+    "title_fa": "غذای خشک گربه",
+    "description_fa": "توضیح تاییدشده فارسی",
+    "unit_label_fa": "کیسه",
+    "nominal_quantity_grams": 2000,
+    "media": [
+      {
+        "media_type": "image",
+        "public_reference": "catalog/food-de-001/main",
+        "alt_text_fa": "تصویر بسته غذای خشک گربه",
+        "sort_order": 0
+      }
+    ],
+    "availability": "available",
+    "availability_reason_key": null,
+    "price_irr": 18500000,
+    "reference_price_irr": 21000000,
+    "saving_percent": 11,
+    "reference_price_reviewed_at": "2026-07-16T00:00:00Z",
+    "supplier_country_code": "DE",
+    "authenticity": "supplier_verified",
+    "minimum_shelf_life_months_at_delivery": 6,
+    "available_from": null,
+    "available_until": null
+  },
+  "order_detail": {
+    "id": "00000000-0000-4000-8000-000000000501",
+    "household_id": "00000000-0000-4000-8000-000000000101",
+    "status": "paid",
+    "currency": "IRR",
+    "merchandise_total_irr": 18500000,
+    "created_at": "2026-07-16T08:00:00Z",
+    "paid_at": "2026-07-16T08:02:00Z",
+    "delivery_commitment_at": "2026-07-31T14:02:00Z",
+    "original_delivery_commitment_at": null,
+    "revised_delivery_at": null,
+    "delivered_at": null,
+    "payment": {
+      "status": "verified",
+      "paid_at": "2026-07-16T08:02:00Z",
+      "amount_irr": 18500000,
+      "currency": "IRR",
+      "masked_card": null
+    },
+    "delivery_address": {
+      "label": "خانه",
+      "recipient_name": "مشتری",
+      "recipient_mobile": "+989121234567",
+      "province": "تهران",
+      "city": "تهران",
+      "address_line": "نشانی نمونه",
+      "postal_code": null
+    },
+    "lines": [
+      {
+        "id": "00000000-0000-4000-8000-000000000601",
+        "offer_id": "00000000-0000-4000-8000-000000000301",
+        "sku": "FOOD-DE-001",
+        "title_fa": "غذای خشک گربه",
+        "unit_label_fa": "کیسه",
+        "quantity": 1,
+        "unit_price_irr": 18500000,
+        "line_total_irr": 18500000,
+        "planned_pet_ids": ["00000000-0000-4000-8000-000000000201"],
+        "sourced_unit": null
+      }
+    ],
+    "policies": { "delivery_commitment_hours": 366, "late_credit_customer_visible": false }
+  },
+  "order_pet_plan_request": {
+    "line_plans": [
+      {
+        "order_line_id": "00000000-0000-4000-8000-000000000601",
+        "pet_ids": [
+          "00000000-0000-4000-8000-000000000201",
+          "00000000-0000-4000-8000-000000000202"
+        ]
+      }
+    ]
+  },
+  "inventory_detail": {
+    "id": "00000000-0000-4000-8000-000000000801",
+    "household_id": "00000000-0000-4000-8000-000000000101",
+    "product_id": "00000000-0000-4000-8000-000000000401",
+    "label": "غذای خشک گربه",
+    "source": "platform_order",
+    "state": "unopened",
+    "initial_quantity_grams": null,
+    "remaining_quantity_grams": null,
+    "remaining_low_grams": null,
+    "remaining_high_grams": null,
+    "delivered_at": "2026-07-20T08:00:00Z",
+    "opened_at": null,
+    "exact_expiry_date": "2027-03-01",
+    "sourcing_confirmed_at": "2026-07-17T08:00:00Z",
+    "supplier_country": "DE",
+    "authenticity": "supplier_verified",
+    "assignments": [
+      {
+        "pet": {
+          "id": "00000000-0000-4000-8000-000000000201",
+          "name": "میلو",
+          "species": "cat"
+        },
+        "share_basis_points": null,
+        "daily_portion_grams": null
+      }
+    ],
+    "shares_known": false,
+    "active_estimate": null
+  },
+  "inventory_open_exact_grams_request": {
+    "remaining": { "mode": "grams", "grams": 1400 },
+    "feeding_context": "exclusive",
+    "daily_portion_grams": 70
+  },
+  "inventory_open_level_request": {
+    "remaining": { "mode": "level", "level": "more_than_half" },
+    "feeding_context": "exclusive",
+    "daily_portion_grams": 70,
+    "policy": "stores 50–75% bounds from nominal quantity; exact grams remain null"
+  },
+  "reorder_assessment": {
+    "recommendation": "order_now",
+    "outcome": "order_now",
+    "risk_gap_days": 3,
+    "remaining_low_days": 16,
+    "remaining_high_days": 24,
+    "latest_delivery_days": 16,
+    "safety_buffer_days": 3,
+    "snoozed_until": null,
+    "provenance": [
+      { "key": "estimate", "source": "server", "value": "active" },
+      { "key": "safety_buffer_days", "source": "policy", "value": 3 }
+    ],
+    "options": []
+  },
+  "reorder_snooze_request": { "hours": 72 },
+  "today_unknown_estimate": {
+    "food": {
+      "state": "unknown_estimate",
+      "inventory_unit_id": "00000000-0000-4000-8000-000000000801",
+      "label": "غذای خشک گربه"
+    },
+    "primary_attention": { "type": "improve_food_estimate" }
+  },
+  "availability_subscription": {
+    "id": "00000000-0000-4000-8000-000000001001",
+    "offer_id": "00000000-0000-4000-8000-000000000302",
+    "status": "active",
+    "order_created": false,
+    "created_at": "2026-07-16T08:00:00Z",
+    "notified_at": null,
+    "cancelled_at": null
+  },
+  "customer_request": {
+    "id": "00000000-0000-4000-8000-000000001101",
+    "household_id": "00000000-0000-4000-8000-000000000101",
+    "request_type": "concierge_sourcing",
+    "order_id": null,
+    "offer_id": "00000000-0000-4000-8000-000000000302",
+    "product_query_fa": "غذای رژیمی",
+    "message_fa": "لطفا بررسی کنید",
+    "contact_preference": "in_app",
+    "status": "submitted",
+    "created_at": "2026-07-16T08:00:00Z",
+    "updated_at": "2026-07-16T08:00:00Z",
+    "promises": {
+      "availability": false,
+      "refund": false,
+      "replacement": false,
+      "response_time": false,
+      "sourcing_success": false
+    },
+    "acknowledgement_fa": "درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست."
+  },
+  "delay_acknowledgement": {
+    "id": "00000000-0000-4000-8000-000000001201",
+    "order_id": "00000000-0000-4000-8000-000000000501",
+    "delay_event_version": 1,
+    "acknowledged_at": "2026-07-25T08:00:00Z",
+    "compensation_implied": false,
+    "cancellation_implied": false,
+    "waiver_implied": false
+  },
+  "journey_offer": {
+    "definition_id": "00000000-0000-4000-8000-000000000901",
+    "key": "hydration-check",
+    "version": 1,
+    "title_fa": "مسیر آب‌رسانی",
+    "summary_fa": "چک‌این کوتاه و تاییدشده",
+    "duration_days": 2
+  },
+  "journey_definition": {
+    "id": "00000000-0000-4000-8000-000000000901",
+    "key": "hydration-check",
+    "version": 1,
+    "title_fa": "مسیر آب‌رسانی",
+    "summary_fa": "چک‌این کوتاه و تاییدشده",
+    "content": {
+      "steps": [
+        { "key": "water", "title_fa": "آب تازه", "allowed_answers": ["done"] }
+      ],
+      "completion_requires": ["water"]
+    },
+    "approved_at": "2026-07-16T08:00:00Z"
+  },
+  "journey_check_in": {
+    "id": "00000000-0000-4000-8000-000000001301",
+    "journey_id": "00000000-0000-4000-8000-000000000902",
+    "check_in_key": "water",
+    "answer_key": "done",
+    "submitted_at": "2026-07-16T09:00:00Z",
+    "completed": true,
+    "diary_entry_id": "00000000-0000-4000-8000-000000000903",
+    "garden_reward_id": "00000000-0000-4000-8000-000000000904"
+  },
+  "diary_detail": {
+    "id": "00000000-0000-4000-8000-000000000903",
+    "entry_type": "journey_completed",
+    "title_fa": "خاطره مسیر",
+    "happened_at": "2026-07-16T09:00:00Z",
+    "note_fa": null,
+    "source_type": "journey",
+    "source_reference": "00000000-0000-4000-8000-000000000902",
+    "linked_garden_object": {
+      "id": "00000000-0000-4000-8000-000000000904",
+      "object_key": "journey_star",
+      "state": "available",
+      "diary_entry_id": "00000000-0000-4000-8000-000000000903",
+      "quadrant": null,
+      "position_x": null,
+      "position_y": null
+    }
+  },
+  "garden_state": {
+    "pet_id": "00000000-0000-4000-8000-000000000201",
+    "layout_version": 1,
+    "unlocked_quadrants": [1],
+    "visible_slot_count": 12,
+    "slot_rules": {
+      "source": "server_milestone_rules",
+      "xp_enabled": false,
+      "decay_enabled": false
+    },
+    "objects": [
+      {
+        "id": "00000000-0000-4000-8000-000000000904",
+        "object_key": "journey_star",
+        "state": "stored",
+        "diary_entry_id": "00000000-0000-4000-8000-000000000903",
+        "quadrant": null,
+        "position_x": null,
+        "position_y": null
+      }
+    ],
+    "next_eligibility": { "reason_key": "server_derived_milestones_only" }
+  },
+  "garden_placement_request": { "quadrant": 1, "position_x": 4, "position_y": 7 }
+}

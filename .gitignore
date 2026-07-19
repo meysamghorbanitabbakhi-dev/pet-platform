@@ -1,0 +1,30 @@
+# Generated release archives (scripts/build-release-archive.sh). Reproducible
+# from any commit via `git archive`, so never committed.
+/dist/
+
+# codebase-memory-mcp's local code-index cache (graph.db.zst is a compressed
+# index database, not source -- see its own artifact.json: nodes/edges/
+# indexed_at/compression fields). Was accidentally tracked in 8960a7e, the
+# same commit that separately corrupted the checksum-governed design-contract
+# files (see Phase 1 of the release-closure work). Untracked here; kept on
+# disk since the tool manages its own regeneration.
+/.codebase-memory/
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+node_modules/
+.next/
+build/
+
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+*.log

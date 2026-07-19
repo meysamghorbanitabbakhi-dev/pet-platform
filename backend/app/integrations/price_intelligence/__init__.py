@@ -1,0 +1,1 @@
+"""Price intelligence collection integrations."""

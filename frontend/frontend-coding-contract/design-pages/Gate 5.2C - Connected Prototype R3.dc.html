@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800&family=Vazirmatn:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="./gate5.2c-screen-data.v3.1.js"></script>
+<style>body{margin:0;background:oklch(0.93 0.004 90);}*{box-sizing:border-box;font-family:'Vazirmatn',system-ui,sans-serif;}@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
+</helmet>
+<div dir="rtl" lang="fa" style="display:flex;height:100vh;overflow:hidden;color:oklch(0.2 0.005 90);">
+  <div style="width:280px;flex:none;background:oklch(0.98 0.003 90);border-left:1px solid oklch(0.82 0.005 90);overflow-y:auto;padding:18px 14px;">
+    <div style="font-family:'IBM Plex Mono';direction:ltr;text-align:left;font-size:10px;letter-spacing:0.04em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;margin-bottom:4px;">Gate 5.2C-R3</div>
+    <div style="font-family:'Estedad';font-size:15px;font-weight:800;margin-bottom:2px;">پروتوتایپ متصل R3</div>
+    <div onClick="{{ toggleAudit }}" style="cursor:pointer;font-size:11px;padding:8px 10px;border-radius:8px;margin-bottom:12px;background:{{ auditBg }};color:{{ auditFg }};border:1px solid {{ auditBorder }};">حسابرسی گراف: {{ auditSummary }}</div>
+    <sc-if value="{{ auditOpen }}">
+      <div style="font-size:10.5px;color:oklch(0.45 0.005 90);margin-bottom:12px;line-height:1.7;background:#fff;border:1px solid oklch(0.85 0.01 80);border-radius:8px;padding:8px;">
+        <sc-for list="{{ auditIssues }}" as="ai" hint-placeholder-count="3"><div>• {{ ai }}</div></sc-for>
+        <sc-if value="{{ noIssues }}"><div>هیچ ناهماهنگی‌ای یافت نشد.</div></sc-if>
+      </div>
+    </sc-if>
+    <div style="font-size:11.5px;color:oklch(0.5 0.005 90);margin-bottom:14px;">{{ totalScreens }} حالت · {{ journeyCount }} مسیر (T8–T18)</div>
+    <div style="font-family:'IBM Plex Mono';font-size:10px;font-weight:600;color:oklch(0.45 0.005 90);text-transform:uppercase;margin-bottom:6px;">مسیرها</div>
+    <sc-for list="{{ journeys }}" as="j" hint-placeholder-count="11">
+      <div onClick="{{ j.select }}" style="padding:7px 9px;border-radius:8px;cursor:pointer;margin-bottom:3px;background:{{ j.bg }};border:1px solid {{ j.border }};">
+        <div style="font-size:11.5px;font-weight:700;color:{{ j.fg }};font-family:'IBM Plex Mono';direction:ltr;text-align:left;">{{ j.id }}</div>
+        <div style="font-size:10.5px;color:{{ j.fg }};">{{ j.name }}</div>
+      </div>
+    </sc-for>
+    <div style="font-family:'IBM Plex Mono';font-size:10px;font-weight:600;color:oklch(0.45 0.005 90);text-transform:uppercase;margin:14px 0 6px;">مرور آزاد</div>
+    <sc-for list="{{ flowGroups }}" as="fg" hint-placeholder-count="8">
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:oklch(0.45 0.005 90);margin-bottom:4px;">{{ fg.flow }}</div>
+        <sc-for list="{{ fg.screens }}" as="s" hint-placeholder-count="10">
+          <div onClick="{{ s.select }}" style="padding:4px 8px;border-radius:6px;cursor:pointer;background:{{ s.bg }};"><div style="font-size:11px;color:{{ s.fg }};font-weight:{{ s.fw }};">{{ s.titleFa }}</div></div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:36px;display:flex;flex-direction:column;align-items:center;">
+    <div style="width:100%;max-width:900px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div>
+        <div style="font-family:'IBM Plex Mono';direction:ltr;text-align:left;font-size:10.5px;color:oklch(0.5 0.005 90);">{{ current.id }} · {{ current.flow }}<sc-if value="{{ inJourney }}"> · {{ journeyLabel }}</sc-if></div>
+        <div style="font-family:'Estedad';font-size:17px;font-weight:800;">{{ current.titleFa }}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <sc-if value="{{ inJourney }}"><button onClick="{{ restartJourney }}" style="border:1px solid oklch(0.72 0.13 75);background:oklch(0.72 0.13 75 / 0.12);color:oklch(0.4 0.1 75);border-radius:8px;padding:8px 14px;font-size:12.5px;cursor:pointer;">↺ بازآغاز</button></sc-if>
+        <button onClick="{{ goBack }}" style="border:1px solid oklch(0.8 0.005 90);background:#fff;border-radius:8px;padding:8px 14px;font-size:12.5px;cursor:pointer;">→ بازگشت</button>
+      </div>
+    </div>
+    <div style="width:360px;min-height:600px;background:{{ frameBg }};border:2px solid oklch(0.2 0.005 90);border-radius:26px;padding:14px;box-shadow:0 20px 40px oklch(0.3 0.01 90 / 0.18);">
+      <div style="width:56px;height:5px;border-radius:3px;background:oklch(0.85 0.005 90 / 0.4);margin:0 auto 12px;"></div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <sc-for list="{{ currentBlocks }}" as="b" hint-placeholder-count="6">
+          <sc-if value="{{ b.isH1 }}"><div style="font-family:'Estedad';font-size:17px;font-weight:800;color:{{ frameInk }};">{{ b.label }}</div></sc-if>
+          <sc-if value="{{ b.isP }}"><div style="font-size:13px;line-height:1.85;color:{{ frameMuted }};">{{ b.label }}</div></sc-if>
+          <sc-if value="{{ b.isTag }}"><span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 10px;border-radius:999px;background:{{ b.tagBg }};color:{{ b.tagFg }};">{{ b.glyph }} {{ b.label }}</span></sc-if>
+          <sc-if value="{{ b.isCard }}"><div onClick="{{ b.onClick }}" style="border:1px solid {{ frameBorder }};border-radius:14px;padding:12px 14px;background:{{ frameCard }};font-size:13px;color:{{ frameInk }};cursor:pointer;">{{ b.label }}</div></sc-if>
+          <sc-if value="{{ b.isBtn }}"><button onClick="{{ b.onClick }}" style="border:none;background:{{ b.btnBg }};color:{{ b.btnFg }};font-weight:700;border-radius:10px;padding:12px;font-size:13.5px;min-height:44px;cursor:pointer;">{{ b.label }}</button></sc-if>
+          <sc-if value="{{ b.isBtn2 }}"><button onClick="{{ b.onClick }}" style="border:1px solid {{ frameBorder }};background:transparent;color:{{ frameInk }};font-weight:600;border-radius:10px;padding:10px;font-size:12.5px;min-height:44px;cursor:pointer;">{{ b.label }}</button></sc-if>
+          <sc-if value="{{ b.isBand }}"><div style="height:14px;border-radius:7px;background:{{ b.bandBg }};"></div></sc-if>
+          <sc-if value="{{ b.isCaption }}"><div style="font-size:11px;color:{{ frameMuted }};">{{ b.label }}</div></sc-if>
+          <sc-if value="{{ b.isOtp }}"><div style="display:flex;gap:6px;direction:ltr;"><sc-for list="{{ b.cells }}" as="cc" hint-placeholder-count="6"><div style="width:38px;height:46px;border:1.5px solid {{ cc.border }};background:{{ cc.bg }};border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono';font-size:18px;font-weight:600;color:{{ frameInk }};">{{ cc.val }}</div></sc-for></div></sc-if>
+          <sc-if value="{{ b.isSkeleton }}"><div style="height:{{ b.h }}px;width:{{ b.w }};border-radius:8px;background:linear-gradient(90deg,oklch(0.92 0.01 80) 25%,oklch(0.96 0.005 80) 50%,oklch(0.92 0.01 80) 75%);background-size:200% 100%;animation:shimmer 1.6s infinite;"></div></sc-if>
+          <sc-if value="{{ b.isEmptyState }}"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:24px 8px;"><div style="width:56px;height:56px;border-radius:14px;background:oklch(0.94 0.01 80);margin-bottom:14px;"></div><div style="font-family:'Estedad';font-size:14.5px;font-weight:700;color:{{ frameInk }};margin-bottom:6px;">{{ b.label }}</div><div style="font-size:12px;color:{{ frameMuted }};">{{ b.sub }}</div></div></sc-if>
+          <sc-if value="{{ b.isMeter }}"><div><div style="height:12px;border-radius:6px;background:{{ b.trackBg }};overflow:hidden;margin-bottom:6px;"><div style="width:{{ b.fillPct }}%;height:100%;background:{{ b.fillBg }};"></div></div><div style="font-size:11px;color:{{ frameMuted }};">{{ b.caption }}</div></div></sc-if>
+          <sc-if value="{{ b.isGardenRow }}"><div style="display:flex;gap:10px;"><sc-for list="{{ b.objects }}" as="go" hint-placeholder-count="3"><div style="width:44px;height:44px;border-radius:10px;background:{{ go.bg }};box-shadow:{{ go.glow }};opacity:{{ go.opacity }};border:{{ go.border }};"></div></sc-for></div></sc-if>
+          <sc-if value="{{ b.isGardenTray }}"><div style="display:flex;flex-direction:column;gap:10px;padding:14px;border:1.5px dashed oklch(0.72 0.13 75);border-radius:12px;background:oklch(0.72 0.13 75 / 0.06);"><div style="display:flex;justify-content:center;"><sc-for list="{{ b.objects }}" as="go" hint-placeholder-count="1"><div style="width:44px;height:44px;border-radius:10px;background:oklch(0.72 0.13 75 / 0.4);box-shadow:0 0 20px oklch(0.72 0.13 70 / 0.5);"></div></sc-for></div><div style="font-size:11px;color:oklch(0.4 0.1 75);text-align:center;">شیء جدید — برای جای‌گذاری بکشید</div></div></sc-if>
+          <sc-if value="{{ b.isImg }}"><div style="width:100%;height:160px;border-radius:12px;background:linear-gradient(135deg, oklch(0.94 0.02 80), oklch(0.9 0.015 80));display:flex;align-items:center;justify-content:center;color:oklch(0.6 0.01 90);font-size:11.5px;margin-bottom:2px;">تصویر محصول</div></sc-if>
+          <sc-if value="{{ b.isChipsRow }}"><div style="display:flex;gap:6px;flex-wrap:wrap;"><sc-for list="{{ b.chips }}" as="ch" hint-placeholder-count="2"><span style="font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:oklch(0.9 0.005 80);color:oklch(0.3 0.01 265);">{{ ch }}</span></sc-for></div></sc-if>
+          <sc-if value="{{ b.isPriceRow }}"><div style="display:flex;align-items:baseline;gap:8px;"><div style="font-family:'Vazirmatn';font-size:19px;font-weight:800;color:{{ frameInk }};">{{ b.price }}</div><div style="font-size:11px;font-weight:500;color:{{ frameMuted }};">تومان</div><span style="font-size:10.5px;font-weight:700;color:oklch(0.35 0.1 145);">{{ b.saving }}</span></div></sc-if>
+          <sc-if value="{{ b.isCompareRow }}"><div style="display:flex;gap:10px;"><sc-for list="{{ b.items }}" as="ci" hint-placeholder-count="2"><div style="flex:1;border:1.5px solid {{ ci.border }};background:{{ ci.bg }};border-radius:12px;padding:12px;"><div style="width:100%;height:56px;border-radius:8px;background:oklch(0.92 0.01 80);margin-bottom:8px;"></div><div style="font-size:11.5px;font-weight:700;margin-bottom:4px;color:{{ frameInk }};">{{ ci.name }}</div><div style="font-size:12.5px;font-weight:800;color:{{ frameInk }};">{{ ci.price }}</div></div></sc-for></div></sc-if>
+          <sc-if value="{{ b.isProgressStep }}"><div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid {{ frameBorder }};padding:8px 2px;min-height:40px;"><div style="width:16px;height:16px;border-radius:50%;background:{{ b.dot }};flex:none;"></div><div style="font-size:12px;color:{{ frameInk }};">{{ b.label }}</div></div></sc-if>
+          <sc-if value="{{ b.isWallet }}"><div style="background:oklch(0.28 0.04 270);border-radius:14px;padding:18px;color:oklch(0.97 0.01 270);"><div style="font-size:11px;opacity:0.75;margin-bottom:6px;">موجودی قابل استفاده</div><div style="font-family:'Vazirmatn';font-size:22px;font-weight:800;">۰ <span style="font-size:12px;font-weight:500;">تومان</span></div></div></sc-if>
+          <sc-if value="{{ b.isStepIndicator }}"><div><div style="font-size:10.5px;font-weight:700;color:{{ frameMuted }};margin-bottom:6px;">گام {{ b.idx }} از {{ b.total }}</div><div style="height:5px;border-radius:3px;background:oklch(0.9 0.01 80);overflow:hidden;"><div style="width:{{ b.pct }}%;height:100%;background:oklch(0.72 0.13 75);"></div></div></div></sc-if>
+          <sc-if value="{{ b.isJourneyOfferCard }}"><div onClick="{{ b.onClick }}" style="border:1px solid {{ frameBorder }};border-radius:14px;padding:14px;background:{{ frameCard }};cursor:pointer;"><div style="font-size:13.5px;font-weight:700;color:{{ frameInk }};margin-bottom:4px;">{{ b.name }}</div><div style="font-size:11.5px;color:{{ frameMuted }};">{{ b.duration }} · تأیید حرفه‌ای</div></div></sc-if>
+          <sc-if value="{{ b.isSearchField }}"><div style="border:1.5px solid {{ frameBorder }};border-radius:10px;padding:12px 14px;font-size:13px;color:{{ frameMuted }};background:{{ frameCard }};min-height:44px;display:flex;align-items:center;">جستجوی محصول یا برند…</div></sc-if>
+          <sc-if value="{{ b.isOrderRow }}"><div onClick="{{ b.onClick }}" style="border:1px solid {{ frameBorder }};border-radius:12px;padding:12px 14px;background:{{ frameCard }};cursor:pointer;"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-family:'IBM Plex Mono';direction:ltr;font-size:11.5px;color:{{ frameMuted }};">{{ b.code }}</span><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:{{ b.tagBg }};color:{{ b.tagFg }};">{{ b.status }}</span></div><div style="font-size:12.5px;color:{{ frameInk }};">{{ b.summary }}</div></div></sc-if>
+          <sc-if value="{{ b.isCartLine }}"><div style="display:flex;gap:12px;border:1px solid {{ frameBorder }};border-radius:14px;padding:12px;background:{{ frameCard }};"><div style="width:52px;height:52px;border-radius:10px;background:oklch(0.92 0.01 80);flex:none;"></div><div style="flex:1;"><div style="font-size:12.5px;font-weight:700;color:{{ frameInk }};margin-bottom:4px;">{{ b.name }}</div><div style="font-family:'Vazirmatn';font-size:14px;font-weight:800;color:{{ frameInk }};">{{ b.price }} <span style="font-size:10.5px;font-weight:500;color:{{ frameMuted }};">تومان</span></div></div></div></sc-if>
+          <sc-if value="{{ b.isSummaryRow }}"><div style="display:flex;justify-content:space-between;font-size:13px;color:{{ b.color }};font-weight:{{ b.fw }};">{{ b.label }} <span>{{ b.value }}</span></div></sc-if>
+          <sc-if value="{{ b.isNotifRow }}"><div onClick="{{ b.onClick }}" style="border-bottom:1px solid {{ frameBorder }};padding:10px 2px;min-height:44px;cursor:pointer;"><div style="font-size:12.5px;font-weight:{{ b.fw }};color:{{ frameInk }};margin-bottom:3px;">{{ b.label }}</div><div style="font-size:11px;color:{{ frameMuted }};">{{ b.time }}</div></div></sc-if>
+          <sc-if value="{{ b.isPhoneField }}"><div style="border:1.5px solid {{ frameBorder }};border-radius:8px;padding:13px 14px;font-family:'IBM Plex Mono';direction:ltr;text-align:left;font-size:14px;color:{{ frameInk }};background:{{ frameCard }};min-height:48px;display:flex;align-items:center;">{{ b.value }}</div></sc-if>
+          <sc-if value="{{ b.isLabeledField }}"><div><div style="font-size:12px;font-weight:600;color:{{ frameMuted }};margin-bottom:6px;">{{ b.label }}</div><div style="border:1.5px solid {{ frameBorder }};border-radius:8px;padding:13px 14px;font-size:14px;color:{{ frameInk }};background:{{ frameCard }};min-height:48px;display:flex;align-items:center;">{{ b.value }}</div></div></sc-if>
+          <sc-if value="{{ b.isRequestTypePicker }}"><div style="display:flex;gap:8px;"><div style="flex:1;border:1.5px solid oklch(0.28 0.04 270);background:oklch(0.28 0.04 270 / 0.08);color:oklch(0.28 0.04 270);border-radius:10px;padding:12px;text-align:center;font-size:12.5px;font-weight:700;min-height:44px;display:flex;align-items:center;justify-content:center;">پشتیبانی</div><div style="flex:1;border:1.5px solid {{ frameBorder }};background:{{ frameCard }};color:{{ frameInk }};border-radius:10px;padding:12px;text-align:center;font-size:12.5px;min-height:44px;display:flex;align-items:center;justify-content:center;">کانسیرژ تأمین</div></div></sc-if>
+          <sc-if value="{{ b.isSpeciesPicker }}"><div style="display:flex;gap:8px;"><div style="flex:1;border:1.5px solid oklch(0.72 0.13 75);background:oklch(0.72 0.13 75 / 0.12);color:oklch(0.28 0.07 75);border-radius:10px;padding:12px;text-align:center;font-size:13px;font-weight:700;min-height:48px;display:flex;align-items:center;justify-content:center;">سگ</div><div style="flex:1;border:1.5px solid {{ frameBorder }};background:{{ frameCard }};color:{{ frameInk }};border-radius:10px;padding:12px;text-align:center;font-size:13px;min-height:48px;display:flex;align-items:center;justify-content:center;">گربه</div></div></sc-if>
+          <sc-if value="{{ b.isLabeledPicker }}"><div><div style="font-size:12px;font-weight:600;color:{{ frameMuted }};margin-bottom:6px;">{{ b.label }}</div><div style="display:flex;gap:8px;"><div style="flex:1;border:1.5px solid oklch(0.72 0.13 75);background:oklch(0.72 0.13 75 / 0.12);color:oklch(0.28 0.07 75);border-radius:10px;padding:12px;text-align:center;font-size:13px;font-weight:700;min-height:48px;display:flex;align-items:center;justify-content:center;">سگ</div><div style="flex:1;border:1.5px solid {{ frameBorder }};background:{{ frameCard }};color:{{ frameInk }};border-radius:10px;padding:12px;text-align:center;font-size:13px;min-height:48px;display:flex;align-items:center;justify-content:center;">گربه</div></div></div></sc-if>
+          <sc-if value="{{ b.isFieldPlaceholder }}"><div style="border:1.5px solid {{ frameBorder }};border-radius:8px;padding:13px 14px;font-size:13px;color:{{ frameInk }};background:{{ frameCard }};min-height:48px;"></div></sc-if>
+          <sc-if value="{{ b.isOptionRow }}"><div style="display:flex;justify-content:space-between;align-items:center;border:1px solid {{ frameBorder }};border-radius:12px;padding:10px 12px;background:{{ frameCard }};"><span style="font-family:'IBM Plex Mono';direction:ltr;font-size:11.5px;color:{{ frameInk }};">{{ b.name }}</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:{{ b.tagBg }};color:{{ b.tagFg }};">{{ b.glyph }} {{ b.statusLabel }}</span></div></sc-if>
+          <sc-if value="{{ b.isStep }}"><div style="border:1px solid {{ frameBorder }};border-radius:12px;padding:10px 12px;background:{{ frameCard }};"><div style="font-weight:700;font-size:12.5px;color:{{ frameInk }};">{{ b.label }}</div><div style="font-size:11.5px;color:{{ frameMuted }};margin-top:2px;">{{ b.body }}</div></div></sc-if>
+          <sc-if value="{{ b.isAnswers }}"><div style="display:flex;flex-wrap:wrap;gap:6px;"><sc-for list="{{ b.options }}" as="op" hint-placeholder-count="3"><button onClick="{{ op.onClick }}" style="border:1px solid {{ op.selected }};background:{{ op.bg }};color:{{ op.fg }};border-radius:999px;padding:8px 14px;font-size:12px;cursor:pointer;min-height:36px;">{{ op.label }}</button></sc-for></div></sc-if>
+        </sc-for>
+      </div>
+    </div>
+    <sc-if value="{{ hasBranches }}">
+      <div style="width:360px;margin-top:14px;">
+        <div style="font-size:11px;color:oklch(0.5 0.005 90);margin-bottom:6px;">مسیرهای دیگر (شاخه):</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <sc-for list="{{ branchOptions }}" as="br" hint-placeholder-count="3">
+            <button onClick="{{ br.onClick }}" style="border:1px dashed oklch(0.7 0.01 90);background:#fff;border-radius:7px;padding:6px 10px;font-size:11.5px;cursor:pointer;color:oklch(0.35 0.005 90);">{{ br.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { currentId: 'G5-AUTH-01', stack: [], journeyId: null, auditOpen: false, selectedAnswer: null };
+  screens() { return window.GATE52C_SCREENS || []; }
+  journeys() { return window.GATE52C_JOURNEYS || []; }
+  flowLabel(f) { return { AUTH: 'احراز هویت', ONB: 'شروع به کار', SHOP: 'فروشگاه', CHK: 'سبد و پرداخت', ORD: 'سفارش‌ها', ACC: 'حساب', BRIDGE: 'روزمرگی پت', SUPPORT: 'پشتیبانی', JOURNEY: 'مسیر مراقبتی' }[f] || f; }
+  isGarden(s) { return s.kind === 'garden'; }
+
+  effectiveNext(screen) {
+    const j = this.journeys().find(x => x.id === this.state.journeyId);
+    if (j) { const idx = j.main.indexOf(screen.id); if (idx >= 0 && idx < j.main.length - 1) return j.main[idx + 1]; }
+    return screen.next;
+  }
+
+  runAudit() {
+    const screens = this.screens(); const byId = {}; screens.forEach(s => byId[s.id] = s);
+    const ids = screens.map(s => s.id);
+    const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+    const missingTargets = [];
+    screens.forEach(s => { if (s.next && !byId[s.next]) missingTargets.push(s.id + ' -> missing ' + s.next); (s.branches || []).forEach(b => { if (!byId[b]) missingTargets.push(s.id + ' ~> missing ' + b); }); });
+    const journeyIssues = [];
+    this.journeys().forEach(j => { j.main.forEach(id => { if (!byId[id]) journeyIssues.push(j.id + ': missing screen ' + id); }); });
+    return { dupes, missingTargets, journeyIssues, total: dupes.length + missingTargets.length + journeyIssues.length };
+  }
+
+  blocksFor(screen) {
+    const title = screen.titleFa; const tone = screen.tone;
+    const next = this.effectiveNext(screen);
+    const go = (id) => () => this.navigate(id);
+    const midnight = { bg: 'oklch(0.28 0.04 270)', fg: 'oklch(0.97 0.01 270)' };
+    const brass = { bg: 'oklch(0.72 0.13 75)', fg: 'oklch(0.24 0.07 75)' };
+    const toneChip = { error: { bg: 'oklch(0.94 0.03 30)', fg: 'oklch(0.4 0.15 30)', g: '⚠' }, warning: { bg: 'oklch(0.95 0.04 75)', fg: 'oklch(0.42 0.1 75)', g: '⚠' }, success: { bg: 'oklch(0.94 0.05 145)', fg: 'oklch(0.35 0.1 145)', g: '●' }, info: { bg: 'oklch(0.94 0.02 250)', fg: 'oklch(0.35 0.1 250)', g: '◐' } }[tone] || { bg: 'oklch(0.92 0.006 90)', fg: 'oklch(0.45 0.005 90)', g: '○' };
+    const btn = (label, target, style) => ({ t: 'btn', label, onClick: target ? go(target) : () => {}, btnBg: (style || midnight).bg, btnFg: (style || midnight).fg });
+    const btn2 = (label) => ({ t: 'btn2', label, onClick: () => this.navigate(this.state.currentId) });
+    const card = (label, target) => ({ t: 'card', label, onClick: target ? go(target) : () => {} });
+    const tag = (label) => ({ t: 'tag', label, glyph: toneChip.g, tagBg: toneChip.bg, tagFg: toneChip.fg });
+    switch (screen.kind) {
+      case 'entry': return [{ t: 'h1', label: title }, { t: 'caption', label: 'شماره موبایل' }, { t: 'phoneField', value: '۰۹۱۲۳۴۵۶۷۸۹' }, btn('ارسال کد', next, midnight)];
+      case 'otp': {
+        const errTone = tone === 'error';
+        const cells = ['۴','۷','۲','۹','','' ].map(v => ({ val: v, border: errTone ? 'oklch(0.6 0.16 30)' : (v ? 'oklch(0.72 0.13 75)' : 'oklch(0.8 0.01 80)'), bg: errTone ? 'oklch(0.97 0.02 30)' : '#fff' }));
+        return [{ t: 'h1', label: title }, ...(errTone ? [tag('کد وارد شده نادرست است')] : []), { t: 'otp', cells }, btn('تأیید', next, midnight)];
+      }
+      case 'lock': return [tag(title), { t: 'p', label: 'به دلیل تلاش‌های ناموفق مکرر، امکان تأیید کد موقتاً مسدود شده است.' }, btn('بازگشت به ورود', next, brass)];
+      case 'error-block': return [tag(title), { t: 'p', label: 'اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.' }, btn('تلاش مجدد', next, brass)];
+      case 'loading': {
+        const loadingCaption = /بازگشت از زرین‌پال/.test(title) ? 'در حال بررسی نتیجه پرداخت با درگاه…'
+          : /آغاز پرداخت/.test(title) ? 'در حال آماده‌سازی اتصال به درگاه پرداخت…'
+          : /بازیابی خودکار نشست/.test(title) ? 'در حال تأیید نشست شما…'
+          : /بارگذاری برای کاربر بازگشتی/.test(title) ? 'در حال دریافت آخرین اطلاعات پت‌های شما…'
+          : 'در حال بارگذاری…';
+        return [{ t: 'h1', label: title }, { t: 'caption', label: loadingCaption }, { t: 'skeleton', h: 18, w: '80%' }, { t: 'skeleton', h: 14, w: '55%' }, { t: 'skeleton', h: 48, w: '100%' }, ...(next ? [btn('ادامه (شبیه‌سازی اتمام بارگذاری)', next, brass)] : [])];
+      }
+      case 'form':
+        if (screen.flow === 'ONB') {
+          const onbSteps = this.journeys().find(j => j.id === 'T9' || j.id === 'T8');
+          const idx = onbSteps ? Math.max(onbSteps.main.indexOf(screen.id), 0) : 0;
+          const total = onbSteps ? onbSteps.main.length : 4;
+          const stepHeader = { t: 'stepIndicator', idx: idx + 1, total: total || 4, pct: Math.round(((idx + 1) / (total || 4)) * 100) };
+          if (screen.id === 'G5-ONB-01') {
+            return [stepHeader, { t: 'h1', label: 'نام خانوار' }, { t: 'labeledField', label: 'نام خانوار (الزامی)', value: 'خانواده احمدی' }, btn('ادامه', next, midnight)];
+          }
+          if (screen.id === 'G5-ONB-02') {
+            return [stepHeader, { t: 'h1', label: 'نام پت شما چیست؟' }, { t: 'labeledField', label: 'نام (الزامی)', value: 'بیشی' }, { t: 'labeledPicker', label: 'گونه' }, btn('ادامه', next, midnight)];
+          }
+          if (screen.id === 'G5-ONB-03') {
+            return [stepHeader, { t: 'h1', label: title }, { t: 'labeledField', label: 'تاریخ تولد (اختیاری)', value: '—' }, btn('ادامه', next, midnight), btn2('رد کردن این مرحله')];
+          }
+          if (screen.id === 'G5-ONB-04') {
+            return [stepHeader, { t: 'h1', label: 'آدرس تحویل' }, { t: 'labeledField', label: 'برچسب آدرس', value: 'خانه' }, { t: 'labeledField', label: 'نام گیرنده', value: 'علی احمدی' }, { t: 'labeledField', label: 'موبایل گیرنده', value: '۰۹۱۲۳۴۵۶۷۸۹' }, { t: 'labeledField', label: 'استان و شهر', value: 'تهران' }, { t: 'labeledField', label: 'آدرس کامل', value: 'خیابان ولیعصر، پلاک ۱۲' }, { t: 'caption', label: 'کدپستی (اختیاری)' }, btn('پایان و ورود به برنامه', next, midnight)];
+          }
+          return [stepHeader, { t: 'h1', label: title }, { t: 'fieldPlaceholder' }, btn('ادامه', next, midnight)];
+        }
+        if (screen.flow === 'SUPPORT' && screen.id === 'G5-SUPPORT-01') {
+          return [{ t: 'h1', label: title }, { t: 'requestTypePicker' }, { t: 'labeledField', label: 'موضوع', value: 'سؤال درباره سفارش #۱۰۲۴' }, { t: 'p', label: 'سفارش هنوز به مرحله ارسال نرسیده و می‌خواستم وضعیت را جویا شوم.' }, btn('ارسال درخواست', next, midnight)];
+        }
+        return [{ t: 'h1', label: title }, btn('ادامه', next, midnight)];
+      case 'empty': {
+        const isNotifEmpty = /اعلان/.test(title);
+        const isCartEmpty = /سبد/.test(title);
+        if (isCartEmpty) return [{ t: 'emptyState', label: 'سبد خرید خالی است', sub: 'هنوز محصولی به سبد اضافه نکرده‌اید.' }, ...(next ? [btn('رفتن به فروشگاه', next, brass)] : [])];
+        return [{ t: 'emptyState', label: isNotifEmpty ? 'هنوز اعلانی ندارید' : title, sub: isNotifEmpty ? 'اعلان‌های شما اینجا نمایش داده می‌شوند.' : 'هنوز چیزی اینجا نیست' }, ...(next && !isNotifEmpty ? [btn('انجام اقدام', next, brass)] : [])];
+      }
+      case 'list':
+        if (screen.flow === 'JOURNEY') return [{ t: 'h1', label: title }, { t: 'journeyOfferCard', name: 'پایش وزن هفتگی', duration: '۴ هفته', onClick: next ? go(next) : () => {} }, { t: 'journeyOfferCard', name: 'انتقال تدریجی غذا', duration: '۲ هفته', onClick: () => {} }, { t: 'journeyOfferCard', name: 'روتین دندان‌پزشکی', duration: '۶ هفته', onClick: () => {} }];
+        if (screen.flow === 'SUPPORT') return [{ t: 'h1', label: title }, card('سؤال درباره سفارش #۱۰۲۴ · در بررسی'), card('اشتراک اطلاع‌رسانی موجودی · پاسخ‌داده‌شده', next)];
+        if (screen.flow === 'ORD') return [{ t: 'h1', label: title },
+          { t: 'orderRow', code: '#ORD-10248', status: 'در حال تأمین', tone: 'info', summary: 'رویال کنین ادالت — ۳ کیلوگرم', onClick: next ? go(next) : () => {} },
+          { t: 'orderRow', code: '#ORD-10201', status: 'تحویل شد', tone: 'success', summary: 'پروپلن ادالت — ۳ کیلوگرم', onClick: () => {} },
+          { t: 'orderRow', code: '#ORD-10177', status: 'لغو شد', tone: 'error', summary: 'هیلز ساینس دایت — ۲ کیلوگرم', onClick: () => {} }];
+        if (screen.flow === 'SHOP') return [{ t: 'h1', label: title }, { t: 'searchField' }, card('رویال کنین ادالت — ۳ کیلوگرم · ۴۸۰٬۰۰۰ تومان'), card('پروپلن ادالت — ۳ کیلوگرم · ۴۱۰٬۰۰۰ تومان', next), card('هیلز ساینس دایت — ۲ کیلوگرم · ۵۲۰٬۰۰۰ تومان')];
+        if (screen.flow === 'CHK') return [{ t: 'h1', label: title }, card('خانه — تهران، خیابان ولیعصر، پلاک ۱۲', next), card('محل کار — تهران، خیابان کریمخان، پلاک ۵')];
+        return [{ t: 'h1', label: title }, { t: 'skeleton', h: 12, w: '90%' }, card('رویال کنین ادالت — ۳ کیلوگرم · ۴۸۰٬۰۰۰ تومان'), card('پروپلن ادالت — ۳ کیلوگرم · ۴۱۰٬۰۰۰ تومان', next)];
+      case 'detail':
+        if (screen.flow === 'SHOP') {
+          return [{ t: 'imgPlaceholder' }, { t: 'h1', label: title }, { t: 'chipsRow', chips: ['✓ اصالت تأییدشده', 'تأمین‌کننده: فرانسه'] }, { t: 'priceRow', price: '۴۸۰٬۰۰۰', saving: '۳۶٪ کمتر از قیمت مرجع' }, { t: 'caption', label: 'بازبینی قیمت مرجع: ۱۴۰۵/۰۲/۱۰ · حداقل ماندگاری: ۶ ماه' }, ...(next ? [btn('افزودن به سبد', next, brass)] : [])];
+        }
+        if (/دفترچه|خاطره/.test(title)) {
+          return [{ t: 'card', label: '۱۴۰۵/۰۲/۰۸' }, { t: 'h1', label: title }, { t: 'p', label: 'بیشی مسیر مراقبتی را با موفقیت به پایان رساند — این خاطره و پاداش باغ ایرانی سمت سرور ثبت شدند.' }];
+        }
+        if (screen.flow === 'SUPPORT') {
+          return [{ t: 'h1', label: title }, tag('در بررسی'), { t: 'card', label: 'موضوع: سؤال درباره سفارش #۱۰۲۴' }, { t: 'caption', label: 'ثبت‌شده: ۱۴۰۵/۰۲/۱۰ — ۱۱:۲۰' }, { t: 'p', label: 'درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست.' }];
+        }
+        if (screen.flow === 'ORD') {
+          return [{ t: 'h1', label: 'سفارش #ORD-10248' }, { t: 'card', label: 'وضعیت: در حال تأمین' }, { t: 'card', label: 'تعهد تحویل: ۱۴۰۵/۰۲/۱۵ تا ۱۴۰۵/۰۲/۱۷' }, { t: 'card', label: 'واحدهای تأمین‌شده: ۱ از ۱' }, { t: 'progressStep', label: 'پرداخت‌شده', dot: 'oklch(0.6 0.14 145)' }, { t: 'progressStep', label: 'در حال تأمین', dot: 'oklch(0.72 0.13 75)' }, { t: 'progressStep', label: 'در مسیر ارسال', dot: 'oklch(0.85 0.01 80)' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+        }
+        if (screen.flow === 'ORD' && /انقضا/.test(title)) {
+          return [{ t: 'h1', label: title }, { t: 'card', label: 'تاریخ انقضا: ۱۴۰۵/۰۶/۱۰' }, { t: 'caption', label: 'این تاریخ از تولیدکننده دریافت شده و توسط سیستم ذخیره‌سازی خانوار پردازش می‌شود' }];
+        }
+        if (screen.flow === 'JOURNEY' && /تعریف مسیر/.test(title)) {
+          return [{ t: 'h1', label: 'پایش وزن هفتگی' }, { t: 'p', label: 'این مسیر شامل ۴ گام هفتگی برای پایش وزن پت شماست. بر پایه محتوای تأییدشده تنظیم شده و بدون ادعای پزشکی فراتر از آن ارائه می‌شود.' }, { t: 'card', label: 'بازه فعال: ۴ هفته — ۱ چک‌این در هفته' }, { t: 'card', label: 'پاداش تکمیل: ۱ خاطره در دفترچه + ۱ شیء باغ ایرانی' }, ...(next ? [btn('ادامه', next, midnight)] : [])];
+        }
+        return [{ t: 'h1', label: title }, tag('جزئیات'), ...(next ? [btn('ادامه', next, brass)] : [])];
+      case 'compare': return [{ t: 'h1', label: title }, { t: 'compareRow', items: [
+        { name: 'رویال کنین ۳ کیلوگرم', price: '۴۸۰٬۰۰۰', highlight: true },
+        { name: 'پروپلن ۳ کیلوگرم', price: '۴۱۰٬۰۰۰', highlight: false }
+      ] }];
+      case 'cart': return [{ t: 'h1', label: title }, { t: 'cartLine', name: 'رویال کنین ادالت — ۳ کیلوگرم', price: '۴۸۰٬۰۰۰' }, { t: 'summaryRow', label: 'جمع کالاها', value: '۴۸۰٬۰۰۰ تومان' }, { t: 'summaryRow', label: 'هزینه ارسال', value: '۰ تومان' }, btn('ادامه به پرداخت', next, midnight)];
+      case 'checkout-review': return [{ t: 'h1', label: title }, ...(tone === 'error' ? [tag('این آدرس دیگر در دسترس نیست — لطفاً آدرس دیگری انتخاب کنید')] : []), { t: 'card', label: 'آدرس تحویل: تهران، خیابان ولیعصر، پلاک ۱۲' }, { t: 'card', label: 'زمان تحویل تخمینی: ۱۴۰۵/۰۲/۱۵ تا ۱۴۰۵/۰۲/۱۷' }, { t: 'summaryRow', label: 'جمع کل', value: '۴۸۰٬۰۰۰ تومان', strong: true }, { t: 'caption', label: 'پرداخت کامل — بدون رزرو یا پرداخت جزئی' }, btn(tone === 'error' ? 'اصلاح آدرس' : 'پرداخت', tone === 'error' ? next : next, tone === 'error' ? brass : midnight)];
+      case 'payment-redirect': return [{ t: 'h1', label: title }, { t: 'skeleton', h: 14, w: '60%' }, { t: 'caption', label: 'در حال انتقال به درگاه…' }];
+      case 'payment-result': {
+        const isUncertain = /نامشخص|در حال بررسی|pending/i.test(title);
+        const isCancelled = tone === 'warning' && /لغو/.test(title);
+        if (isUncertain) return [tag(title), { t: 'p', label: 'وضعیت پرداخت در حال تأیید است. این صفحه به‌طور خودکار به‌روزرسانی می‌شود.' }, btn2('مشاهده جزئیات سفارش'), { t: 'caption', label: 'در صورت نیاز می‌توانید با پشتیبانی تماس بگیرید.' }];
+        if (isCancelled) return [tag(title), { t: 'p', label: 'پرداخت توسط شما در درگاه لغو شد. مبلغی کسر نشده است. سبد خرید شما همچنان محفوظ است.' }, btn('تلاش مجدد برای پرداخت', next, midnight)];
+        return [tag(title), { t: 'p', label: tone === 'success' ? '۴۸۰٬۰۰۰ تومان با موفقیت پرداخت شد.' : 'مبلغ از حساب شما کسر نشد. می‌توانید دوباره تلاش کنید.' }, btn(tone === 'success' ? 'ادامه' : 'تلاش مجدد', next, midnight)];
+      }
+      case 'confirmation': return [tag(title), { t: 'card', label: '#ORD-10248 · ۴۸۰٬۰۰۰ تومان پرداخت شد' }, btn('مشاهده سفارش', next, brass)];
+      case 'timeline': {
+        const done = 'oklch(0.6 0.14 145)'; const active = 'oklch(0.72 0.13 75)'; const upcoming = 'oklch(0.85 0.01 80)';
+        let dots;
+        if (/تأمین/.test(title)) dots = [done, active, upcoming, upcoming];
+        else if (/حمل|ارسال/.test(title)) dots = [done, done, active, upcoming];
+        else if (/تحویل/.test(title)) dots = [done, done, done, done];
+        else dots = [done, done, upcoming, upcoming];
+        const labels = ['پرداخت‌شده', 'در حال تأمین', 'در مسیر ارسال', 'تحویل داده شد'];
+        return [{ t: 'h1', label: title }, ...labels.map((l, i) => ({ t: 'progressStep', label: l, dot: dots[i] })), ...(next ? [btn('ادامه', next, brass)] : [])];
+      }
+      case 'account-home': return [{ t: 'h1', label: title }, ...['خانوار', 'پت‌ها', 'آدرس‌ها', 'سفارش‌ها', 'اعلان‌ها', 'کیف پول', 'حریم خصوصی'].map(l => card(l, l === 'کیف پول' ? next : undefined))];
+      case 'settings-list': return [{ t: 'h1', label: title }, ...['گزینه ۱', 'گزینه ۲'].map((l, i) => card(l, i === 1 ? next : undefined))];
+      case 'wallet': return [{ t: 'h1', label: title }, { t: 'walletBalance' }, { t: 'caption', label: 'مصرف: زودترین‌تاریخ‌انقضا اول' }];
+      case 'inbox': return [{ t: 'h1', label: title }, { t: 'notifRow', bold: true, label: 'سفارش شما در حال تأمین است', time: '۲ ساعت پیش', onClick: () => {} }, { t: 'notifRow', bold: false, label: 'مسیر مراقبتی پایش وزن آماده است', time: 'دیروز', onClick: next ? go(next) : () => {} }];
+      case 'sheet': {
+        if (screen.flow === 'JOURNEY') {
+          if (/توقف موقت|pause/i.test(title)) return [{ t: 'h1', label: title }, { t: 'p', label: 'می‌توانید هر زمان مسیر را از همین نقطه ادامه دهید.' }, btn('تأیید توقف موقت', next, midnight)];
+          if (/ادامه|resume/i.test(title)) return [{ t: 'h1', label: title }, { t: 'p', label: 'مسیر از همان گامی که متوقف شده بود ادامه می‌یابد.' }, btn('ادامه مسیر', next, midnight)];
+          if (/توقف مسیر|stop/i.test(title)) return [{ t: 'h1', label: title }, { t: 'p', label: 'این مسیر متوقف می‌شود و پیشرفت فعلی حفظ نمی‌شود.' }, btn2('انصراف'), btn('تأیید توقف مسیر', next, midnight)];
+          if (/شروع مسیر/.test(title)) return [{ t: 'h1', label: title }, { t: 'p', label: 'با شروع، اولین چک‌این هفتگی برای شما زمان‌بندی می‌شود. می‌توانید هر زمان مسیر را متوقف کنید.' }, btn2('انصراف'), btn('شروع مسیر', next, midnight)];
+        }
+        return [{ t: 'h1', label: title }, { t: 'caption', label: 'حداقل ۷۲ ساعت — انقضا سمت سرور تعیین می‌شود' }, btn('تأیید', next, midnight)];
+      }
+      case 'meter': {
+        const isInsufficient = tone === 'warning' || /ناکافی/.test(title);
+        if (isInsufficient) return [{ t: 'h1', label: title }, tag('اطلاعات کافی نیست'), { t: 'meter', trackBg: 'repeating-linear-gradient(135deg,oklch(0.85 0.005 90),oklch(0.85 0.005 90) 6px,oklch(0.96 0.003 90) 6px,oklch(0.96 0.003 90) 12px)', fillBg: 'transparent', fillPct: 0, caption: 'برای تخمین دقیق، مقدار باقی‌مانده را ثبت کنید' }, ...(next ? [btn('ثبت مقدار باقی‌مانده', next, brass)] : [])];
+        return [{ t: 'h1', label: title }, tag('اطمینان بالا'), { t: 'meter', trackBg: 'oklch(0.92 0.01 80)', fillBg: 'oklch(0.6 0.14 145)', fillPct: 64, caption: 'برآورد بر پایه سیاست فعال' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+      }
+      case 'inventory-unit': return [{ t: 'card', label: 'رویال کنین ادالت — ۳ کیلوگرم' }, { t: 'h1', label: title }, { t: 'p', label: 'تأیید می‌کنید که این بسته را همین امروز باز کرده‌اید؟' }, btn('باز کردن', next, midnight)];
+      case 'today': return [{ t: 'h1', label: 'امروز' }, { t: 'meter', trackBg: 'oklch(0.92 0.01 80)', fillBg: 'oklch(0.6 0.14 145)', fillPct: 64, caption: 'غذای بیشی — تخمین فعال' }, card('نوار باغ ایرانی', next)];
+      case 'today-food': {
+        const stateKey = screen.titleEn.split('=')[1] || 'state';
+        const isUnknown = stateKey.includes('unknown');
+        return [{ t: 'h1', label: title }, tag(stateKey), (isUnknown ? { t: 'meter', trackBg: 'repeating-linear-gradient(135deg,oklch(0.85 0.005 90),oklch(0.85 0.005 90) 6px,oklch(0.96 0.003 90) 6px,oklch(0.96 0.003 90) 12px)', fillBg: 'transparent', fillPct: 0, caption: 'بدون عدد سرانه برای هر پت' } : { t: 'meter', trackBg: 'oklch(0.92 0.01 80)', fillBg: 'oklch(0.6 0.14 145)', fillPct: 64, caption: '' }), ...(next ? [btn('ادامه', next, brass)] : [])];
+      }
+      case 'attention': return [tag(title), { t: 'p', label: 'حداکثر یک مورد توجه در امروز نمایش داده می‌شود.' }, ...(next ? [btn('اقدام', next, midnight)] : [])];
+      case 'reorder': {
+        const outcome = screen.titleEn.split('=')[1] || '';
+        const chip = tag(title);
+        if (outcome === 'snoozed') return [chip, { t: 'caption', label: 'حداکثر ۷۲ ساعت — انقضا و شکست زودهنگام کاملاً سمت سرور است' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+        if (outcome === 'order_now') return [chip, { t: 'optionRow', name: 'SKU-1024', available: true }, { t: 'optionRow', name: 'SKU-2048', available: false, reason: 'stock_delay' }, ...(next ? [btn('رفتن به فروشگاه', next, brass)] : [])];
+        return [chip, { t: 'optionRow', name: 'SKU-1024', available: true }, { t: 'optionRow', name: 'SKU-2048', available: false, reason: 'stock_delay' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+      }
+      case 'garden': {
+        if (/خالی/.test(title)) {
+          return [{ t: 'h1', label: title }, { t: 'emptyState', label: 'باغ خالی است', sub: 'زمینه بازی برای اولین شیء آماده است' }, { t: 'caption', label: 'بدون XP، رشته امتیاز، افت یا پاداش خرید' }, ...(next ? [btn('دریافت اولین شیء', next, brass)] : [])];
+        }
+        if (/جای‌گذاری/.test(title)) {
+          return [{ t: 'h1', label: title }, { t: 'p', label: 'شیء تازه را در باغ خود جای‌گذاری کنید.' }, { t: 'gardenTray', objects: [{ selected: true }] }, { t: 'gardenRow', objects: [1] }, { t: 'caption', label: 'لمس‌کنید و بکشید — موقعیت نهایی سمت سرور ثبت می‌شود' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+        }
+        if (/جابه‌جایی/.test(title)) {
+          return [{ t: 'h1', label: title }, { t: 'p', label: 'اشیای جای‌گذاری‌شده را می‌توانید هر زمان جابه‌جا کنید.' }, { t: 'gardenRow', objects: [1, 2, 3], highlightIdx: 1 }, { t: 'caption', label: 'موقعیت جدید پس از رها کردن ذخیره می‌شود' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+        }
+        if (/بازگشت به انبار/.test(title)) {
+          return [{ t: 'h1', label: title }, { t: 'p', label: 'شیء از باغ برداشته می‌شود اما از بین نمی‌رود — به انبار بازمی‌گردد.' }, { t: 'gardenRow', objects: [1, 2], returning: true }, { t: 'caption', label: 'پیوند خاطره‌ی این شیء حفظ می‌شود — بدون حذف' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+        }
+        return [{ t: 'h1', label: title }, { t: 'gardenRow', objects: [1, 2, 3] }, { t: 'caption', label: 'بدون XP، رشته امتیاز، افت یا پاداش خرید' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+      }
+
+      case 'subscribe': {
+        if (/لغو/.test(title)) return [tag(title), { t: 'p', label: 'دیگر اطلاع‌رسانی موجودی برای این محصول دریافت نمی‌کنید.' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+        if (tone === 'error') return [tag(title), { t: 'p', label: 'ثبت اشتراک ناموفق بود. دوباره تلاش کنید.' }, ...(next ? [btn('تلاش مجدد', next, brass)] : [])];
+        return [tag(title), { t: 'p', label: 'وقتی این محصول دوباره موجود شد به شما اطلاع می‌دهیم. این اقدام سفارشی برای شما ثبت نمی‌کند.' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+      }
+      case 'ack': {
+        if (/تکمیل مسیر/.test(title)) {
+          return [tag(title), { t: 'p', label: '۱ خاطره در دفترچه ثبت شد و ۱ شیء تازه به باغ ایرانی بیشی اضافه شد.' }, { t: 'gardenRow', objects: [1] }, ...(next ? [btn('مشاهده باغ ایرانی', next, brass)] : [])];
+        }
+        if (/مسیر آغاز شد/.test(title)) return [tag(title), { t: 'p', label: 'اولین چک‌این هفتگی برای پایش وزن بیشی زمان‌بندی شد.' }, ...(next ? [btn('مشاهده پیشرفت', next, brass)] : [])];
+        if (/چک-این موفق/.test(title)) return [tag(title), { t: 'p', label: 'پاسخ شما ثبت شد. چک‌این بعدی هفته آینده در دسترس خواهد بود.' }];
+        return [tag(title), { t: 'p', label: 'درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست.' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+      }
+      case 'journey-detail': return [{ t: 'h1', label: title }, { t: 'meter', trackBg: 'oklch(0.92 0.01 80)', fillBg: 'oklch(0.72 0.13 75)', fillPct: 50, caption: 'هفته ۲ از ۴' }, { t: 'progressStep', label: 'هفته ۱: وزن‌کشی اولیه', dot: 'oklch(0.6 0.14 145)' }, { t: 'progressStep', label: 'هفته ۲: بررسی اشتها', dot: 'oklch(0.72 0.13 75)' }, { t: 'progressStep', label: 'هفته ۳: وزن‌کشی میانی', dot: 'oklch(0.85 0.01 80)' }, { t: 'progressStep', label: 'هفته ۴: جمع‌بندی', dot: 'oklch(0.85 0.01 80)' }, ...(next ? [btn('ادامه', next, brass)] : [])];
+      case 'checkin-typed': {
+        const answered = !!this.state.selectedAnswer;
+        const isAnswerStep = /پاسخ چک-این/.test(title);
+        const answersBlock = { t: 'answers', options: [
+          { label: 'خوب', selected: this.state.selectedAnswer === 'good' ? 'oklch(0.72 0.13 75)' : 'oklch(0.85 0.01 80)', bg: this.state.selectedAnswer === 'good' ? 'oklch(0.72 0.13 75 / 0.15)' : '#fff', fg: 'oklch(0.3 0.01 265)', onClick: () => this.setState({ selectedAnswer: 'good' }) },
+          { label: 'متوسط', selected: this.state.selectedAnswer === 'medium' ? 'oklch(0.72 0.13 75)' : 'oklch(0.85 0.01 80)', bg: this.state.selectedAnswer === 'medium' ? 'oklch(0.72 0.13 75 / 0.15)' : '#fff', fg: 'oklch(0.3 0.01 265)', onClick: () => this.setState({ selectedAnswer: 'medium' }) },
+          { label: 'ضعیف', selected: this.state.selectedAnswer === 'poor' ? 'oklch(0.72 0.13 75)' : 'oklch(0.85 0.01 80)', bg: this.state.selectedAnswer === 'poor' ? 'oklch(0.72 0.13 75 / 0.15)' : '#fff', fg: 'oklch(0.3 0.01 265)', onClick: () => this.setState({ selectedAnswer: 'poor' }) }
+        ] };
+        const disabledStyle = { bg: 'oklch(0.92 0.006 90)', fg: 'oklch(0.6 0.005 90)' };
+        if (isAnswerStep) {
+          return [{ t: 'h1', label: 'انتخاب پاسخ' }, { t: 'step', label: 'اشتهای پت امروز چطور بود؟', body: 'check_in_key: appetite_check' }, answersBlock, ...(answered ? [tag('پاسخ انتخاب‌شده: ' + (this.state.selectedAnswer === 'good' ? 'خوب' : this.state.selectedAnswer === 'medium' ? 'متوسط' : 'ضعیف'))] : []), btn(answered ? 'ثبت پاسخ (answer_key)' : 'یک گزینه انتخاب کنید', answered ? next : null, answered ? midnight : disabledStyle)];
+        }
+        return [{ t: 'h1', label: title }, { t: 'step', label: 'اشتهای پت امروز چطور بود؟', body: 'check_in_key: appetite_check' }, answersBlock, ...(next ? [btn(answered ? 'ادامه' : 'یک گزینه انتخاب کنید', answered ? next : null, answered ? midnight : disabledStyle)] : [])];
+      }
+      default: return [{ t: 'h1', label: title }];
+    }
+  }
+
+  navigate(id) { this.setState(s => ({ currentId: id, stack: [...s.stack, s.currentId] })); }
+  startJourney(id) { const j = this.journeys().find(x => x.id === id); if (!j) return; this.setState({ journeyId: id, currentId: j.main[0], stack: [], selectedAnswer: null }); }
+
+  renderVals() {
+    const screens = this.screens();
+    const byId = {}; screens.forEach(s => byId[s.id] = s);
+    const current = byId[this.state.currentId] || screens[0] || {};
+    const rawBlocks = this.blocksFor(current);
+    const currentBlocks = rawBlocks.map(bl => ({ ...bl, isH1: bl.t === 'h1', isP: bl.t === 'p', isTag: bl.t === 'tag', isCard: bl.t === 'card', isBtn: bl.t === 'btn', isBtn2: bl.t === 'btn2', isBand: bl.t === 'band', isCaption: bl.t === 'caption', isOtp: bl.t === 'otp', isStep: bl.t === 'step', isAnswers: bl.t === 'answers', isSkeleton: bl.t === 'skeleton', isEmptyState: bl.t === 'emptyState', isMeter: bl.t === 'meter',
+      isGardenRow: bl.t === 'gardenRow', ...(bl.t === 'gardenRow' ? { objects: bl.objects.map((o, i) => ({ bg: bl.returning && i === 0 ? 'oklch(0.6 0.01 90 / 0.3)' : (bl.highlightIdx === i ? 'oklch(0.72 0.13 75 / 0.5)' : 'oklch(0.72 0.13 75 / 0.3)'), glow: bl.returning && i === 0 ? 'none' : (bl.highlightIdx === i ? '0 0 24px oklch(0.72 0.13 70 / 0.55)' : '0 0 16px oklch(0.72 0.13 70 / 0.35)'), opacity: bl.returning && i === 0 ? 0.5 : 1, border: bl.highlightIdx === i ? '2px solid oklch(0.72 0.13 75)' : 'none' })) } : {}),
+      isGardenTray: bl.t === 'gardenTray', isImg: bl.t === 'imgPlaceholder', isChipsRow: bl.t === 'chipsRow', isPriceRow: bl.t === 'priceRow', isCompareRow: bl.t === 'compareRow', isProgressStep: bl.t === 'progressStep', isWallet: bl.t === 'walletBalance',
+      isStepIndicator: bl.t === 'stepIndicator', isFieldPlaceholder: bl.t === 'fieldPlaceholder', isLabeledField: bl.t === 'labeledField', isSpeciesPicker: bl.t === 'speciesPicker', isLabeledPicker: bl.t === 'labeledPicker', isRequestTypePicker: bl.t === 'requestTypePicker', isPhoneField: bl.t === 'phoneField', isOptionRow: bl.t === 'optionRow',
+      isNotifRow: bl.t === 'notifRow', ...(bl.t === 'notifRow' ? { fw: bl.bold ? '700' : '400' } : {}),
+      isSearchField: bl.t === 'searchField',
+      isJourneyOfferCard: bl.t === 'journeyOfferCard',
+      isOrderRow: bl.t === 'orderRow', ...(bl.t === 'orderRow' ? { tagBg: { info: 'oklch(0.94 0.02 250)', success: 'oklch(0.94 0.05 145)', error: 'oklch(0.94 0.03 30)' }[bl.tone], tagFg: { info: 'oklch(0.35 0.1 250)', success: 'oklch(0.35 0.1 145)', error: 'oklch(0.4 0.15 30)' }[bl.tone] } : {}),
+      isCartLine: bl.t === 'cartLine',
+      isSummaryRow: bl.t === 'summaryRow', ...(bl.t === 'summaryRow' ? { fw: bl.strong ? '800' : '400', color: bl.strong ? (this.isGarden(current) ? 'oklch(0.95 0.02 150)' : 'oklch(0.22 0.01 265)') : (this.isGarden(current) ? 'oklch(0.8 0.03 150)' : 'oklch(0.45 0.01 265)') } : {}), ...(bl.t === 'optionRow' ? { tagBg: bl.available ? 'oklch(0.94 0.05 145)' : 'oklch(0.94 0.03 30)', tagFg: bl.available ? 'oklch(0.35 0.1 145)' : 'oklch(0.4 0.15 30)', glyph: bl.available ? '✓' : '⚠', statusLabel: bl.available ? 'موجود' : ('ناموجود · ' + bl.reason) } : {}), ...(bl.t === 'compareRow' ? { items: bl.items.map(it => ({ ...it, border: it.highlight ? 'oklch(0.72 0.13 75)' : 'oklch(0.86 0.01 80)', bg: it.highlight ? 'oklch(0.72 0.13 75 / 0.08)' : '#fff' })) } : {}) }));
+    const journeysRaw = this.journeys();
+    const journeys = journeysRaw.map(j => ({ id: j.id, name: j.name, select: () => this.startJourney(j.id), bg: this.state.journeyId === j.id ? 'oklch(0.72 0.13 75 / 0.15)' : '#fff', border: this.state.journeyId === j.id ? 'oklch(0.72 0.13 75)' : 'oklch(0.88 0.005 90)', fg: this.state.journeyId === j.id ? 'oklch(0.3 0.08 75)' : 'oklch(0.35 0.005 90)' }));
+    const flowOrder = ['AUTH', 'ONB', 'BRIDGE', 'SHOP', 'CHK', 'ORD', 'ACC', 'SUPPORT', 'JOURNEY'];
+    const flowGroups = flowOrder.map(flow => ({ flow: this.flowLabel(flow), screens: screens.filter(s => s.flow === flow).map(s => ({ titleFa: s.titleFa, select: () => this.navigate(s.id), bg: s.id === current.id ? 'oklch(0.72 0.13 75 / 0.25)' : 'transparent', fg: s.id === current.id ? 'oklch(0.25 0.06 75)' : 'oklch(0.35 0.005 90)', fw: s.id === current.id ? '700' : '400' })) }));
+    const activeJourney = journeysRaw.find(j => j.id === this.state.journeyId);
+    const stepIdx = activeJourney ? activeJourney.main.indexOf(current.id) : -1;
+    const branches = (current.branches || []).filter(id => id !== this.effectiveNext(current));
+    const isGarden = this.isGarden(current);
+    const audit = this.runAudit();
+    const auditIssues = [...audit.dupes.map(d => 'duplicate id: ' + d), ...audit.missingTargets, ...audit.journeyIssues];
+    return {
+      totalScreens: screens.length, journeyCount: journeysRaw.length,
+      journeys, flowGroups,
+      current: { id: current.id, titleFa: current.titleFa, flow: this.flowLabel(current.flow) },
+      currentBlocks,
+      frameBg: isGarden ? 'oklch(0.28 0.06 150)' : '#fff',
+      frameInk: isGarden ? 'oklch(0.95 0.02 150)' : 'oklch(0.22 0.01 265)',
+      frameMuted: isGarden ? 'oklch(0.8 0.03 150)' : 'oklch(0.45 0.01 265)',
+      frameBorder: isGarden ? 'oklch(0.4 0.06 150)' : 'oklch(0.86 0.01 80)',
+      frameCard: isGarden ? 'oklch(0.34 0.06 150)' : 'oklch(0.98 0.006 80)',
+      inJourney: !!activeJourney,
+      journeyLabel: activeJourney ? (activeJourney.id + (stepIdx >= 0 ? ' · گام ' + (stepIdx + 1) + ' از ' + activeJourney.main.length : ' · انشعاب')) : '',
+      restartJourney: () => activeJourney && this.startJourney(activeJourney.id),
+      hasBranches: branches.length > 0,
+      branchOptions: branches.map(id => ({ label: (byId[id] || {}).titleFa || id, onClick: () => this.navigate(id) })),
+      goBack: () => this.setState(s => { if (!s.stack.length) return s; const stack = [...s.stack]; const prev = stack.pop(); return { currentId: prev, stack }; }),
+      toggleAudit: () => this.setState(s => ({ auditOpen: !s.auditOpen })),
+      auditOpen: this.state.auditOpen,
+      auditSummary: audit.total === 0 ? '0 مشکل' : audit.total + ' مشکل',
+      auditBg: audit.total === 0 ? 'oklch(0.94 0.05 145)' : 'oklch(0.94 0.03 30)',
+      auditFg: audit.total === 0 ? 'oklch(0.35 0.1 145)' : 'oklch(0.4 0.15 30)',
+      auditBorder: audit.total === 0 ? 'oklch(0.7 0.1 145)' : 'oklch(0.7 0.1 30)',
+      auditIssues, noIssues: auditIssues.length === 0
+    };
+  }
+}
+
+</script>
+</body>
+</html>

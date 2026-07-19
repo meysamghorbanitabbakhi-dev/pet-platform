@@ -1,0 +1,7 @@
+# Canonical design-contract files are checksum-governed (see
+# frontend/frontend-coding-contract/canonical-manifest.sha256). Any
+# line-ending normalization on checkout/stash/merge silently changes their
+# bytes and breaks the checksum without touching their visible content -- this
+# has happened by accident before. Keep them exactly as committed regardless
+# of a contributor's core.autocrlf setting.
+frontend/frontend-coding-contract/design-pages/* -text

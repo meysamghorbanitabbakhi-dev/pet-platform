@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800&family=Vazirmatn:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:oklch(0.93 0.006 90);}*{box-sizing:border-box;font-family:'Vazirmatn',system-ui,sans-serif;}</style>
+</helmet>
+<div dir="rtl" lang="fa" style="min-height:100vh;padding:32px;display:flex;flex-direction:column;align-items:center;gap:18px;">
+  <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
+    <div style="font-family:'IBM Plex Mono';direction:ltr;font-size:10.5px;letter-spacing:0.06em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;">Gate 5.2D · wave 5</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:700px;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="9">
+        <button onClick="{{ t.select }}" style="border:1px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }};border-radius:999px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;min-height:36px;">{{ t.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="width:390px;background:oklch(0.98 0.006 80);border:2px solid oklch(0.2 0.005 90);border-radius:26px;padding:0;box-shadow:0 20px 40px oklch(0.3 0.01 90 / 0.18);overflow:hidden;">
+    <div style="height:16px;display:flex;align-items:center;justify-content:center;background:oklch(0.98 0.006 80);"><div style="width:56px;height:5px;border-radius:3px;background:oklch(0.85 0.005 90 / 0.5);"></div></div>
+
+    <sc-if value="{{ isWallet }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">کیف پول</div>
+        <div style="background:oklch(0.28 0.04 270);border-radius:14px;padding:18px;color:oklch(0.97 0.01 270);margin-bottom:16px;">
+          <div style="font-size:11.5px;opacity:0.75;margin-bottom:6px;">موجودی قابل استفاده</div>
+          <div style="font-family:'Vazirmatn';font-size:24px;font-weight:800;">۰ <span style="font-size:13px;font-weight:500;">تومان</span></div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:oklch(0.5 0.01 265);margin-bottom:8px;">مصرف: زودترین‌تاریخ‌انقضا اول</div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:12px;padding:14px;">
+          <div style="font-size:12.5px;color:oklch(0.45 0.01 265);line-height:1.8;">تراکنشی برای نمایش وجود ندارد.</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isNotifications }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">اعلان‌ها</div>
+        <sc-for list="{{ notifs }}" as="n" hint-placeholder-count="3">
+          <div style="border-bottom:1px solid oklch(0.92 0.005 80);padding:12px 4px;min-height:44px;">
+            <div style="font-size:13px;font-weight:{{ n.fw }};color:oklch(0.22 0.01 265);margin-bottom:3px;">{{ n.title }}</div>
+            <div style="font-size:11.5px;color:oklch(0.5 0.01 265);">{{ n.time }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isPrivacy }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">حریم خصوصی</div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:12px;padding:14px;margin-bottom:12px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;">درخواست دریافت داده‌ها</div>
+          <div style="font-size:11.5px;color:oklch(0.5 0.01 265);">یک نسخه از اطلاعات ذخیره‌شده خود را دریافت کنید</div>
+        </div>
+        <div style="border:1px solid oklch(0.6 0.1 30 / 0.4);background:oklch(0.97 0.015 30);border-radius:12px;padding:14px;margin-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;color:oklch(0.4 0.12 30);margin-bottom:4px;">درخواست حذف حساب</div>
+          <div style="font-size:11.5px;color:oklch(0.45 0.1 30);">این اقدام غیرقابل بازگشت است</div>
+        </div>
+        <button style="border:1px solid oklch(0.86 0.01 80);background:#fff;color:oklch(0.3 0.01 265);font-weight:700;border-radius:10px;padding:13px;font-size:13px;min-height:44px;cursor:pointer;width:100%;">خروج از حساب</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isJourneyList }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">مسیرهای مراقبتی پیشنهادی</div>
+        <sc-for list="{{ journeyOffers }}" as="j" hint-placeholder-count="3">
+          <div style="border:1px solid oklch(0.86 0.01 80);border-radius:14px;padding:14px;margin-bottom:10px;">
+            <div style="font-size:13.5px;font-weight:700;color:oklch(0.22 0.01 265);margin-bottom:4px;">{{ j.title }}</div>
+            <div style="font-size:11.5px;color:oklch(0.5 0.01 265);">{{ j.duration }} · تأیید حرفه‌ای</div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isJourneyDefinition }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-family:'Estedad';font-size:19px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:8px;">پایش وزن هفتگی</div>
+        <div style="font-size:12.5px;color:oklch(0.45 0.01 265);line-height:1.85;margin-bottom:16px;">این مسیر شامل ۴ گام هفتگی برای پایش وزن پت شماست. بر پایه محتوای تأییدشده تنظیم شده و بدون ادعای پزشکی فراتر از آن ارائه می‌شود.</div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:600;color:oklch(0.5 0.01 265);margin-bottom:4px;">بازه فعال</div>
+          <div style="font-size:13px;color:oklch(0.22 0.01 265);">۴ هفته — ۱ چک‌این در هفته</div>
+        </div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:12px;padding:12px 14px;margin-bottom:20px;">
+          <div style="font-size:12px;font-weight:600;color:oklch(0.5 0.01 265);margin-bottom:4px;">پاداش تکمیل</div>
+          <div style="font-size:13px;color:oklch(0.22 0.01 265);">۱ خاطره در دفترچه + ۱ شیء باغ ایرانی</div>
+        </div>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;margin-top:auto;">شروع مسیر</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isJourneyProgress }}">
+      <div style="padding:20px 20px 24px;min-height:640px;">
+        <div style="font-family:'Estedad';font-size:19px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:4px;">پایش وزن هفتگی</div>
+        <div style="font-size:12px;color:oklch(0.5 0.01 265);margin-bottom:16px;">هفته ۲ از ۴</div>
+        <div style="height:8px;border-radius:4px;background:oklch(0.92 0.01 80);margin-bottom:18px;overflow:hidden;"><div style="width:50%;height:100%;background:oklch(0.72 0.13 75);"></div></div>
+        <sc-for list="{{ progressSteps }}" as="s" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid oklch(0.92 0.005 80);padding:10px 2px;min-height:44px;">
+            <div style="width:20px;height:20px;border-radius:50%;background:{{ s.dot }};flex:none;"></div>
+            <div style="font-size:12.5px;color:{{ s.fg }};">{{ s.label }}</div>
+          </div>
+        </sc-for>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button style="flex:1;border:1px solid oklch(0.86 0.01 80);background:#fff;color:oklch(0.3 0.01 265);font-weight:700;border-radius:10px;padding:12px;font-size:12.5px;min-height:44px;cursor:pointer;">توقف موقت</button>
+          <button style="flex:1;border:1px solid oklch(0.6 0.1 30 / 0.5);background:#fff;color:oklch(0.4 0.12 30);font-weight:700;border-radius:10px;padding:12px;font-size:12.5px;min-height:44px;cursor:pointer;">توقف مسیر</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isJourneyPaused }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:oklch(0.35 0.1 250);background:oklch(0.94 0.02 250);border-radius:999px;padding:8px 16px;margin-bottom:16px;">◐ مسیر متوقف شده</span>
+        <div style="font-size:13px;color:oklch(0.45 0.01 265);line-height:1.9;margin-bottom:24px;">می‌توانید هر زمان مسیر را از همین نقطه ادامه دهید.</div>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:12px 22px;font-size:13.5px;min-height:44px;cursor:pointer;">ادامه مسیر</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isJourneyCompletion }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:oklch(0.35 0.1 145);background:oklch(0.94 0.05 145);border-radius:999px;padding:8px 16px;margin-bottom:16px;">✓ مسیر تکمیل شد</span>
+        <div style="font-size:13px;color:oklch(0.45 0.01 265);line-height:1.9;margin-bottom:20px;">۱ خاطره در دفترچه ثبت شد و ۱ شیء تازه به باغ ایرانی بیشی اضافه شد.</div>
+        <div style="width:60px;height:60px;border-radius:14px;background:oklch(0.72 0.13 75 / 0.2);box-shadow:0 0 20px oklch(0.72 0.13 70 / 0.3);margin-bottom:20px;"></div>
+        <button style="border:1px solid oklch(0.72 0.13 75);background:oklch(0.72 0.13 75 / 0.12);color:oklch(0.4 0.1 75);font-weight:700;border-radius:10px;padding:12px 20px;font-size:13px;min-height:44px;cursor:pointer;">مشاهده باغ ایرانی</button>
+      </div>
+    </sc-if>
+  </div>
+  <div style="font-size:11px;color:oklch(0.4 0.01 265);max-width:390px;text-align:center;">توکن‌های G5.2C-R2 · حداقل هدف لمسی ۴۴px همه‌جا</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { tab: 'wallet' };
+  renderVals() {
+    const tabs = [
+      { id: 'wallet', label: 'کیف پول' },
+      { id: 'notifications', label: 'اعلان‌ها' },
+      { id: 'privacy', label: 'حریم خصوصی' },
+      { id: 'journey-list', label: 'کشف مسیرها' },
+      { id: 'journey-def', label: 'جزئیات تعریف' },
+      { id: 'journey-progress', label: 'پیشرفت' },
+      { id: 'journey-paused', label: 'متوقف‌شده' },
+      { id: 'journey-completion', label: 'تکمیل مسیر' }
+    ].map(t => ({ ...t, select: () => this.setState({ tab: t.id }), bg: this.state.tab === t.id ? 'oklch(0.72 0.13 75 / 0.15)' : '#fff', border: this.state.tab === t.id ? 'oklch(0.72 0.13 75)' : 'oklch(0.8 0.01 80)', fg: this.state.tab === t.id ? 'oklch(0.3 0.08 75)' : 'oklch(0.35 0.005 90)' }));
+    const notifs = [
+      { title: 'سفارش شما در حال تأمین است', time: '۲ ساعت پیش', fw: '700' },
+      { title: 'مسیر مراقبتی پایش وزن آماده است', time: 'دیروز', fw: '400' },
+      { title: 'اشتراک اطلاع‌رسانی فعال شد', time: '۳ روز پیش', fw: '400' }
+    ];
+    const journeyOffers = [
+      { title: 'پایش وزن هفتگی', duration: '۴ هفته' },
+      { title: 'انتقال تدریجی غذا', duration: '۲ هفته' },
+      { title: 'روتین دندان‌پزشکی', duration: '۶ هفته' }
+    ];
+    const progressSteps = [
+      { label: 'هفته ۱: وزن‌کشی اولیه', dot: 'oklch(0.6 0.14 145)', fg: 'oklch(0.35 0.01 265)' },
+      { label: 'هفته ۲: چک‌این اشتها', dot: 'oklch(0.72 0.13 75)', fg: 'oklch(0.22 0.01 265)' },
+      { label: 'هفته ۳: وزن‌کشی میانی', dot: 'oklch(0.85 0.01 80)', fg: 'oklch(0.5 0.01 265)' },
+      { label: 'هفته ۴: جمع‌بندی', dot: 'oklch(0.85 0.01 80)', fg: 'oklch(0.5 0.01 265)' }
+    ];
+    return {
+      tabs, notifs, journeyOffers, progressSteps,
+      isWallet: this.state.tab === 'wallet', isNotifications: this.state.tab === 'notifications', isPrivacy: this.state.tab === 'privacy',
+      isJourneyList: this.state.tab === 'journey-list', isJourneyDefinition: this.state.tab === 'journey-def',
+      isJourneyProgress: this.state.tab === 'journey-progress', isJourneyPaused: this.state.tab === 'journey-paused',
+      isJourneyCompletion: this.state.tab === 'journey-completion'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

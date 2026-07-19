@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "clock": "2026-07-16T12:00:00+03:30",
+  "identity": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "mobile_e164": "+989120000001",
+    "type": "customer"
+  },
+  "household": {
+    "id": "20000000-0000-4000-8000-000000000001",
+    "name": "خانه میلو"
+  },
+  "pet": {
+    "id": "30000000-0000-4000-8000-000000000001",
+    "name": "میلو",
+    "species": "dog",
+    "birth_date": "2026-04-10"
+  },
+  "offer": {
+    "id": "40000000-0000-4000-8000-000000000001",
+    "sku": "DEMO-RC-PUPPY-3KG",
+    "title_fa": "غذای خشک توله‌سگ ۳ کیلوگرم",
+    "price_irr": 48500000,
+    "currency": "IRR",
+    "supplier_country": "DE",
+    "trust_claim": "supplier_verified",
+    "minimum_shelf_life_months": 6,
+    "stock_posture": "sourced_after_payment"
+  },
+  "states": [
+    "catalog",
+    "awaiting_payment",
+    "paid_sourcing",
+    "in_transit",
+    "delivered_unopened",
+    "opened_estimate_active",
+    "journey_completed",
+    "diary_memory_created",
+    "garden_reward_placed"
+  ],
+  "policy": {
+    "delivery_commitment_hours": 366,
+    "full_payment_only": true,
+    "reserve_now_enabled": false
+  }
+}

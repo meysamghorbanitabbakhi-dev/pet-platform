@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /en/products/
+Allow: /hy/products/
+Allow: /ru/products/
+Disallow: /admin/
+Disallow: /cart/
+Disallow: /checkout/
+
+# Sitemaps
+Sitemap: https://www.petmall.am/sitemap.xml

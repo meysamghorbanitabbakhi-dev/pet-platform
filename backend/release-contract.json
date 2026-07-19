@@ -1,0 +1,439 @@
+{
+  "alembic": {
+    "heads": [
+      "20260718_0026"
+    ]
+  },
+  "openapi": {
+    "operation_count": 150,
+    "path_count": 135,
+    "required_constants": {
+      "OfferDetailResponse.authenticity": "supplier_verified",
+      "TodayFoodEstimated.state": "estimated",
+      "TodayFoodIncoming.state": "incoming",
+      "TodayFoodNone.state": "none",
+      "TodayFoodUnavailable.state": "unavailable",
+      "TodayFoodUnknownEstimate.state": "unknown_estimate",
+      "TodayFoodUnopened.state": "unopened"
+    },
+    "required_enums": {
+      "ContextPetSummary.species": [
+        "dog",
+        "cat"
+      ],
+      "NotificationDestinationResponse.kind": [
+        "order",
+        "inventory_unit",
+        "journey",
+        "customer_request",
+        "offer",
+        "none"
+      ],
+      "OfferDetailResponse.availability": [
+        "available",
+        "temporarily_unavailable"
+      ],
+      "OpenInventoryBody.feeding_context": [
+        "exclusive",
+        "mixed",
+        "unknown"
+      ],
+      "OtpVerifyResponse.state": [
+        "verified",
+        "invalid",
+        "expired",
+        "consumed",
+        "locked",
+        "not_found"
+      ],
+      "PetSummary.species": [
+        "dog",
+        "cat"
+      ],
+      "PrivacyRequestResponse.status": [
+        "requested",
+        "awaiting_policy",
+        "completed",
+        "rejected"
+      ]
+    },
+    "required_operations": [
+      [
+        "POST",
+        "/api/v1/auth/otp/request"
+      ],
+      [
+        "POST",
+        "/api/v1/auth/otp/verify"
+      ],
+      [
+        "POST",
+        "/api/v1/auth/session/refresh"
+      ],
+      [
+        "POST",
+        "/api/v1/auth/session/logout"
+      ],
+      [
+        "GET",
+        "/api/v1/system/policies"
+      ],
+      [
+        "GET",
+        "/api/v1/me/context"
+      ],
+      [
+        "GET",
+        "/api/v1/catalog/offers"
+      ],
+      [
+        "GET",
+        "/api/v1/catalog/offers/{offer_id}"
+      ],
+      [
+        "GET",
+        "/api/v1/pet-life/households/{household_id}/addresses"
+      ],
+      [
+        "PATCH",
+        "/api/v1/pet-life/households/{household_id}/addresses/{address_id}"
+      ],
+      [
+        "DELETE",
+        "/api/v1/pet-life/households/{household_id}/addresses/{address_id}"
+      ],
+      [
+        "POST",
+        "/api/v1/checkout/orders"
+      ],
+      [
+        "POST",
+        "/api/v1/orders/{order_id}/payments/zarinpal"
+      ],
+      [
+        "GET",
+        "/api/v1/payments/zarinpal/callback"
+      ],
+      [
+        "GET",
+        "/api/v1/orders/{order_id}"
+      ],
+      [
+        "GET",
+        "/api/v1/orders/{order_id}/journey"
+      ],
+      [
+        "PUT",
+        "/api/v1/orders/{order_id}/pet-plan"
+      ],
+      [
+        "POST",
+        "/api/v1/pet-life/households"
+      ],
+      [
+        "POST",
+        "/api/v1/pet-life/households/{household_id}/pets"
+      ],
+      [
+        "POST",
+        "/api/v1/pet-life/households/{household_id}/addresses"
+      ],
+      [
+        "PATCH",
+        "/api/v1/pet-life/pets/{pet_id}/profile"
+      ],
+      [
+        "GET",
+        "/api/v1/pet-life/pets/{pet_id}/today"
+      ],
+      [
+        "GET",
+        "/api/v1/pet-life/pets/{pet_id}/journey-offers"
+      ],
+      [
+        "GET",
+        "/api/v1/pet-life/inventory/{unit_id}"
+      ],
+      [
+        "POST",
+        "/api/v1/pet-life/inventory/{unit_id}/open"
+      ],
+      [
+        "GET",
+        "/api/v1/pet-life/pets/{pet_id}/consents"
+      ],
+      [
+        "POST",
+        "/api/v1/pet-life/pets/{pet_id}/consents"
+      ],
+      [
+        "POST",
+        "/api/v1/pet-life/pets/{pet_id}/consents/{consent_id}/withdraw"
+      ],
+      [
+        "GET",
+        "/api/v1/pet-life/notifications/preferences/{event_key}/sms"
+      ],
+      [
+        "GET",
+        "/api/v1/privacy/requests"
+      ],
+      [
+        "GET",
+        "/api/v1/privacy/requests/{request_id}"
+      ]
+    ],
+    "required_patterns": {
+      "PetBody.species": "^(dog|cat)$"
+    },
+    "required_schema_properties": {
+      "AddressBody": [
+        "label",
+        "recipient_name",
+        "recipient_mobile",
+        "province",
+        "city",
+        "address_line"
+      ],
+      "AddressResponse": [
+        "id",
+        "label",
+        "recipient_name",
+        "recipient_mobile",
+        "province",
+        "city",
+        "address_line"
+      ],
+      "BodyAssessmentItemResponse": [
+        "id",
+        "bcs_score",
+        "bcs_scale",
+        "muscle_condition",
+        "assessment_source",
+        "assessed_at"
+      ],
+      "CheckoutBody": [
+        "household_id",
+        "address_id",
+        "items"
+      ],
+      "CheckoutItemBody": [
+        "offer_id",
+        "quantity"
+      ],
+      "FoodEstimateResponse": [
+        "id",
+        "confidence",
+        "basis"
+      ],
+      "HouseholdBody": [
+        "name"
+      ],
+      "InventoryDetailResponse": [
+        "id",
+        "label",
+        "source",
+        "state",
+        "household_id",
+        "assignments",
+        "shares_known"
+      ],
+      "JourneyCheckInResponse": [
+        "id",
+        "journey_id",
+        "check_in_key",
+        "answer_key",
+        "completed",
+        "diary_entry_id",
+        "garden_reward_id"
+      ],
+      "JourneyDetailResponse": [
+        "id",
+        "pet_id",
+        "status",
+        "diary_entry_id",
+        "garden_reward_id"
+      ],
+      "MeContextResponse": [
+        "identity",
+        "households",
+        "pets",
+        "onboarding",
+        "capabilities"
+      ],
+      "NotificationDestinationResponse": [
+        "kind",
+        "id"
+      ],
+      "NotificationListItem": [
+        "id",
+        "event_key",
+        "payload",
+        "created_at",
+        "destination"
+      ],
+      "OfferDetailResponse": [
+        "id",
+        "media",
+        "availability",
+        "price_irr",
+        "supplier_country_code",
+        "authenticity",
+        "minimum_shelf_life_months_at_delivery",
+        "reference_price_reviewed_at",
+        "saving_percent"
+      ],
+      "OnboardingRequirementsResponse": [
+        "needs_household",
+        "needs_pet",
+        "needs_address"
+      ],
+      "OpenInventoryBody": [
+        "feeding_context",
+        "remaining",
+        "remaining_grams"
+      ],
+      "OrderDetailResponse": [
+        "id",
+        "status",
+        "currency",
+        "merchandise_total_irr",
+        "delivery_address",
+        "lines",
+        "policies"
+      ],
+      "OrderJourneyResponse": [
+        "order_id",
+        "status",
+        "timeline",
+        "sourced_units"
+      ],
+      "OrderLineResponse": [
+        "id",
+        "offer_id",
+        "quantity",
+        "unit_price_irr",
+        "line_total_irr",
+        "planned_pet_ids"
+      ],
+      "OrderPetPlanBody": [
+        "lines"
+      ],
+      "OrderPetPlanLineBody": [
+        "order_line_id",
+        "pet_ids"
+      ],
+      "OrderPolicyFieldsResponse": [
+        "delivery_commitment_hours"
+      ],
+      "OrderResponse": [
+        "id",
+        "status",
+        "currency",
+        "merchandise_total_irr"
+      ],
+      "OtpRequestBody": [
+        "mobile"
+      ],
+      "OtpRequestResponse": [
+        "challenge_id",
+        "expires_in_seconds"
+      ],
+      "OtpVerifyBody": [
+        "challenge_id",
+        "code"
+      ],
+      "OtpVerifyResponse": [
+        "state"
+      ],
+      "PaymentCallbackResponse": [
+        "state",
+        "order_id",
+        "delivery_commitment_at"
+      ],
+      "PaymentRedirectResponse": [
+        "attempt_id",
+        "redirect_url"
+      ],
+      "PaymentRequestBody": [
+        "callback_url"
+      ],
+      "PetAssetItemResponse": [
+        "id",
+        "category",
+        "purpose",
+        "media_type",
+        "size_bytes",
+        "checksum_sha256"
+      ],
+      "PetBody": [
+        "name",
+        "species"
+      ],
+      "PetConsentResponse": [
+        "id",
+        "purpose",
+        "policy_version",
+        "status",
+        "granted_at"
+      ],
+      "PetProfilePatch": [
+        "birth_date",
+        "birth_date_precision"
+      ],
+      "PolicyResponse": [
+        "currency_code",
+        "customer_display_currency_code",
+        "customer_display_unit",
+        "irr_per_customer_display_unit",
+        "delivery_commitment_hours",
+        "full_payment_only",
+        "reserve_now_enabled",
+        "care_journey_delivery_enabled",
+        "semantic_level_estimation_enabled",
+        "sourcing_start_rule",
+        "pet_health_consent_policy_version"
+      ],
+      "PrivacyRequestResponse": [
+        "id",
+        "request_type",
+        "status",
+        "created_at"
+      ],
+      "RefreshBody": [
+        "refresh_token"
+      ],
+      "ReorderOptionResponse": [
+        "offer_id",
+        "sku",
+        "available"
+      ],
+      "SmsPreferenceResponse": [
+        "event_key",
+        "sms_enabled",
+        "quiet_hours_start",
+        "quiet_hours_end"
+      ],
+      "TokenResponse": [
+        "access_token",
+        "refresh_token",
+        "expires_in_seconds"
+      ]
+    },
+    "schema_count": 196,
+    "sha256": "e78ba272410abd5c03b32ce30ee33ee7ce35ae7771c28c4deb500e75eb1776b6"
+  },
+  "policy_defaults": {
+    "care_journey_delivery_enabled": true,
+    "delay_compensation_customer_visible": false,
+    "delivery_commitment_hours": 366,
+    "full_payment_only": true,
+    "late_credit_customer_visible": false,
+    "late_credit_enabled": false,
+    "price_intelligence_collection_enabled": false,
+    "push_notifications_enabled": false,
+    "reserve_now_enabled": false,
+    "semantic_level_estimation_enabled": true
+  },
+  "schema_version": 1
+}

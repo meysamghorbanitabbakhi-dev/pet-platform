@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800&family=Vazirmatn:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:oklch(0.93 0.006 90);}*{box-sizing:border-box;font-family:'Vazirmatn',system-ui,sans-serif;}</style>
+</helmet>
+<div dir="rtl" lang="fa" style="min-height:100vh;padding:32px;display:flex;flex-direction:column;align-items:center;gap:18px;">
+  <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
+    <div style="font-family:'IBM Plex Mono';direction:ltr;font-size:10.5px;letter-spacing:0.06em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;">Gate 5.2D · wave 2</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+        <button onClick="{{ t.select }}" style="border:1px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }};border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:36px;">{{ t.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="width:390px;background:oklch(0.98 0.006 80);border:2px solid oklch(0.2 0.005 90);border-radius:26px;padding:0;box-shadow:0 20px 40px oklch(0.3 0.01 90 / 0.18);overflow:hidden;">
+    <div style="height:16px;display:flex;align-items:center;justify-content:center;background:oklch(0.98 0.006 80);"><div style="width:56px;height:5px;border-radius:3px;background:oklch(0.85 0.005 90 / 0.5);"></div></div>
+
+    <sc-if value="{{ isCart }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">سبد خرید</div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:14px;padding:14px;display:flex;gap:12px;margin-bottom:12px;">
+          <div style="width:64px;height:64px;border-radius:10px;background:oklch(0.92 0.01 80);flex:none;"></div>
+          <div style="flex:1;">
+            <div style="font-size:13.5px;font-weight:700;color:oklch(0.22 0.01 265);margin-bottom:4px;">رویال کنین ادالت — ۳ کیلوگرم</div>
+            <div style="font-family:'Vazirmatn';font-size:15px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:8px;">۴۸۰٬۰۰۰ <span style="font-size:11px;font-weight:500;color:oklch(0.45 0.01 265);">تومان</span></div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button style="width:44px;height:44px;border-radius:8px;border:1px solid oklch(0.86 0.01 80);background:#fff;font-size:16px;cursor:pointer;">−</button>
+              <div style="font-size:14px;font-weight:700;min-width:20px;text-align:center;">۱</div>
+              <button style="width:44px;height:44px;border-radius:8px;border:1px solid oklch(0.86 0.01 80);background:#fff;font-size:16px;cursor:pointer;">+</button>
+            </div>
+          </div>
+        </div>
+        <div style="border-top:1px solid oklch(0.86 0.01 80);padding-top:14px;margin-top:auto;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:oklch(0.45 0.01 265);margin-bottom:6px;"><span>جمع کالاها</span><span>۴۸۰٬۰۰۰ تومان</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:oklch(0.45 0.01 265);margin-bottom:14px;"><span>هزینه ارسال</span><span>۰ تومان</span></div>
+          <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;width:100%;">ادامه به پرداخت</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCheckout }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">بازبینی نهایی</div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:12px;padding:14px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:600;color:oklch(0.5 0.01 265);margin-bottom:4px;">آدرس تحویل</div>
+          <div style="font-size:13px;color:oklch(0.22 0.01 265);">تهران، خیابان ولیعصر، پلاک ۱۲</div>
+        </div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:12px;padding:14px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:600;color:oklch(0.5 0.01 265);margin-bottom:4px;">زمان تحویل تخمینی</div>
+          <div style="font-size:13px;color:oklch(0.22 0.01 265);">۱۴۰۵/۰۲/۱۵ تا ۱۴۰۵/۰۲/۱۷</div>
+        </div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:12px;padding:14px;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:oklch(0.45 0.01 265);margin-bottom:6px;"><span>جمع کل</span><span style="font-weight:800;color:oklch(0.22 0.01 265);">۴۸۰٬۰۰۰ تومان</span></div>
+          <div style="font-size:11px;color:oklch(0.5 0.01 265);">پرداخت کامل — بدون رزرو یا پرداخت جزئی</div>
+        </div>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;width:100%;margin-top:auto;">پرداخت</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isToday }}">
+      <div style="padding:20px 20px 90px;min-height:640px;position:relative;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">امروز</div>
+        <div style="background:oklch(0.96 0.03 75);border:1px solid oklch(0.75 0.1 75);border-radius:14px;padding:14px;margin-bottom:14px;">
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:oklch(0.42 0.1 75);margin-bottom:6px;">⚠ تأخیر در تحویل</span>
+          <div style="font-size:12.5px;color:oklch(0.4 0.08 75);line-height:1.8;">تاریخ اصلی: ۱۴۰۵/۰۲/۱۲ · تاریخ اصلاح‌شده: ۱۴۰۵/۰۲/۱۵</div>
+        </div>
+        <div style="background:#fff;border:1px solid oklch(0.86 0.01 80);border-radius:14px;padding:16px;">
+          <div style="font-family:'Estedad';font-size:15px;font-weight:700;margin-bottom:10px;">غذای رکس</div>
+          <div style="height:12px;border-radius:6px;background:repeating-linear-gradient(135deg,oklch(0.85 0.005 90),oklch(0.85 0.005 90) 6px,oklch(0.96 0.003 90) 6px,oklch(0.96 0.003 90) 12px);margin-bottom:8px;"></div>
+          <div style="font-size:12.5px;color:oklch(0.45 0.01 265);">تخمین نامشخص — بدون عدد سرانه برای هر پت</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isInventory }}">
+      <div style="padding:20px 20px 24px;min-height:640px;display:flex;flex-direction:column;">
+        <div style="font-family:'Estedad';font-size:20px;font-weight:800;color:oklch(0.22 0.01 265);margin-bottom:16px;">باز کردن بسته</div>
+        <div style="border:1px solid oklch(0.86 0.01 80);border-radius:14px;padding:16px;margin-bottom:14px;">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:6px;">رویال کنین ادالت — ۳ کیلوگرم</div>
+          <div style="font-size:12.5px;color:oklch(0.45 0.01 265);">تأیید می‌کنید که این بسته را همین امروز باز کرده‌اید؟</div>
+        </div>
+        <button style="border:none;background:oklch(0.28 0.04 270);color:oklch(0.97 0.01 270);font-weight:700;border-radius:10px;padding:14px;font-size:14px;min-height:48px;cursor:pointer;margin-bottom:10px;">باز کردن بسته</button>
+        <div style="border-top:1px solid oklch(0.86 0.01 80);padding-top:14px;margin-top:14px;">
+          <div style="font-size:12px;font-weight:600;color:oklch(0.5 0.01 265);margin-bottom:8px;">ارزیابی تجدید سفارش</div>
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:999px;background:oklch(0.94 0.05 145);color:oklch(0.35 0.1 145);">● اکنون سفارش دهید</span>
+        </div>
+        <button style="border:1px solid oklch(0.72 0.13 75);background:oklch(0.72 0.13 75 / 0.12);color:oklch(0.4 0.1 75);font-weight:700;border-radius:10px;padding:12px;font-size:13px;min-height:44px;cursor:pointer;margin-top:12px;">رفتن به فروشگاه</button>
+      </div>
+    </sc-if>
+  </div>
+  <div style="font-size:11px;color:oklch(0.4 0.01 265);max-width:390px;text-align:center;">توکن‌های G5.2C-R2 · midnight=پرداخت/تأیید · brass=پیشرفت/انتخاب · حداقل هدف لمسی ۴۴px</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { tab: 'cart' };
+  renderVals() {
+    const tabs = [
+      { id: 'cart', label: 'سبد خرید' },
+      { id: 'checkout', label: 'تسویه' },
+      { id: 'today', label: 'امروز — توجه' },
+      { id: 'inventory', label: 'انبار/تجدید سفارش' }
+    ].map(t => ({ ...t, select: () => this.setState({ tab: t.id }), bg: this.state.tab === t.id ? 'oklch(0.72 0.13 75 / 0.15)' : '#fff', border: this.state.tab === t.id ? 'oklch(0.72 0.13 75)' : 'oklch(0.8 0.01 80)', fg: this.state.tab === t.id ? 'oklch(0.3 0.08 75)' : 'oklch(0.35 0.005 90)' }));
+    return {
+      tabs,
+      isCart: this.state.tab === 'cart', isCheckout: this.state.tab === 'checkout',
+      isToday: this.state.tab === 'today', isInventory: this.state.tab === 'inventory'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

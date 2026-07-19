@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800&family=Vazirmatn:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:oklch(0.93 0.006 90);}*{box-sizing:border-box;font-family:'Vazirmatn',system-ui,sans-serif;}@keyframes spin{to{transform:rotate(360deg)}}</style>
+</helmet>
+<div dir="rtl" lang="fa" style="min-height:100vh;padding:32px;">
+  <div style="max-width:1400px;margin:0 auto;">
+    <div style="margin-bottom:22px;">
+      <div style="font-family:'IBM Plex Mono';direction:ltr;text-align:left;font-size:10.5px;letter-spacing:0.06em;color:oklch(0.72 0.13 75);font-weight:600;text-transform:uppercase;margin-bottom:4px;">Gate 5.2C-R3</div>
+      <h1 style="font-family:'Estedad';font-size:22px;font-weight:800;margin:0;color:oklch(0.22 0.01 265);">سیستم هایفای تولیدی R3 — ۱۴ ترکیب‌بندی مسیر متعارف</h1>
+      <div style="font-size:12.5px;color:oklch(0.45 0.01 265);margin-top:4px;">توکن‌های منجمد + محتوای واقعی فارسی. ترکیب‌بندی‌های نیازمند دارایی واقعی به‌صراحت ASSET BLOCKED علامت خورده‌اند.</div>
+    </div>
+    <sc-for list="{{ compositions }}" as="c" hint-placeholder-count="14">
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:26px;background:#fff;border:1px solid oklch(0.85 0.01 80);border-radius:16px;padding:18px;">
+        <div style="flex:none;">
+          <div style="font-family:'IBM Plex Mono';direction:ltr;text-align:left;font-size:9.5px;color:oklch(0.5 0.005 90);margin-bottom:4px;">{{ c.route }}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <div style="font-size:13px;font-weight:700;">{{ c.title }}</div>
+            <sc-if value="{{ c.assetBlocked }}"><span style="font-size:10px;font-weight:700;color:oklch(0.4 0.15 30);background:oklch(0.96 0.02 30);border:1px solid oklch(0.6 0.16 30);border-radius:6px;padding:2px 6px;">ASSET BLOCKED</span></sc-if>
+          </div>
+          <div style="width:390px;background:{{ c.frameBg }};border:2px solid oklch(0.2 0.005 90);border-radius:22px;padding:14px;box-shadow:0 12px 26px oklch(0.3 0.02 265 / 0.14);">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <sc-for list="{{ c.blocks }}" as="b" hint-placeholder-count="5">
+                <sc-if value="{{ b.isH1 }}"><div style="font-family:'Estedad';font-size:16px;font-weight:800;color:{{ c.frameInk }};">{{ b.label }}</div></sc-if>
+                <sc-if value="{{ b.isP }}"><div style="font-size:12.5px;line-height:1.8;color:{{ c.frameMuted }};">{{ b.label }}</div></sc-if>
+                <sc-if value="{{ b.isTag }}"><span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:999px;background:{{ b.tagBg }};color:{{ b.tagFg }};">{{ b.glyph }} {{ b.label }}</span></sc-if>
+                <sc-if value="{{ b.isBtn }}"><button style="border:none;background:{{ b.btnBg }};color:{{ b.btnFg }};font-weight:700;border-radius:10px;padding:12px;font-size:13px;min-height:44px;cursor:pointer;width:100%;">{{ b.label }}</button></sc-if>
+                <sc-if value="{{ b.isCard }}"><div style="border:1px solid {{ c.frameBorder }};border-radius:12px;padding:10px 12px;background:{{ c.frameCard }};font-size:12.5px;color:{{ c.frameInk }};">{{ b.label }}</div></sc-if>
+                <sc-if value="{{ b.isBand }}"><div style="height:12px;border-radius:6px;background:{{ b.bandBg }};"></div></sc-if>
+                <sc-if value="{{ b.isAsset }}"><div style="border:1.5px dashed oklch(0.6 0.16 30);border-radius:10px;padding:10px 12px;font-size:11px;color:oklch(0.4 0.15 30);background:oklch(0.96 0.02 30);">🖼 ASSET BLOCKED — {{ b.label }}</div></sc-if>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:280px;font-size:11.5px;color:oklch(0.4 0.01 265);line-height:1.9;">
+          <div><b style="color:oklch(0.2 0.01 265);">Endpoint:</b> <span style="font-family:'IBM Plex Mono';direction:ltr;display:inline-block;">{{ c.endpoint }}</span></div>
+          <div><b style="color:oklch(0.2 0.01 265);">Components:</b> {{ c.components }}</div>
+          <div><b style="color:oklch(0.2 0.01 265);">Tokens:</b> {{ c.tokens }}</div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  b(t, extra) { return { t, ...extra, isH1: t === 'h1', isP: t === 'p', isTag: t === 'tag', isBtn: t === 'btn', isCard: t === 'card', isBand: t === 'band', isAsset: t === 'asset' }; }
+
+  data() {
+    const midnight = { bg: 'oklch(0.28 0.04 270)', fg: 'oklch(0.97 0.01 270)' };
+    const brass = { bg: 'oklch(0.72 0.13 75)', fg: 'oklch(0.24 0.07 75)' };
+    const jade = { bg: 'oklch(0.28 0.06 150)', card: 'oklch(0.34 0.06 150)', border: 'oklch(0.4 0.06 150)', ink: 'oklch(0.95 0.02 150)', muted: 'oklch(0.8 0.03 150)' };
+    const paper = { bg: '#fff', card: 'oklch(0.98 0.006 80)', border: 'oklch(0.86 0.01 80)', ink: 'oklch(0.22 0.01 265)', muted: 'oklch(0.45 0.01 265)' };
+    return [
+      { id: 'shell', title: 'پوسته برنامه و ناوبری', route: 'app shell', endpoint: 'GET /api/v1/me/context', components: 'Header, PetSwitcher, BottomNav', tokens: 'brass active state', theme: paper, assetBlocked: true,
+        blocks: [this.b('h1', { label: 'امروز' }), this.b('card', { label: 'PetSwitcher: بیشی (فعال) · رکس' }), this.b('asset', { label: '۵ آیکون ناوبری (امروز/انبار/دفترچه/فروشگاه/حساب) — بدون هنر واقعی' })] },
+      { id: 'auth', title: 'احراز هویت', route: '/auth/mobile → /auth/otp', endpoint: 'POST /api/v1/auth/otp/request · POST /api/v1/auth/otp/verify', components: 'Input, OTP, Button(midnight)', tokens: 'midnight submit', theme: paper,
+        blocks: [this.b('h1', { label: 'ورود با شماره موبایل' }), this.b('btn', { label: 'ارسال کد', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { id: 'onboarding', title: 'شروع به کار', route: '/onboarding/*', endpoint: 'POST /api/v1/pet-life/households · /pets · /addresses', components: 'Input, Button(midnight)', tokens: 'midnight submit', theme: paper,
+        blocks: [this.b('h1', { label: 'نام خانوار (الزامی)' }), this.b('btn', { label: 'ادامه', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { id: 'shop', title: 'فروشگاه و جزئیات محصول', route: '/shop, /shop/offer/:offerId', endpoint: 'GET /api/v1/catalog/offers/{offer_id}', components: 'ProductGallery, StatusChip, Button(brass)', tokens: 'brass add-to-cart', theme: paper,
+        blocks: [this.b('h1', { label: 'رویال کنین ادالت — ۳ کیلوگرم' }), this.b('tag', { label: 'اصالت: تأییدشده توسط تأمین‌کننده', glyph: '✓', tagBg: 'oklch(0.9 0.005 80)', tagFg: 'oklch(0.3 0.01 265)' }), this.b('card', { label: '۴۸۰٬۰۰۰ تومان · ۳۶٪ کمتر از قیمت مرجع (تاریخ بازبینی ذکرشده) · حداقل ماندگاری ۶ ماه' }), this.b('btn', { label: 'افزودن به سبد', btnBg: brass.bg, btnFg: brass.fg })] },
+      { id: 'cart', title: 'سبد خرید', route: '/cart', endpoint: 'frontend-local until checkout', components: 'QuantityStepper, Money', tokens: 'midnight checkout CTA', theme: paper,
+        blocks: [this.b('h1', { label: 'سبد خرید' }), this.b('card', { label: 'قلم × ۱ — ۴۸۰٬۰۰۰ تومان' }), this.b('btn', { label: 'ادامه به پرداخت', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { id: 'checkout', title: 'تسویه و بازگشت پرداخت', route: '/checkout/*, /orders', endpoint: 'POST /api/v1/checkout/orders · GET /api/v1/payments/zarinpal/callback', components: 'Button(midnight), Toast', tokens: 'midnight pay/retry', theme: paper,
+        blocks: [this.b('h1', { label: 'بازبینی نهایی' }), this.b('btn', { label: 'پرداخت', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { id: 'today', title: 'امروز', route: '/today', endpoint: 'GET /api/v1/pet-life/pets/{pet_id}/today', components: 'FoodModule, MeterBand, EventCard', tokens: 'brass progress band', theme: paper,
+        blocks: [this.b('h1', { label: 'امروز' }), this.b('band', { bandBg: 'oklch(0.6 0.14 145)' })] },
+      { id: 'inventory', title: 'انبار و تجدید سفارش', route: '/inventory/:unitId', endpoint: 'POST /api/v1/pet-life/inventory/{unit_id}/open · /reorder-assessment', components: 'QuarterScale, Button(midnight=open)', tokens: 'midnight open, brass eligibility', theme: paper,
+        blocks: [this.b('h1', { label: 'باز کردن بسته' }), this.b('btn', { label: 'باز کردن', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { id: 'account', title: 'حساب', route: '/account/*', endpoint: 'GET /api/v1/pet-life/households/{household_id}/wallet · GET /api/v1/pet-life/notifications', components: 'Card, StatusChip', tokens: 'midnight for confirm sheets', theme: paper,
+        blocks: [this.b('h1', { label: 'حساب' }), this.b('card', { label: 'خانوار · پت‌ها · آدرس‌ها · سفارش‌ها · اعلان‌ها · کیف پول · حریم خصوصی · خروج' })] },
+      { id: 'support', title: 'پشتیبانی و کانسیرژ', route: '/support/*', endpoint: 'POST /api/v1/customer-requests', components: 'Textarea, Button(midnight)', tokens: 'midnight submit', theme: paper,
+        blocks: [this.b('h1', { label: 'ثبت درخواست' }), this.b('btn', { label: 'ارسال درخواست', btnBg: midnight.bg, btnFg: midnight.fg })] },
+      { id: 'orders', title: 'تاریخچه و خط سیر سفارش', route: '/orders, /orders/:orderId', endpoint: 'GET /api/v1/orders/{order_id}/journey', components: 'OrderTimeline, StatusChip', tokens: 'status tones only', theme: paper,
+        blocks: [this.b('h1', { label: 'جزئیات سفارش' }), this.b('card', { label: 'پرداخت‌شده → در حال تأمین → در مسیر ارسال' })] },
+      { id: 'diary', title: 'دفترچه', route: '/diary/*', endpoint: 'GET /api/v1/pet-life/pets/{pet_id}/diary/{entry_id}', components: 'Card', tokens: 'paper surface', theme: paper,
+        blocks: [this.b('h1', { label: 'دفترچه' }), this.b('card', { label: 'خاطره: تکمیل مسیر مراقبتی' })] },
+      { id: 'garden', title: 'باغ ایرانی', route: '/garden/:petId', endpoint: 'PUT/DELETE /api/v1/pet-life/garden/{reward_id}/placement', components: 'GardenObject, GardenStage', tokens: 'deep-jade + brass glow', theme: jade, assetBlocked: true,
+        blocks: [this.b('h1', { label: 'باغ برقرارشده' }), this.b('asset', { label: 'اشیای باغ واقعی — در انتظار طراحی نهایی' })] },
+      { id: 'journey', title: 'مسیر مراقبتی (K10)', route: '/journeys/*', endpoint: 'GET /api/v1/pet-life/pets/{pet_id}/journey-offers · GET /api/v1/pet-life/journey-definitions/{definition_id} · POST /api/v1/pet-life/journeys/{journey_id}/check-ins', components: 'JourneyStepCard, CheckInForm', tokens: 'midnight start/complete, brass progress', theme: paper,
+        blocks: [this.b('h1', { label: 'مسیر مراقبتی پیشنهادی' }), this.b('card', { label: 'گام: اشتهای پت امروز چطور بود؟ (allowed_answers: خوب/متوسط/ضعیف)' }), this.b('btn', { label: 'شروع مسیر', btnBg: midnight.bg, btnFg: midnight.fg })] }
+    ];
+  }
+
+  renderVals() {
+    const compositions = this.data().map(c => ({
+      ...c, frameBg: c.theme.bg, frameInk: c.theme.ink, frameMuted: c.theme.muted, frameBorder: c.theme.border, frameCard: c.theme.card
+    }));
+    return { compositions };
+  }
+}
+
+</script>
+</body>
+</html>
