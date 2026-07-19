@@ -1437,6 +1437,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/{order_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Order */
+        post: operations["cancel_order_api_v1_orders__order_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders/{order_id}/delay-acknowledgements": {
         parameters: {
             query?: never;
@@ -4432,8 +4449,49 @@ export interface components {
             /** Recipient Name */
             recipient_name: string;
         };
+        /** OrderCancellationBody */
+        OrderCancellationBody: {
+            /** Reason */
+            reason: string;
+        };
+        /** OrderCancellationResponse */
+        OrderCancellationResponse: {
+            /**
+             * Cancelled At
+             * Format: date-time
+             */
+            cancelled_at: string;
+            /**
+             * Order Id
+             * Format: uuid
+             */
+            order_id: string;
+            /** Reason */
+            reason: string;
+            /** Refund Amount Irr */
+            refund_amount_irr: number;
+            /**
+             * Refund Auto Processed
+             * @default false
+             * @constant
+             */
+            refund_auto_processed: false;
+            /**
+             * Refund Status
+             * @enum {string}
+             */
+            refund_status: "owed" | "operator_attested";
+            /**
+             * Status
+             * @constant
+             */
+            status: "cancelled";
+        };
         /** OrderDetailResponse */
         OrderDetailResponse: {
+            cancellation?: components["schemas"]["OrderCancellationResponse"] | null;
+            /** Cancellation Eligible */
+            cancellation_eligible: boolean;
             /**
              * Created At
              * Format: date-time
@@ -8773,6 +8831,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_order_api_v1_orders__order_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderCancellationBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderCancellationResponse"];
                 };
             };
             /** @description Validation Error */

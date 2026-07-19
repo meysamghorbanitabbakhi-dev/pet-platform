@@ -431,6 +431,16 @@ class DelayAcknowledgementResponse(BaseModel):
     waiver_implied: Literal[False] = False
 
 
+class OrderCancellationResponse(BaseModel):
+    order_id: UUID
+    status: Literal["cancelled"]
+    cancelled_at: datetime
+    reason: str
+    refund_amount_irr: int
+    refund_status: Literal["owed", "operator_attested"]
+    refund_auto_processed: Literal[False] = False
+
+
 class PetSummary(BaseModel):
     id: UUID
     name: str
@@ -558,6 +568,8 @@ class OrderDetailResponse(BaseModel):
     delivery_address: OrderAddressSnapshotResponse
     lines: list[OrderLineResponse]
     policies: OrderPolicyFieldsResponse
+    cancellation_eligible: bool
+    cancellation: OrderCancellationResponse | None = None
 
 
 class TodayFoodNone(BaseModel):

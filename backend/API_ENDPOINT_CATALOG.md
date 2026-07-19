@@ -53,7 +53,7 @@ The checked OpenAPI contract's path and operation counts are governed by `releas
 
 ## Policy-hidden customer capabilities
 
-There are no executable customer endpoints for reserve-now, self-service cancellation after sourcing, refund, replacement, substitution or delay compensation. Push notifications are not claimed in K9.
+There are no executable customer endpoints for reserve-now, refund, replacement, substitution or delay compensation. Push notifications are not claimed in K9. Self-service order cancellation exists but only up to the supplier financial-commitment boundary — see Workstream 2B below; there is still no customer-facing cancellation once a supplier has been committed.
 
 ## Design-contract closure endpoints (2026-07-19)
 
@@ -84,3 +84,13 @@ Aggregated/individual purchasing-cycle management. Every paid order line is allo
 | POST | `/operator/purchase-batches/{batch_id}/commit` | Records the operator-evidenced supplier financial commitment; idempotent (replaying an already-committed batch is a no-op, not a duplicate audit entry) |
 
 No customer-facing endpoints exist for purchasing batches — customers never see batch/pooling mechanics directly.
+
+## Customer order cancellation (2026-07-19, Workstream 2B)
+
+Cancellation before supplier financial commitment. Eligibility is governed by the durable batch-commitment fact from Workstream 2A (`PurchaseBatch.committed_at`, not bare order status), checked under the same row locks `commit_batch` takes, so the cancel-vs-commit race is linearizable. Refunds are operator-attested (manual), never an automatic payment-gateway reversal — `refund_status` starts `owed` and there is no endpoint yet that transitions it to `operator_attested`; that lands with Workstream 2E's shared refund-attestation mechanism.
+
+| Method | Endpoint | Capability |
+|---|---|---|
+| POST | `/orders/{order_id}/cancel` | Customer cancellation with a required reason; idempotent (replaying an already-cancelled order returns the same record); non-enumerating 404 for a nonexistent or not-owned order; 409 once the order's batch is already committed |
+
+`GET /orders/{order_id}` now also returns `cancellation_eligible` (whether this endpoint would currently succeed) and `cancellation` (the cancellation + refund-owed record, once one exists).

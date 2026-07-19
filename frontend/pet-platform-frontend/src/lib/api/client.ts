@@ -46,6 +46,8 @@ import type {
   OfferSearchPage,
   OpenInventoryBody,
   DelayAcknowledgementResponse,
+  OrderCancellationBody,
+  OrderCancellationResponse,
   OrderDetailResponse,
   OrderJourneyResponse,
   ProductAlternativeResponse,
@@ -473,6 +475,13 @@ export function acknowledgeOrderDelay(orderId: string, idempotencyKey: string) {
 
 export function getOrderDetail(orderId: string) {
   return bff<OrderDetailResponse>(`/api/bff/orders/${orderId}`);
+}
+
+export function cancelOrder(orderId: string, body: OrderCancellationBody) {
+  return bff<OrderCancellationResponse>(`/api/bff/orders/${orderId}/cancel`, {
+    method: "POST",
+    body,
+  });
 }
 
 export function getOrderJourney(orderId: string) {

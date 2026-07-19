@@ -88,6 +88,12 @@ class PurchaseBatchAllocation(UUIDPrimaryKeyMixin, Base):
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     allocated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Set when the underlying order is cancelled before this allocation's
+    # batch was committed (Workstream 2B). The allocation row is kept, not
+    # deleted, so batch history stays truthful about what was once pooled
+    # in; batch.allocated_quantity is decremented at the same time so
+    # threshold math never counts cancelled demand.
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PurchaseBatchEvent(UUIDPrimaryKeyMixin, Base):
@@ -96,7 +102,8 @@ class PurchaseBatchEvent(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "purchasing_batch_events"
     __table_args__ = (
         CheckConstraint(
-            "event_type IN ('opened','threshold_reached','committed','cancelled')",
+            "event_type IN ('opened','threshold_reached','committed','cancelled',"
+            "'allocation_voided')",
             name="valid_event_type",
         ),
     )

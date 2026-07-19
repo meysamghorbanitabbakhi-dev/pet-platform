@@ -19,6 +19,7 @@ import type {
   MeasurementBody,
   NotificationPreferenceBody,
   OpenInventoryBody,
+  OrderCancellationBody,
   OrderPetPlanBody,
   OtpVerifyBody,
   PaymentRequestBody,
@@ -473,6 +474,17 @@ export async function loadDevelopmentApi() {
         delivery_commitment_at: null,
         order_id: null,
         state: "cancelled_or_failed",
+      };
+    },
+    cancelOrder: async (orderId: string, body: OrderCancellationBody) => {
+      return {
+        cancelled_at: "2026-07-19T12:00:00Z",
+        order_id: orderId,
+        reason: body.reason,
+        refund_amount_irr: fixtures.orderDetailFixture.merchandise_total_irr,
+        refund_auto_processed: false as const,
+        refund_status: "owed" as const,
+        status: "cancelled" as const,
       };
     },
     getOrderDetail: async (_orderId: string) => {

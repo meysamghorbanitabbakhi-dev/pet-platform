@@ -187,7 +187,14 @@ async def commit_batch(
 
 
 async def is_order_cancellation_eligible(session: AsyncSession, *, order_id: UUID) -> bool:
-    """True iff no order line in this order has a committed batch allocation."""
+    """True iff no order line in this order has a committed batch allocation.
+
+    Read-only convenience check with no locking -- safe for a GET response
+    (e.g. "should the customer see a Cancel button"), but not sufficient by
+    itself to gate the actual cancellation write: use
+    void_allocations_for_cancelled_order for that, which re-checks under
+    row locks so the cancel-vs-commit race is linearizable.
+    """
     committed_line = await session.scalar(
         select(OrderLine.id)
         .join(
@@ -198,3 +205,71 @@ async def is_order_cancellation_eligible(session: AsyncSession, *, order_id: UUI
         .limit(1)
     )
     return committed_line is None
+
+
+async def void_allocations_for_cancelled_order(
+    session: AsyncSession, *, order_id: UUID
+) -> None:
+    """Release this order's allocations from their batches for a customer
+    cancellation (Workstream 2B). Called by orders.cancellation as an
+    explicit command rather than writing PurchaseBatch/PurchaseBatchAllocation
+    directly, per module-boundaries.md (a module must not update another
+    module's owned tables directly).
+
+    Raises PurchasingError if any implicated batch has already been
+    committed -- the caller must treat that as cancellation-not-eligible
+    and roll back, not partially void the rest.
+
+    Every implicated batch is locked (sorted by id, to avoid deadlocking
+    against a concurrent call locking the same batches in a different
+    order) before checking commitment, so this is linearizable against
+    commit_batch: whichever transaction acquires a given batch's lock
+    first is authoritative, and the loser re-reads the up-to-date
+    committed_at once unblocked.
+
+    Batch-level cancellation/re-commitment after a voided allocation is
+    out of scope for this pass, same as ADR-006's existing exclusions --
+    an aggregated batch with other, still-active lines remains open and
+    committable exactly as before.
+    """
+    allocations = list(
+        (
+            await session.scalars(
+                select(PurchaseBatchAllocation)
+                .join(OrderLine, OrderLine.id == PurchaseBatchAllocation.order_line_id)
+                .where(
+                    OrderLine.order_id == order_id,
+                    PurchaseBatchAllocation.voided_at.is_(None),
+                )
+            )
+        ).all()
+    )
+    if not allocations:
+        return
+    batch_ids = sorted({allocation.purchase_batch_id for allocation in allocations})
+    batches: dict[UUID, PurchaseBatch] = {}
+    for batch_id in batch_ids:
+        batch = await session.scalar(
+            select(PurchaseBatch).where(PurchaseBatch.id == batch_id).with_for_update()
+        )
+        if batch is None:
+            raise PurchasingError("allocated batch is missing")
+        if batch.committed_at is not None:
+            raise PurchasingError("batch is already committed")
+        batches[batch_id] = batch
+    now = utc_now()
+    for allocation in allocations:
+        batch = batches[allocation.purchase_batch_id]
+        batch.allocated_quantity -= allocation.quantity
+        allocation.voided_at = now
+    for batch in batches.values():
+        session.add(
+            PurchaseBatchEvent(
+                purchase_batch_id=batch.id,
+                event_type="allocation_voided",
+                occurred_at=now,
+                reason=f"order {order_id} cancelled by customer",
+                operator_identity_id=None,
+            )
+        )
+    await session.flush()

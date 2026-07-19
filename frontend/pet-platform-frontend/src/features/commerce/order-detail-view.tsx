@@ -11,10 +11,12 @@ import {
   ErrorState,
   Money,
   OrderTimeline,
+  Sheet,
   Skeleton,
 } from "@/components/primitives";
 import {
   acknowledgeOrderDelay,
+  cancelOrder,
   getMeContext,
   getOrderDetail,
   getOrderJourney,
@@ -183,6 +185,15 @@ function OrderSummary({
       await queryClient.invalidateQueries({ queryKey: ["orders", order.id] });
     },
   });
+  const [cancelSheetOpen, setCancelSheetOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelOrder(order.id, { reason: cancelReason }),
+    onSuccess: async () => {
+      setCancelSheetOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["orders", order.id] });
+    },
+  });
 
   return (
     <>
@@ -197,6 +208,15 @@ function OrderSummary({
       ) : null}
       {order.status === "failed" ? (
         <Banner tone="error">این سفارش ناموفق ثبت شده است.</Banner>
+      ) : null}
+      {order.cancellation ? (
+        <Banner tone="info">
+          این سفارش در تاریخ {formatIranDateTime(order.cancellation.cancelled_at)}{" "}
+          لغو شد. مبلغ {formatTomanFromIrr(order.cancellation.refund_amount_irr)}{" "}
+          {order.cancellation.refund_status === "operator_attested"
+            ? "بازگردانده شد."
+            : "بازگردانده خواهد شد؛ بازگشت وجه به صورت دستی توسط تیم پشتیبانی انجام می‌شود و هنوز پرداخت نشده است."}
+        </Banner>
       ) : null}
 
       <Card className="stack">
@@ -254,7 +274,51 @@ function OrderSummary({
         {ackMutation.isSuccess ? (
           <Banner tone="info">تاخیر تایید شد.</Banner>
         ) : null}
+        {order.cancellation_eligible ? (
+          <div className="cluster">
+            <Button variant="ghost" onClick={() => setCancelSheetOpen(true)}>
+              لغو سفارش
+            </Button>
+          </div>
+        ) : null}
       </Card>
+
+      {cancelSheetOpen ? (
+        <Sheet title="لغو سفارش" onClose={() => setCancelSheetOpen(false)}>
+          <div className="stack">
+            <p className="caption">
+              این سفارش هنوز به تعهد خرید نهایی از تامین‌کننده نرسیده و قابل
+              لغو است. پس از لغو، وجه پرداختی به صورت دستی توسط تیم پشتیبانی
+              بازگردانده می‌شود و این کار بلافاصله انجام نمی‌شود. لطفاً دلیل
+              لغو را بنویسید.
+            </p>
+            <div className="field">
+              <label htmlFor="cancel-reason">دلیل لغو</label>
+              <textarea
+                id="cancel-reason"
+                className="input"
+                value={cancelReason}
+                onChange={(event) => setCancelReason(event.target.value)}
+              />
+            </div>
+            {cancelMutation.isError ? (
+              <Banner tone="error">{errorText(cancelMutation.error)}</Banner>
+            ) : null}
+            <div className="cluster">
+              <Button
+                loading={cancelMutation.isPending}
+                disabled={cancelReason.trim().length < 5}
+                onClick={() => cancelMutation.mutate()}
+              >
+                تایید لغو سفارش
+              </Button>
+              <Button variant="ghost" onClick={() => setCancelSheetOpen(false)}>
+                انصراف
+              </Button>
+            </div>
+          </div>
+        </Sheet>
+      ) : null}
 
       <Card className="stack">
         <div className="eyebrow">اقلام سفارش</div>

@@ -15,6 +15,7 @@ from app.modules.notifications.models import (
     NotificationPreference,
     NotificationTemplate,
 )
+from app.modules.orders.cancellation import OrderCancellation
 from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderDelayAcknowledgement, OrderLine
 from app.modules.orders.resolutions import OrderResolution
@@ -104,6 +105,7 @@ __all__ = [
     "NotificationPreference",
     "NotificationTemplate",
     "Order",
+    "OrderCancellation",
     "OrderDelayAcknowledgement",
     "OrderLine",
     "OrderResolution",

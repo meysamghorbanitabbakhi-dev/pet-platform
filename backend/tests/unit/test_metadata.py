@@ -33,6 +33,7 @@ def test_metadata_contains_foundation_and_transactional_commerce_tables() -> Non
         "notifications_templates",
         "orders_order_lines",
         "orders_order_line_pet_plans",
+        "orders_cancellations",
         "orders_delay_acknowledgements",
         "orders_orders",
         "orders_resolutions",

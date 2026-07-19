@@ -5390,8 +5390,88 @@
         "title": "OrderAddressSnapshotResponse",
         "type": "object"
       },
+      "OrderCancellationBody": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "OrderCancellationBody",
+        "type": "object"
+      },
+      "OrderCancellationResponse": {
+        "properties": {
+          "cancelled_at": {
+            "format": "date-time",
+            "title": "Cancelled At",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "refund_amount_irr": {
+            "title": "Refund Amount Irr",
+            "type": "integer"
+          },
+          "refund_auto_processed": {
+            "const": false,
+            "default": false,
+            "title": "Refund Auto Processed",
+            "type": "boolean"
+          },
+          "refund_status": {
+            "enum": [
+              "owed",
+              "operator_attested"
+            ],
+            "title": "Refund Status",
+            "type": "string"
+          },
+          "status": {
+            "const": "cancelled",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "status",
+          "cancelled_at",
+          "reason",
+          "refund_amount_irr",
+          "refund_status"
+        ],
+        "title": "OrderCancellationResponse",
+        "type": "object"
+      },
       "OrderDetailResponse": {
         "properties": {
+          "cancellation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderCancellationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancellation_eligible": {
+            "title": "Cancellation Eligible",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -5513,7 +5593,8 @@
           "created_at",
           "delivery_address",
           "lines",
-          "policies"
+          "policies",
+          "cancellation_eligible"
         ],
         "title": "OrderDetailResponse",
         "type": "object"
@@ -14012,6 +14093,64 @@
           }
         ],
         "summary": "Customer Order Detail",
+        "tags": [
+          "commerce"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/cancel": {
+      "post": {
+        "operationId": "cancel_order_api_v1_orders__order_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderCancellationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCancellationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Order",
         "tags": [
           "commerce"
         ]

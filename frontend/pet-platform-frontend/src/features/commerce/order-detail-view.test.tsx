@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   acknowledgeOrderDelay,
+  cancelOrder,
   getMeContext,
   getOrderDetail,
   getOrderJourney,
@@ -27,6 +28,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/api/client", () => ({
   acknowledgeOrderDelay: vi.fn(),
+  cancelOrder: vi.fn(),
   getMeContext: vi.fn(),
   getOrderDetail: vi.fn(),
   getOrderJourney: vi.fn(),
@@ -228,5 +230,82 @@ describe("OrderDetailView", () => {
         ],
       }),
     );
+  });
+
+  it("lets the customer cancel an eligible order after confirming with a reason", async () => {
+    vi.mocked(getOrderDetail).mockResolvedValue({
+      ...orderDetailFixture,
+      cancellation_eligible: true,
+    });
+    vi.mocked(getOrderJourney).mockResolvedValue(orderJourneyFixture);
+    vi.mocked(cancelOrder).mockResolvedValue({
+      cancelled_at: "2026-07-19T12:00:00Z",
+      order_id: orderDetailFixture.id,
+      reason: "قیمت بهتری پیدا کردم",
+      refund_amount_irr: orderDetailFixture.merchandise_total_irr,
+      refund_auto_processed: false,
+      refund_status: "owed",
+      status: "cancelled",
+    });
+    const user = userEvent.setup();
+
+    renderWithQuery(<OrderDetailView orderId="order-1" />);
+    await user.click(await screen.findByRole("button", { name: "لغو سفارش" }));
+
+    const confirmButton = screen.getByRole("button", { name: "تایید لغو سفارش" });
+    expect(confirmButton).toBeDisabled();
+
+    await user.type(
+      screen.getByLabelText("دلیل لغو"),
+      "قیمت بهتری پیدا کردم",
+    );
+    expect(confirmButton).toBeEnabled();
+    await user.click(confirmButton);
+
+    await waitFor(() =>
+      expect(cancelOrder).toHaveBeenCalledWith(orderDetailFixture.id, {
+        reason: "قیمت بهتری پیدا کردم",
+      }),
+    );
+  });
+
+  it("does not offer cancellation once the order is no longer eligible", async () => {
+    vi.mocked(getOrderDetail).mockResolvedValue({
+      ...orderDetailFixture,
+      cancellation_eligible: false,
+    });
+    vi.mocked(getOrderJourney).mockResolvedValue(orderJourneyFixture);
+
+    renderWithQuery(<OrderDetailView orderId="order-1" />);
+
+    await screen.findByText("وضعیت سفارش");
+    expect(
+      screen.queryByRole("button", { name: "لغو سفارش" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the refund-owed disclosure for an already-cancelled order, not a false already-refunded claim", async () => {
+    vi.mocked(getOrderDetail).mockResolvedValue({
+      ...orderDetailFixture,
+      cancellation: {
+        cancelled_at: "2026-07-19T12:00:00Z",
+        order_id: orderDetailFixture.id,
+        reason: "قیمت بهتری پیدا کردم",
+        refund_amount_irr: orderDetailFixture.merchandise_total_irr,
+        refund_auto_processed: false,
+        refund_status: "owed",
+        status: "cancelled",
+      },
+      cancellation_eligible: false,
+      status: "cancelled",
+    });
+    vi.mocked(getOrderJourney).mockResolvedValue(orderJourneyFixture);
+
+    renderWithQuery(<OrderDetailView orderId="order-1" />);
+
+    expect(await screen.findByText(/این سفارش در تاریخ/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/بازگردانده خواهد شد؛ بازگشت وجه به صورت دستی/),
+    ).toBeInTheDocument();
   });
 });

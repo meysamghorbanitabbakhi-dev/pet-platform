@@ -17,6 +17,7 @@ from app.api.contracts import (
     OfferListItem,
     OffsetPage,
     OrderAddressSnapshotResponse,
+    OrderCancellationResponse,
     OrderDetailResponse,
     OrderJourneyResponse,
     OrderLineResponse,
@@ -51,6 +52,12 @@ from app.modules.catalog.models import (
 from app.modules.checkout.service import CheckoutError, CheckoutItem, CheckoutService
 from app.modules.households.access import HouseholdAccessError, require_household_membership
 from app.modules.households.models import HouseholdMembership
+from app.modules.orders.cancellation import (
+    CancellationError,
+    OrderCancellation,
+    cancel_order_by_customer,
+    is_order_cancellation_eligible_now,
+)
 from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderDelayAcknowledgement, OrderLine, OrderLinePetPlan
 from app.modules.payments.models import PaymentAttempt
@@ -841,6 +848,12 @@ async def customer_order_detail(
         .order_by(PaymentAttempt.verified_at.desc())
         .limit(1)
     )
+    cancellation = await session.scalar(
+        select(OrderCancellation).where(OrderCancellation.order_id == order.id)
+    )
+    cancellation_eligible = (
+        cancellation is None and await is_order_cancellation_eligible_now(session, order=order)
+    )
     snapshot = order.delivery_address_snapshot
     return OrderDetailResponse(
         id=order.id,
@@ -902,6 +915,50 @@ async def customer_order_detail(
             delivery_commitment_hours=settings.delivery_commitment_hours,
             late_credit_customer_visible=settings.late_credit_customer_visible,
         ),
+        cancellation_eligible=cancellation_eligible,
+        cancellation=(
+            OrderCancellationResponse(
+                order_id=cancellation.order_id,
+                status="cancelled",
+                cancelled_at=cancellation.created_at,
+                reason=cancellation.reason,
+                refund_amount_irr=cancellation.refund_amount_irr,
+                refund_status=cancellation.refund_status,
+            )
+            if cancellation is not None
+            else None
+        ),
+    )
+
+
+class OrderCancellationBody(BaseModel):
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+@router.post("/orders/{order_id}/cancel", response_model=OrderCancellationResponse)
+async def cancel_order(
+    order_id: UUID,
+    body: OrderCancellationBody,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+) -> OrderCancellationResponse:
+    order = await session.scalar(select(Order).where(Order.id == order_id).with_for_update())
+    if order is None or order.customer_identity_id != identity.id:
+        raise HTTPException(status_code=404, detail="order_not_found")
+    try:
+        cancellation = await cancel_order_by_customer(
+            session, order=order, customer_identity_id=identity.id, reason=body.reason
+        )
+    except CancellationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return OrderCancellationResponse(
+        order_id=cancellation.order_id,
+        status="cancelled",
+        cancelled_at=cancellation.created_at,
+        reason=cancellation.reason,
+        refund_amount_irr=cancellation.refund_amount_irr,
+        refund_status=cancellation.refund_status,
     )
 
 

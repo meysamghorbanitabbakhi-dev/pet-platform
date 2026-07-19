@@ -36,6 +36,8 @@ import type {
   JourneyCheckInBody,
   NotificationPage,
   NotificationPreferenceBody,
+  OrderCancellationBody,
+  OrderCancellationResponse,
   OrderListPage,
   PrivacyRequestBody,
   PrivacyRequestPage,
@@ -1284,6 +1286,21 @@ export async function getOrderDetailBackend(
   return withAuth((headers) =>
     backendClient.GET("/api/v1/orders/{order_id}", {
       params: { path: { order_id: orderId } },
+      headers,
+    }),
+  );
+}
+
+export async function cancelOrderBackend(
+  orderId: string,
+  body: OrderCancellationBody,
+): Promise<OrderCancellationResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.cancelOrder(orderId, body);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/orders/{order_id}/cancel", {
+      params: { path: { order_id: orderId } },
+      body,
       headers,
     }),
   );

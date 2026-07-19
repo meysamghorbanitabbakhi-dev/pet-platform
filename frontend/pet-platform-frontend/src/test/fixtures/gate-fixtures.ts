@@ -281,6 +281,8 @@ export const paymentCallbackFixture: PaymentCallbackResponse = {
 };
 
 export const orderDetailFixture: OrderDetailResponse = {
+  cancellation: null,
+  cancellation_eligible: true,
   created_at: "2026-07-17T09:00:00Z",
   currency: "IRR",
   delivered_at: null,
