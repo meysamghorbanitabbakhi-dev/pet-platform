@@ -987,11 +987,22 @@ async def test_outbox_registry_retries_dead_letter_and_audit_only(
             )
             await session.commit()
     async with SessionFactory() as session:
+        # Scope by aggregate_id, not just event_type: this shared dev
+        # database accumulates "order.awaiting_payment" rows from every
+        # other test that runs a real checkout, so an unqualified
+        # event_type filter can match an unrelated pending row instead of
+        # the one this test just created.
         audit = await session.scalar(
-            select(OutboxEvent).where(OutboxEvent.event_type == "order.awaiting_payment")
+            select(OutboxEvent).where(
+                OutboxEvent.event_type == "order.awaiting_payment",
+                OutboxEvent.aggregate_id == "audit",
+            )
         )
         unknown = await session.scalar(
-            select(OutboxEvent).where(OutboxEvent.event_type == "unknown.event")
+            select(OutboxEvent).where(
+                OutboxEvent.event_type == "unknown.event",
+                OutboxEvent.aggregate_id == "dead",
+            )
         )
         assert audit is not None and audit.status == "published"
         assert unknown is not None and unknown.status == "dead_letter"
