@@ -71,6 +71,9 @@ class PolicyResponse(BaseModel):
     semantic_level_estimation_enabled: bool
     reorder_safety_buffer_days: int | None = None
     reorder_snooze_early_break_worsening_days: int
+    replenishment_reservation_enabled: bool
+    replenishment_reservation_lead_days: int
+    replenishment_reservation_approval_window_hours: int
     customer_request_acknowledgement_fa: str
     pet_health_consent_policy_version: str
     storage_backend: Literal["filesystem"]
@@ -476,6 +479,26 @@ class ReservationResponse(BaseModel):
     responded_at: datetime | None = None
     order_id: UUID | None = None
     deposit_charged_irr: Literal[0] = 0
+
+
+class ReplenishmentReservationResponse(BaseModel):
+    id: UUID
+    household_id: UUID
+    pet_id: UUID | None = None
+    inventory_unit_id: UUID
+    product_id: UUID
+    offer_id: UUID
+    quantity: int
+    predicted_depletion_low_days: int
+    predicted_depletion_high_days: int
+    status: Literal["pending_approval", "approved", "declined", "expired", "invalidated"]
+    approval_expires_at: datetime
+    approved_at: datetime | None = None
+    declined_at: datetime | None = None
+    expired_at: datetime | None = None
+    invalidated_at: datetime | None = None
+    resulting_order_id: UUID | None = None
+    auto_charged: Literal[False] = False
 
 
 class PetSummary(BaseModel):

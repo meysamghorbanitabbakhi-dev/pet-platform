@@ -29,6 +29,9 @@ class LaunchPolicies:
     semantic_level_estimation_enabled: bool
     reorder_safety_buffer_days: int | None
     reorder_snooze_early_break_worsening_days: int
+    replenishment_reservation_enabled: bool
+    replenishment_reservation_lead_days: int
+    replenishment_reservation_approval_window_hours: int
     customer_request_acknowledgement_fa: str
     pet_health_consent_policy_version: str
     storage_backend: str
@@ -62,6 +65,11 @@ class LaunchPolicies:
             reorder_safety_buffer_days=settings.reorder_safety_buffer_days,
             reorder_snooze_early_break_worsening_days=(
                 settings.reorder_snooze_early_break_worsening_days
+            ),
+            replenishment_reservation_enabled=settings.replenishment_reservation_enabled,
+            replenishment_reservation_lead_days=settings.replenishment_reservation_lead_days,
+            replenishment_reservation_approval_window_hours=(
+                settings.replenishment_reservation_approval_window_hours
             ),
             customer_request_acknowledgement_fa=settings.customer_request_acknowledgement_fa,
             pet_health_consent_policy_version=settings.pet_health_consent_policy_version,

@@ -38,6 +38,7 @@ from app.api.contracts import (
     PetSummary,
     ReorderAssessmentResponse,
     ReorderOptionResponse,
+    ReplenishmentReservationResponse,
     TodayResponse,
     WalletSummaryResponse,
 )
@@ -73,6 +74,14 @@ from app.modules.journeys.models import JourneyCheckIn, JourneyDefinition, PetJo
 from app.modules.journeys.service import JourneyError, JourneyService
 from app.modules.notifications.models import Notification, NotificationPreference
 from app.modules.pets.models import Pet
+from app.modules.replenishment.models import ReplenishmentReservation
+from app.modules.replenishment.reservations import (
+    ReplenishmentReservationError,
+    approve_reservation,
+    create_or_refresh_reservation_for_unit,
+    decline_reservation,
+    invalidate_reservation_for_unit,
+)
 from app.modules.replenishment.service import assess_reorder, should_break_reorder_snooze
 from app.modules.system.idempotency import canonical_request_hash
 from app.modules.today.service import build_today
@@ -499,7 +508,9 @@ async def correct_estimate(
     session: SessionDependency,
     settings: SettingsDependency,
 ) -> FoodEstimateResponse:
-    unit = await session.get(InventoryUnit, unit_id)
+    unit = await session.scalar(
+        select(InventoryUnit).where(InventoryUnit.id == unit_id).with_for_update()
+    )
     if unit is None:
         raise HTTPException(status_code=404, detail="inventory_not_found")
     await _household_access(session, identity.id, unit.household_id)
@@ -530,12 +541,27 @@ async def correct_estimate(
         )
     except InventoryError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    # A correction is new facts about the same still-open unit, not a new
+    # need window -- refresh any pending replenishment reservation in
+    # place (or create one if the correction newly qualifies), never
+    # invalidate: exhaust_inventory is what closes the window out.
+    if settings.replenishment_reservation_enabled:
+        await create_or_refresh_reservation_for_unit(
+            session,
+            unit=unit,
+            lead_days=settings.replenishment_reservation_lead_days,
+            approval_window_hours=settings.replenishment_reservation_approval_window_hours,
+        )
+    await session.commit()
     return _estimate_response(corrected)
 
 
 @router.post("/inventory/{unit_id}/exhaust", status_code=status.HTTP_204_NO_CONTENT)
 async def exhaust_inventory(
-    unit_id: UUID, identity: CurrentIdentity, session: SessionDependency
+    unit_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
 ) -> None:
     unit = await session.get(InventoryUnit, unit_id)
     if unit is None:
@@ -557,6 +583,12 @@ async def exhaust_inventory(
     )
     for estimate in estimates:
         estimate.status = "exhausted"
+    # The unit's need window is now closed -- a still-pending replenishment
+    # reservation for it is stale, never approvable again after this point.
+    if settings.replenishment_reservation_enabled:
+        await invalidate_reservation_for_unit(
+            session, inventory_unit_id=unit.id, reason="inventory_exhausted"
+        )
     await session.commit()
 
 
@@ -767,6 +799,174 @@ async def inventory_reorder_assessment(
         provenance=provenance,
         options=options,
     )
+
+
+class ReplenishmentReservationApproveBody(BaseModel):
+    address_id: UUID
+
+
+class ReplenishmentReservationDeclineBody(BaseModel):
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+async def _household_access_for_replenishment_reservation(
+    session: AsyncSession, identity_id: UUID, household_id: UUID
+) -> None:
+    """Unlike _household_access, always raises the *reservation's* 404 code
+    -- an existing reservation in a household the caller cannot access
+    must be indistinguishable from a reservation_id that does not exist
+    at all, or the error code itself would enumerate other households'
+    reservations."""
+    try:
+        await require_household_membership(
+            session, identity_id=identity_id, household_id=household_id
+        )
+    except HouseholdAccessError as exc:
+        raise HTTPException(
+            status_code=404, detail="replenishment_reservation_not_found"
+        ) from exc
+
+
+def _replenishment_reservation_response(
+    reservation: ReplenishmentReservation,
+) -> ReplenishmentReservationResponse:
+    return ReplenishmentReservationResponse(
+        id=reservation.id,
+        household_id=reservation.household_id,
+        pet_id=reservation.pet_id,
+        inventory_unit_id=reservation.inventory_unit_id,
+        product_id=reservation.product_id,
+        offer_id=reservation.offer_id,
+        quantity=reservation.quantity,
+        predicted_depletion_low_days=reservation.predicted_depletion_low_days,
+        predicted_depletion_high_days=reservation.predicted_depletion_high_days,
+        status=reservation.status,
+        approval_expires_at=reservation.approval_expires_at,
+        approved_at=reservation.approved_at,
+        declined_at=reservation.declined_at,
+        expired_at=reservation.expired_at,
+        invalidated_at=reservation.invalidated_at,
+        resulting_order_id=reservation.resulting_order_id,
+    )
+
+
+@router.get(
+    "/households/{household_id}/replenishment-reservations",
+    response_model=list[ReplenishmentReservationResponse],
+)
+async def list_replenishment_reservations(
+    household_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> list[ReplenishmentReservationResponse]:
+    if not settings.replenishment_reservation_enabled:
+        raise HTTPException(status_code=409, detail="replenishment_reservation_disabled")
+    await _household_access(session, identity.id, household_id)
+    rows = list(
+        (
+            await session.scalars(
+                select(ReplenishmentReservation)
+                .where(ReplenishmentReservation.household_id == household_id)
+                .order_by(ReplenishmentReservation.created_at.desc())
+                .limit(200)
+            )
+        ).all()
+    )
+    return [_replenishment_reservation_response(row) for row in rows]
+
+
+@router.get(
+    "/replenishment-reservations/{reservation_id}",
+    response_model=ReplenishmentReservationResponse,
+)
+async def get_replenishment_reservation(
+    reservation_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> ReplenishmentReservationResponse:
+    if not settings.replenishment_reservation_enabled:
+        raise HTTPException(status_code=409, detail="replenishment_reservation_disabled")
+    reservation = await session.get(ReplenishmentReservation, reservation_id)
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="replenishment_reservation_not_found")
+    await _household_access_for_replenishment_reservation(
+        session, identity.id, reservation.household_id
+    )
+    return _replenishment_reservation_response(reservation)
+
+
+@router.post(
+    "/replenishment-reservations/{reservation_id}/approve",
+    response_model=ReplenishmentReservationResponse,
+)
+async def approve_replenishment_reservation(
+    reservation_id: UUID,
+    body: ReplenishmentReservationApproveBody,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> ReplenishmentReservationResponse:
+    if not settings.replenishment_reservation_enabled:
+        raise HTTPException(status_code=409, detail="replenishment_reservation_disabled")
+    reservation = await session.scalar(
+        select(ReplenishmentReservation)
+        .where(ReplenishmentReservation.id == reservation_id)
+        .with_for_update()
+    )
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="replenishment_reservation_not_found")
+    await _household_access_for_replenishment_reservation(
+        session, identity.id, reservation.household_id
+    )
+    address = await _owned_active_address(session, reservation.household_id, body.address_id)
+    try:
+        reservation, _ = await approve_reservation(
+            session,
+            reservation=reservation,
+            customer_identity_id=identity.id,
+            address_id=address.id,
+        )
+    except ReplenishmentReservationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return _replenishment_reservation_response(reservation)
+
+
+@router.post(
+    "/replenishment-reservations/{reservation_id}/decline",
+    response_model=ReplenishmentReservationResponse,
+)
+async def decline_replenishment_reservation(
+    reservation_id: UUID,
+    body: ReplenishmentReservationDeclineBody,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> ReplenishmentReservationResponse:
+    if not settings.replenishment_reservation_enabled:
+        raise HTTPException(status_code=409, detail="replenishment_reservation_disabled")
+    reservation = await session.scalar(
+        select(ReplenishmentReservation)
+        .where(ReplenishmentReservation.id == reservation_id)
+        .with_for_update()
+    )
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="replenishment_reservation_not_found")
+    await _household_access_for_replenishment_reservation(
+        session, identity.id, reservation.household_id
+    )
+    try:
+        reservation = await decline_reservation(
+            session,
+            reservation=reservation,
+            customer_identity_id=identity.id,
+            reason=body.reason,
+        )
+    except ReplenishmentReservationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return _replenishment_reservation_response(reservation)
 
 
 @router.post("/pets/{pet_id}/journeys", response_model=IdResponse)

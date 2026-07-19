@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     semantic_level_estimation_enabled: bool = True
     reorder_safety_buffer_days: int | None = Field(default=3, ge=0, le=30)
     reorder_snooze_early_break_worsening_days: int = Field(default=2, ge=1, le=30)
+    replenishment_reservation_enabled: bool = False
+    replenishment_reservation_lead_days: int = Field(default=14, ge=1, le=60)
+    replenishment_reservation_approval_window_hours: int = Field(default=48, ge=1, le=168)
     customer_request_acknowledgement_fa: str = (
         "درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. "
         "ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست."

@@ -7144,6 +7144,18 @@
             "title": "Replacement Self Service Enabled",
             "type": "boolean"
           },
+          "replenishment_reservation_approval_window_hours": {
+            "title": "Replenishment Reservation Approval Window Hours",
+            "type": "integer"
+          },
+          "replenishment_reservation_enabled": {
+            "title": "Replenishment Reservation Enabled",
+            "type": "boolean"
+          },
+          "replenishment_reservation_lead_days": {
+            "title": "Replenishment Reservation Lead Days",
+            "type": "integer"
+          },
           "reserve_now_enabled": {
             "title": "Reserve Now Enabled",
             "type": "boolean"
@@ -7196,6 +7208,9 @@
           "push_notifications_enabled",
           "semantic_level_estimation_enabled",
           "reorder_snooze_early_break_worsening_days",
+          "replenishment_reservation_enabled",
+          "replenishment_reservation_lead_days",
+          "replenishment_reservation_approval_window_hours",
           "customer_request_acknowledgement_fa",
           "pet_health_consent_policy_version",
           "storage_backend",
@@ -8636,6 +8651,187 @@
           }
         },
         "title": "ReorderSnoozeBody",
+        "type": "object"
+      },
+      "ReplenishmentReservationApproveBody": {
+        "properties": {
+          "address_id": {
+            "format": "uuid",
+            "title": "Address Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address_id"
+        ],
+        "title": "ReplenishmentReservationApproveBody",
+        "type": "object"
+      },
+      "ReplenishmentReservationDeclineBody": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "ReplenishmentReservationDeclineBody",
+        "type": "object"
+      },
+      "ReplenishmentReservationResponse": {
+        "properties": {
+          "approval_expires_at": {
+            "format": "date-time",
+            "title": "Approval Expires At",
+            "type": "string"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "auto_charged": {
+            "const": false,
+            "default": false,
+            "title": "Auto Charged",
+            "type": "boolean"
+          },
+          "declined_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declined At"
+          },
+          "expired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expired At"
+          },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invalidated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invalidated At"
+          },
+          "inventory_unit_id": {
+            "format": "uuid",
+            "title": "Inventory Unit Id",
+            "type": "string"
+          },
+          "offer_id": {
+            "format": "uuid",
+            "title": "Offer Id",
+            "type": "string"
+          },
+          "pet_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pet Id"
+          },
+          "predicted_depletion_high_days": {
+            "title": "Predicted Depletion High Days",
+            "type": "integer"
+          },
+          "predicted_depletion_low_days": {
+            "title": "Predicted Depletion Low Days",
+            "type": "integer"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "resulting_order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resulting Order Id"
+          },
+          "status": {
+            "enum": [
+              "pending_approval",
+              "approved",
+              "declined",
+              "expired",
+              "invalidated"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "household_id",
+          "inventory_unit_id",
+          "product_id",
+          "offer_id",
+          "quantity",
+          "predicted_depletion_low_days",
+          "predicted_depletion_high_days",
+          "status",
+          "approval_expires_at"
+        ],
+        "title": "ReplenishmentReservationResponse",
         "type": "object"
       },
       "ReservationApproveBody": {
@@ -16380,6 +16576,58 @@
         ]
       }
     },
+    "/api/v1/pet-life/households/{household_id}/replenishment-reservations": {
+      "get": {
+        "operationId": "list_replenishment_reservations_api_v1_pet_life_households__household_id__replenishment_reservations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "household_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Household Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReplenishmentReservationResponse"
+                  },
+                  "title": "Response List Replenishment Reservations Api V1 Pet Life Households  Household Id  Replenishment Reservations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Replenishment Reservations",
+        "tags": [
+          "pet-life"
+        ]
+      }
+    },
     "/api/v1/pet-life/households/{household_id}/wallet": {
       "get": {
         "operationId": "wallet_balance_api_v1_pet_life_households__household_id__wallet_get",
@@ -19127,6 +19375,170 @@
           }
         ],
         "summary": "Reorder Assessment",
+        "tags": [
+          "pet-life"
+        ]
+      }
+    },
+    "/api/v1/pet-life/replenishment-reservations/{reservation_id}": {
+      "get": {
+        "operationId": "get_replenishment_reservation_api_v1_pet_life_replenishment_reservations__reservation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reservation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplenishmentReservationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Replenishment Reservation",
+        "tags": [
+          "pet-life"
+        ]
+      }
+    },
+    "/api/v1/pet-life/replenishment-reservations/{reservation_id}/approve": {
+      "post": {
+        "operationId": "approve_replenishment_reservation_api_v1_pet_life_replenishment_reservations__reservation_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reservation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplenishmentReservationApproveBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplenishmentReservationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve Replenishment Reservation",
+        "tags": [
+          "pet-life"
+        ]
+      }
+    },
+    "/api/v1/pet-life/replenishment-reservations/{reservation_id}/decline": {
+      "post": {
+        "operationId": "decline_replenishment_reservation_api_v1_pet_life_replenishment_reservations__reservation_id__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reservation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplenishmentReservationDeclineBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplenishmentReservationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline Replenishment Reservation",
         "tags": [
           "pet-life"
         ]

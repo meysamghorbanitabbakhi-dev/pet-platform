@@ -59,6 +59,8 @@ def test_metadata_contains_foundation_and_transactional_commerce_tables() -> Non
         "purchasing_batches",
         "purchasing_batch_allocations",
         "purchasing_batch_events",
+        "replenishment_reservations",
+        "replenishment_reservation_events",
         "reservations_reservations",
         "reservations_events",
         "pet_knowledge_releases",

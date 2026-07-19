@@ -10,6 +10,8 @@ from app.core.logging import configure_logging
 from app.core.redis import close_redis, get_redis
 from app.db.session import SessionFactory, close_database
 from app.modules.notifications.service import (
+    enqueue_replenishment_reservation_created_notification,
+    enqueue_replenishment_reservation_expired_notification,
     enqueue_reservation_notification,
     enqueue_shelf_life_exception_notification,
     enqueue_wallet_credit_notification,
@@ -38,6 +40,18 @@ async def run() -> None:
     dispatcher.register(
         "reservations.proposed",
         lambda payload: enqueue_reservation_notification(SessionFactory, payload),
+    )
+    dispatcher.register(
+        "replenishment.reservation_created",
+        lambda payload: enqueue_replenishment_reservation_created_notification(
+            SessionFactory, payload
+        ),
+    )
+    dispatcher.register(
+        "replenishment.reservation_expired",
+        lambda payload: enqueue_replenishment_reservation_expired_notification(
+            SessionFactory, payload
+        ),
     )
     redis = get_redis()
     stop = asyncio.Event()

@@ -49,6 +49,16 @@ EVENT_REGISTRY: dict[str, EventDefinition] = {
         disposition="handler",
         description="Notifies the household owner a reservation's reconfirmed terms need response.",
     ),
+    "replenishment.reservation_created": EventDefinition(
+        event_type="replenishment.reservation_created",
+        disposition="handler",
+        description="Notifies the household owner a replenishment reservation needs approval.",
+    ),
+    "replenishment.reservation_expired": EventDefinition(
+        event_type="replenishment.reservation_expired",
+        disposition="handler",
+        description="Notifies the household owner their replenishment reservation window expired.",
+    ),
 }
 
 
