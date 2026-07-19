@@ -6,7 +6,7 @@
 // against it with playwright.real-backend.config.ts. Always tears down the
 // backend process and containers, success or failure.
 import { execFileSync, spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resolveBackendDir } from "./backend-dir.mjs";
 
@@ -23,10 +23,38 @@ const REDIS_URL = `redis://127.0.0.1:${REDIS_PORT}/0`;
 const mediaRoot = resolve(root, ".e2e-real-backend-media");
 const distDir = ".next-e2e-real-backend";
 const distDirAbs = resolve(root, distDir);
+// Written every time the backend's dev-console OTP fallback logs a code
+// (app/integrations/otp/dev_console.py logs to stderr, never an API
+// response), so tests/e2e-real-backend specs can read the code Playwright
+// itself has no other way to obtain. Gitignored; last-write-wins is fine
+// since e2e-real-backend.mjs runs one test worker at a time.
+const otpLogPath = resolve(root, ".e2e-real-backend-otp.json");
+const otpLinePattern =
+  /OTP dev console fallback: mobile=(\S+) code=(\S+) correlation_id=(\S+)/;
 
 function run(command, args, options = {}) {
   console.log(`+ ${command} ${args.join(" ")}`);
   execFileSync(command, args, { stdio: "inherit", ...options });
+}
+
+// execFileSync blocks the Node event loop for its entire duration -- fine
+// for docker/alembic, which run before uvicorn exists, but fatal for any
+// step that needs to run *while* uvicorn is alive and watchForOtpCodes'
+// `data` handlers need to fire: a blocked event loop cannot process the
+// child process's piped stdout/stderr, so any log line (like an OTP code)
+// written during a synchronous call is invisible until it returns -- by
+// which point a polling test has already timed out. Used for `next build`
+// and the Playwright run, both of which overlap with the live backend.
+function runAsync(command, args, options = {}) {
+  console.log(`+ ${command} ${args.join(" ")}`);
+  return new Promise((resolvePromise, rejectPromise) => {
+    const child = spawn(command, args, { stdio: "inherit", ...options });
+    child.on("error", rejectPromise);
+    child.on("exit", (code) => {
+      if (code === 0) resolvePromise();
+      else rejectPromise(new Error(`${command} exited with code ${code}`));
+    });
+  });
 }
 
 function dockerRmForce(name) {
@@ -51,6 +79,25 @@ async function waitForHttp(url, { timeoutMs = 30_000, intervalMs = 500 } = {}) {
   throw new Error(`timed out waiting for ${url}`);
 }
 
+function watchForOtpCodes(stream, echoTo) {
+  let buffer = "";
+  stream.on("data", (chunk) => {
+    echoTo.write(chunk);
+    buffer += chunk.toString();
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      const match = line.match(otpLinePattern);
+      if (!match) continue;
+      const [, mobile, code, correlationId] = match;
+      writeFileSync(
+        otpLogPath,
+        JSON.stringify({ mobile, code, correlationId, capturedAt: Date.now() }),
+      );
+    }
+  });
+}
+
 async function waitForPostgres(timeoutMs = 30_000, intervalMs = 500) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -70,6 +117,11 @@ async function waitForPostgres(timeoutMs = 30_000, intervalMs = 500) {
 
 const backendEnv = {
   ...process.env,
+  // Otherwise Python detects the piped (non-TTY) stdout/stderr and switches
+  // to block buffering, so uvicorn's log lines -- including the OTP code --
+  // never reach watchForOtpCodes' `data` handler in time (or at all, until
+  // the buffer happens to fill or the process exits).
+  PYTHONUNBUFFERED: "1",
   APP_ENV: "development",
   LOG_LEVEL: "INFO",
   DATABASE_URL,
@@ -169,6 +221,7 @@ try {
   });
 
   console.log(`+ starting uvicorn on 127.0.0.1:${BACKEND_PORT}`);
+  rmSync(otpLogPath, { force: true });
   backendProcess = spawn(
     "python",
     [
@@ -180,8 +233,16 @@ try {
       "--port",
       String(BACKEND_PORT),
     ],
-    { cwd: backendDir, env: backendEnv, stdio: "inherit" },
+    { cwd: backendDir, env: backendEnv, stdio: ["ignore", "pipe", "pipe"] },
   );
+  // Piped, not "inherit": the dev-console OTP fallback logs the code to
+  // stderr (logging.basicConfig's default StreamHandler target) and never
+  // returns it in any API response, so this is the only way
+  // tests/e2e-real-backend specs can complete an OTP-gated flow. Still
+  // echoed to this process's own stdout/stderr so `pnpm test:e2e:real-backend`
+  // output is unchanged for a human watching it run.
+  watchForOtpCodes(backendProcess.stdout, process.stdout);
+  watchForOtpCodes(backendProcess.stderr, process.stderr);
   backendProcess.on("exit", (code) => {
     if (code !== null && code !== 0 && exitCode === 0) {
       console.error(`uvicorn exited early with code ${code}`);
@@ -198,7 +259,7 @@ try {
   // playwright.real-backend.config.ts can start server.js directly.
   if (existsSync(distDirAbs))
     rmSync(distDirAbs, { recursive: true, force: true });
-  run("pnpm", ["exec", "next", "build"], {
+  await runAsync("pnpm", ["exec", "next", "build"], {
     cwd: root,
     env: { ...process.env, NEXT_DIST_DIR: distDir },
     shell: process.platform === "win32",
@@ -217,7 +278,7 @@ try {
     });
   }
 
-  run(
+  await runAsync(
     "pnpm",
     [
       "exec",
