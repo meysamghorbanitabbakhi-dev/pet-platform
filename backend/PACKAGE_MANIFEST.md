@@ -15,7 +15,7 @@ Included:
 - `BACKEND_SYSTEM_MAP.md` and `API_ENDPOINT_CATALOG.md`.
 - The final collector `1.6.1` ZIP as an approved release input, kept as a separate nested archive.
 
-Excluded intentionally (matches `.gitignore`; no packaging script currently enforces this list against a built archive — treat it as intent, not verified build behavior, until one exists):
+Excluded intentionally (matches `.gitignore`; enforced by `scripts/build-release-archive.sh` at the repo root, which builds the archive via `git archive` — so nothing untracked or gitignored can ever be included — and then verifies the result actually contains what this manifest describes and excludes what it excludes, rather than leaving that as unverified intent):
 
 - Local virtual environment and Python caches.
 - Test/type/lint caches.
