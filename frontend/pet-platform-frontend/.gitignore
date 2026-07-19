@@ -22,6 +22,11 @@
 /.next-e2e-real-backend/
 /out/
 
+# imported catalog product images (scripts/../app/cli/import_royal_canin_catalog.py).
+# Third-party brand imagery for local/demo catalog data -- not committed, same
+# convention as backend/media/ for uploaded content. Reuse permission unverified.
+/public/catalog/
+
 # production
 /build
 
