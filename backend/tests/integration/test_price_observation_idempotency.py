@@ -233,7 +233,11 @@ async def test_worker_counts_only_new_observations_and_preserves_partial_success
     finally:
         settings.price_intelligence_collection_enabled = original_enabled
 
-    assert result["status"] == "failed"
+    # A run that collected real products alongside a parse failure made
+    # genuine progress -- it is "completed" (with errors_count still
+    # reflecting the failure), not conflated with a run that collected
+    # nothing at all.
+    assert result["status"] == "completed"
     assert result["products"] == 2
     assert result["observations"] == 1
 
@@ -247,10 +251,76 @@ async def test_worker_counts_only_new_observations_and_preserves_partial_success
         assert run.products_seen == 2
         assert run.prices_inserted == 1
         assert run.errors_count == 1
-        assert run.status == "failed"
+        assert run.status == "completed"
         observation_count = await session.scalar(
             select(func.count())
             .select_from(ExternalPriceObservation)
             .where(ExternalPriceObservation.collection_run_id == run.id)
         )
         assert observation_count == 1
+
+
+@pytest.mark.asyncio
+async def test_worker_marks_run_failed_only_when_it_collected_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A run that made zero real progress is genuinely "failed", distinct
+    from the partial-success case above where some products were still
+    collected around a parse failure."""
+    token = uuid4().hex
+    source_code = f"test-worker-{token}"
+    monkeypatch.setattr(PetmallAmCollector, "SOURCE_CODE", source_code)
+
+    async with SessionFactory() as session:
+        service = PriceIntelligenceService(session)
+        source = await service.get_or_create_source(
+            source_code,
+            name="Test worker source",
+            base_url="https://example.test",
+            country_code="AM",
+            default_currency="AMD",
+        )
+        source.collection_enabled = True
+        source.robots_status = "allowed"
+        source.terms_status = "accepted"
+        await session.commit()
+        source_id = source.id
+
+    urls = [f"https://example.test/{token}/broken-1", f"https://example.test/{token}/broken-2"]
+
+    async def fake_discover(self: PetmallAmCollector, page: int = 1) -> list[str]:
+        return urls if page == 1 else []
+
+    async def fake_fetch(self: PetmallAmCollector, product_url: str) -> CollectedPage:
+        return CollectedPage(url=product_url, content="<html></html>", collected_at="")
+
+    def fake_parse(content: str, url: str) -> ParsedExternalProduct:
+        raise ParsedProductError("simulated parse failure")
+
+    monkeypatch.setattr(PetmallAmCollector, "discover_product_urls", fake_discover)
+    monkeypatch.setattr(PetmallAmCollector, "fetch_product_detail", fake_fetch)
+    monkeypatch.setattr(worker_module, "parse_product_detail_page", fake_parse)
+
+    settings = get_settings()
+    original_enabled = settings.price_intelligence_collection_enabled
+    settings.price_intelligence_collection_enabled = True
+    try:
+        async with SessionFactory() as session:
+            result = await run_petmall_am_collection(session, settings)
+    finally:
+        settings.price_intelligence_collection_enabled = original_enabled
+
+    assert result["status"] == "failed"
+    assert result["products"] == 0
+    assert result["observations"] == 0
+
+    async with SessionFactory() as session:
+        run = await session.scalar(
+            select(ExternalCollectionRun).where(
+                ExternalCollectionRun.source_id == source_id
+            )
+        )
+        assert run is not None
+        assert run.products_seen == 0
+        assert run.errors_count == 2
+        assert run.status == "failed"

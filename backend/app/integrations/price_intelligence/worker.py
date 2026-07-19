@@ -65,9 +65,16 @@ async def run_petmall_am_collection(
                         break
                 if products >= settings.price_intelligence_max_products_per_run:
                     break
+            # A run that collected nothing at all despite errors made no real
+            # progress and is genuinely "failed". A run that collected some
+            # products alongside a handful of per-product parse failures
+            # made real progress -- errors_count/error_summary_json still
+            # surface the failures for operator review, but the run itself
+            # is "completed", not conflated with total failure.
+            run_status = "failed" if errors > 0 and products == 0 else "completed"
             await service.complete_collection_run(
                 run.id,
-                status="completed" if errors == 0 else "failed",
+                status=run_status,
                 products_seen=products,
                 prices_inserted=observations,
                 pages_succeeded=pages,
@@ -76,7 +83,7 @@ async def run_petmall_am_collection(
             )
             await session.commit()
             return {
-                "status": "completed" if errors == 0 else "failed",
+                "status": run_status,
                 "pages": pages,
                 "products": products,
                 "observations": observations,
