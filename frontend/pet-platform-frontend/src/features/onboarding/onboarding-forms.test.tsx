@@ -1,5 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createAddress,
@@ -24,6 +26,15 @@ import {
 
 const push = vi.fn();
 
+function renderWithQuery(ui: ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/auth/mobile",
   useRouter: () => ({ push }),
@@ -45,11 +56,22 @@ describe("canonical T8 onboarding forms", () => {
     window.localStorage.clear();
   });
 
-  it("requests OTP and routes to /auth/otp with the server challenge id persisted", async () => {
-    vi.mocked(requestOtp).mockResolvedValue({
-      challenge_id: "challenge-1",
-      expires_in_seconds: 90,
-    });
+  it("stores the mobile number and routes to /auth/otp without sending yet", async () => {
+    const user = userEvent.setup();
+
+    render(<AuthMobileForm />);
+    await user.type(screen.getByLabelText("شماره موبایل"), "09121234567");
+    await user.click(screen.getByRole("button", { name: "درخواست کد" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/auth/otp"));
+    expect(requestOtp).not.toHaveBeenCalled();
+    expect(
+      window.localStorage.getItem("pet-platform.onboarding-progress"),
+    ).toContain("09121234567");
+  });
+
+  it("clears a stale challenge from a previous mobile number on resubmission", async () => {
+    mergeOnboardingProgress({ challengeId: "stale-challenge" });
     const user = userEvent.setup();
 
     render(<AuthMobileForm />);
@@ -59,22 +81,72 @@ describe("canonical T8 onboarding forms", () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith("/auth/otp"));
     expect(
       window.localStorage.getItem("pet-platform.onboarding-progress"),
+    ).not.toContain("stale-challenge");
+  });
+
+  it("shows a distinct sending transition at /auth/otp, separate from the mobile submit spinner, and sends exactly once", async () => {
+    mergeOnboardingProgress({ mobile: "09121234567" });
+    let resolveRequest: (value: {
+      challenge_id: string;
+      expires_in_seconds: number;
+    }) => void = () => {};
+    vi.mocked(requestOtp).mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      }),
+    );
+
+    renderWithQuery(<AuthOtpForm />);
+
+    expect(
+      await screen.findByRole("heading", { name: "در حال ارسال کد" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("کد تایید")).not.toBeInTheDocument();
+
+    resolveRequest({ challenge_id: "challenge-1", expires_in_seconds: 90 });
+
+    await screen.findByLabelText("کد تایید");
+    expect(requestOtp).toHaveBeenCalledTimes(1);
+    expect(requestOtp).toHaveBeenCalledWith({
+      mobile: "09121234567",
+      device_id: "pet-platform-web",
+    });
+    expect(
+      window.localStorage.getItem("pet-platform.onboarding-progress"),
     ).toContain("challenge-1");
   });
 
-  it("shows rate-limit as a warning, not an error, and does not advance", async () => {
-    vi.mocked(requestOtp).mockRejectedValue(
-      new ApiError("تعداد درخواست‌ها بیش از حد مجاز است.", 429),
-    );
+  it("shows rate-limit as a warning during the sending transition and allows retry", async () => {
+    mergeOnboardingProgress({ mobile: "09121234567" });
+    vi.mocked(requestOtp)
+      .mockRejectedValueOnce(
+        new ApiError("تعداد درخواست‌ها بیش از حد مجاز است.", 429),
+      )
+      .mockResolvedValueOnce({
+        challenge_id: "challenge-1",
+        expires_in_seconds: 90,
+      });
     const user = userEvent.setup();
 
-    render(<AuthMobileForm />);
-    await user.type(screen.getByLabelText("شماره موبایل"), "09121234567");
-    await user.click(screen.getByRole("button", { name: "درخواست کد" }));
+    renderWithQuery(<AuthOtpForm />);
 
-    const banner = await screen.findByText("تعداد درخواست‌ها بیش از حد مجاز است.");
+    const banner = await screen.findByText(
+      "تعداد درخواست‌ها بیش از حد مجاز است.",
+    );
     expect(banner.closest(".banner")).toHaveClass("banner--warning");
     expect(push).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "تلاش مجدد" }));
+
+    await screen.findByLabelText("کد تایید");
+    expect(requestOtp).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the no-active-code error state when neither a mobile number nor a challenge is pending", async () => {
+    renderWithQuery(<AuthOtpForm />);
+
+    expect(await screen.findByText("کد فعال پیدا نشد")).toBeInTheDocument();
+    expect(requestOtp).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -92,7 +164,7 @@ describe("canonical T8 onboarding forms", () => {
       });
       const user = userEvent.setup();
 
-      render(<AuthOtpForm />);
+      renderWithQuery(<AuthOtpForm />);
       await user.type(await screen.findByLabelText("کد تایید"), "123456");
       await user.click(screen.getByRole("button", { name: "تایید و ادامه" }));
 
@@ -110,7 +182,7 @@ describe("canonical T8 onboarding forms", () => {
     });
     const user = userEvent.setup();
 
-    render(<AuthOtpForm />);
+    renderWithQuery(<AuthOtpForm />);
     await user.type(await screen.findByLabelText("کد تایید"), "123456");
     await user.click(screen.getByRole("button", { name: "تایید و ادامه" }));
 
@@ -126,7 +198,7 @@ describe("canonical T8 onboarding forms", () => {
     });
     const user = userEvent.setup();
 
-    render(<AuthOtpForm />);
+    renderWithQuery(<AuthOtpForm />);
     await user.type(await screen.findByLabelText("کد تایید"), "123456");
     await user.click(screen.getByRole("button", { name: "تایید و ادامه" }));
 
@@ -141,7 +213,7 @@ describe("canonical T8 onboarding forms", () => {
     });
     const user = userEvent.setup();
 
-    render(<AuthOtpForm />);
+    renderWithQuery(<AuthOtpForm />);
     await user.type(await screen.findByLabelText("کد تایید"), "123456");
     await user.click(screen.getByRole("button", { name: "تایید و ادامه" }));
 

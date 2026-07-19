@@ -4,6 +4,7 @@ const storageKey = "pet-platform.onboarding-progress";
 
 export type OnboardingProgress = {
   challengeId?: string;
+  mobile?: string;
   householdId?: string;
   petId?: string;
   addressId?: string;

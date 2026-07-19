@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -15,6 +16,7 @@ import {
   ErrorState,
   Input,
   OtpInput,
+  Skeleton,
 } from "@/components/primitives";
 import {
   createAddress,
@@ -88,30 +90,17 @@ async function resolvePetId() {
 
 export function AuthMobileForm() {
   const router = useRouter();
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [rateLimited, setRateLimited] = useState(false);
   const form = useForm<z.infer<typeof mobileSchema>>({
     resolver: zodResolver(mobileSchema),
     defaultValues: { mobile: "" },
   });
 
-  async function onSubmit(values: z.infer<typeof mobileSchema>) {
-    setSubmitError(null);
-    setRateLimited(false);
-    try {
-      storeReturnTo(currentReturnTo());
-      const response = await requestOtp({
-        mobile: values.mobile,
-        device_id: "pet-platform-web",
-      });
-      mergeOnboardingProgress({ challengeId: response.challenge_id });
-      router.push("/auth/otp");
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 429) {
-        setRateLimited(true);
-      }
-      setSubmitError(errorText(error));
-    }
+  function onSubmit(values: z.infer<typeof mobileSchema>) {
+    storeReturnTo(currentReturnTo());
+    // Clear any stale challenge from a previous mobile number so /auth/otp
+    // sends a fresh code instead of resuming someone else's challenge.
+    mergeOnboardingProgress({ mobile: values.mobile, challengeId: undefined });
+    router.push("/auth/otp");
   }
 
   return (
@@ -131,11 +120,6 @@ export function AuthMobileForm() {
               {...form.register("mobile")}
               error={form.formState.errors.mobile?.message}
             />
-            {submitError ? (
-              <Banner tone={rateLimited ? "warning" : "error"}>
-                {submitError}
-              </Banner>
-            ) : null}
             <Button
               type="submit"
               loading={form.formState.isSubmitting}
@@ -153,11 +137,39 @@ export function AuthMobileForm() {
   );
 }
 
+const OTP_DEVICE_ID = "pet-platform-web";
+
 export function AuthOtpForm() {
   const router = useRouter();
-  const [challengeId] = useState(
+  const [mobile] = useState(() => getOnboardingProgress().mobile ?? null);
+  const [challengeId, setChallengeId] = useState(
     () => getOnboardingProgress().challengeId ?? null,
   );
+  const [retryToken, setRetryToken] = useState(0);
+
+  // Owns the actual POST /api/v1/auth/otp/request call: this is the real
+  // in-flight request behind the "sending" transition below, distinct from
+  // the (near-instant, local-only) submit-button spinner on /auth/mobile.
+  // useQuery (not a hand-rolled effect) both fires this automatically once
+  // when a pending mobile with no challenge yet is present, and naturally
+  // dedupes concurrent calls -- retrying just bumps retryToken to form a
+  // fresh query key, which react-query refetches on its own.
+  const sendQuery = useQuery({
+    queryKey: ["otp-send", mobile, retryToken],
+    queryFn: async () => {
+      if (!mobile) throw new Error("no pending mobile number");
+      const response = await requestOtp({ mobile, device_id: OTP_DEVICE_ID });
+      mergeOnboardingProgress({ challengeId: response.challenge_id });
+      setChallengeId(response.challenge_id);
+      return response;
+    },
+    enabled: !challengeId && mobile !== null,
+    retry: false,
+    staleTime: Infinity,
+  });
+  const sendRateLimited =
+    sendQuery.error instanceof ApiError && sendQuery.error.status === 429;
+
   const [otp, setOtp] = useState("");
   const [state, setState] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -191,7 +203,7 @@ export function AuthOtpForm() {
     }
   }
 
-  if (challengeId === null) {
+  if (!challengeId && !mobile) {
     return (
       <AppShell>
         <ErrorState
@@ -203,6 +215,47 @@ export function AuthOtpForm() {
             </Link>
           }
         />
+      </AppShell>
+    );
+  }
+
+  if (!challengeId && sendQuery.isPending) {
+    return (
+      <AppShell>
+        <div className="stack">
+          <div>
+            <div className="eyebrow">ورود</div>
+            <h1 className="display">در حال ارسال کد</h1>
+          </div>
+          <Card className="stack">
+            <Skeleton label="در حال ارسال کد پیامکی" />
+            <p className="caption">در حال ارسال کد تایید به {mobile} هستیم.</p>
+          </Card>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!challengeId && sendQuery.isError) {
+    return (
+      <AppShell>
+        <div className="stack">
+          <div>
+            <div className="eyebrow">ورود</div>
+            <h1 className="display">ارسال کد ناموفق بود</h1>
+          </div>
+          <Card className="stack">
+            <Banner tone={sendRateLimited ? "warning" : "error"}>
+              {errorText(sendQuery.error)}
+            </Banner>
+            <Button onClick={() => setRetryToken((token) => token + 1)}>
+              تلاش مجدد
+            </Button>
+            <Link className="button button--ghost" href="/auth/mobile">
+              تغییر شماره موبایل
+            </Link>
+          </Card>
+        </div>
       </AppShell>
     );
   }
