@@ -14,9 +14,11 @@
 /coverage
 /playwright-report
 /test-results
+/.e2e-real-backend-media
 
 # next.js
 /.next/
+/.next-e2e-real-backend/
 /out/
 
 # production

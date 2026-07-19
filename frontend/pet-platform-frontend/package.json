@@ -19,7 +19,8 @@
     "format:write": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:real-backend": "node scripts/e2e-real-backend.mjs"
   },
   "dependencies": {
     "@fontsource/estedad": "^5.2.1",

@@ -11,6 +11,11 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // Isolated build output for scripts/e2e-real-backend.mjs (see
+    // next.config.ts's NEXT_DIST_DIR) -- a full standalone bundle including
+    // a copy of next/react/react-dom under its own node_modules, never
+    // meant to be linted.
+    ".next-e2e-real-backend/**",
     "out/**",
     "build/**",
     "coverage/**",
