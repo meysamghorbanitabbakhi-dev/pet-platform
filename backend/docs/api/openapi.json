@@ -5049,6 +5049,26 @@
         "title": "OffsetPage[NotificationListItem]",
         "type": "object"
       },
+      "OffsetPage_OfferListItem_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OfferListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/OffsetPageMetadata"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "OffsetPage[OfferListItem]",
+        "type": "object"
+      },
       "OffsetPage_OrderListItem_": {
         "properties": {
           "items": {
@@ -5175,6 +5195,117 @@
           }
         },
         "title": "OpenInventoryBody",
+        "type": "object"
+      },
+      "OperatorProductAlternativeResponse": {
+        "properties": {
+          "alternative_product_id": {
+            "format": "uuid",
+            "title": "Alternative Product Id",
+            "type": "string"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by_operator_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By Operator Id"
+          },
+          "compatibility_notes_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatibility Notes Fa"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "proposed_by_operator_id": {
+            "format": "uuid",
+            "title": "Proposed By Operator Id",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "rationale_fa": {
+            "title": "Rationale Fa",
+            "type": "string"
+          },
+          "retired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired At"
+          },
+          "retired_by_operator_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired By Operator Id"
+          },
+          "source_product_id": {
+            "format": "uuid",
+            "title": "Source Product Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_product_id",
+          "alternative_product_id",
+          "status",
+          "rank",
+          "rationale_fa",
+          "compatibility_notes_fa",
+          "proposed_by_operator_id",
+          "approved_by_operator_id",
+          "approved_at",
+          "retired_by_operator_id",
+          "retired_at"
+        ],
+        "title": "OperatorProductAlternativeResponse",
         "type": "object"
       },
       "OrderAddressSnapshotResponse": {
@@ -6745,6 +6876,155 @@
           "created_at"
         ],
         "title": "PrivacyRequestResponse",
+        "type": "object"
+      },
+      "ProductAlternativeActionBody": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ProductAlternativeActionBody",
+        "type": "object"
+      },
+      "ProductAlternativeCreateBody": {
+        "properties": {
+          "alternative_product_id": {
+            "format": "uuid",
+            "title": "Alternative Product Id",
+            "type": "string"
+          },
+          "compatibility_notes_fa": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatibility Notes Fa"
+          },
+          "rank": {
+            "default": 0,
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Rank",
+            "type": "integer"
+          },
+          "rationale_fa": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Rationale Fa",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_product_id": {
+            "format": "uuid",
+            "title": "Source Product Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_product_id",
+          "alternative_product_id",
+          "rationale_fa",
+          "reason"
+        ],
+        "title": "ProductAlternativeCreateBody",
+        "type": "object"
+      },
+      "ProductAlternativeResponse": {
+        "description": "An approved, operator-curated alternative with its current offer.\n\nPlatform-curated, not a guaranteed clinical/nutritional substitute --\nsee the customer-facing label the frontend renders alongside this.",
+        "properties": {
+          "compatibility_notes_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatibility Notes Fa"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/OfferListItem"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "rationale_fa": {
+            "title": "Rationale Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "rank",
+          "rationale_fa",
+          "offer"
+        ],
+        "title": "ProductAlternativeResponse",
+        "type": "object"
+      },
+      "ProductAlternativeUpdateBody": {
+        "properties": {
+          "compatibility_notes_fa": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatibility Notes Fa"
+          },
+          "rank": {
+            "default": 0,
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Rank",
+            "type": "integer"
+          },
+          "rationale_fa": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Rationale Fa",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rationale_fa",
+          "reason"
+        ],
+        "title": "ProductAlternativeUpdateBody",
         "type": "object"
       },
       "ProductBody": {
@@ -8685,6 +8965,74 @@
         ]
       }
     },
+    "/api/v1/catalog/offers/search": {
+      "get": {
+        "operationId": "search_offers_api_v1_catalog_offers_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsetPage_OfferListItem_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Offers",
+        "tags": [
+          "commerce"
+        ]
+      }
+    },
     "/api/v1/catalog/offers/{offer_id}": {
       "get": {
         "operationId": "offer_detail_api_v1_catalog_offers__offer_id__get",
@@ -8817,6 +9165,53 @@
           }
         ],
         "summary": "Subscribe Offer Availability",
+        "tags": [
+          "commerce"
+        ]
+      }
+    },
+    "/api/v1/catalog/products/{product_id}/alternatives": {
+      "get": {
+        "operationId": "list_product_alternatives_api_v1_catalog_products__product_id__alternatives_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductAlternativeResponse"
+                  },
+                  "title": "Response List Product Alternatives Api V1 Catalog Products  Product Id  Alternatives Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Product Alternatives",
         "tags": [
           "commerce"
         ]
@@ -12068,6 +12463,299 @@
           }
         ],
         "summary": "Execute Account Disablement",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/product-alternatives": {
+      "get": {
+        "operationId": "list_product_alternatives_api_v1_operator_product_alternatives_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_product_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Product Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OperatorProductAlternativeResponse"
+                  },
+                  "title": "Response List Product Alternatives Api V1 Operator Product Alternatives Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Product Alternatives",
+        "tags": [
+          "operator"
+        ]
+      },
+      "post": {
+        "operationId": "create_product_alternative_api_v1_operator_product_alternatives_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductAlternativeCreateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Product Alternative",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/product-alternatives/{alternative_id}": {
+      "patch": {
+        "operationId": "update_product_alternative_api_v1_operator_product_alternatives__alternative_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "alternative_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Alternative Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductAlternativeUpdateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorProductAlternativeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Product Alternative",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/product-alternatives/{alternative_id}/approve": {
+      "post": {
+        "operationId": "approve_product_alternative_api_v1_operator_product_alternatives__alternative_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "alternative_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Alternative Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductAlternativeActionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorProductAlternativeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve Product Alternative",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/product-alternatives/{alternative_id}/retire": {
+      "post": {
+        "operationId": "retire_product_alternative_api_v1_operator_product_alternatives__alternative_id__retire_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "alternative_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Alternative Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductAlternativeActionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorProductAlternativeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retire Product Alternative",
         "tags": [
           "operator"
         ]

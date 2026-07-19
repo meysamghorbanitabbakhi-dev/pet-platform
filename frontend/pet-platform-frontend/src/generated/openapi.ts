@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/catalog/offers/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Offers */
+        get: operations["search_offers_api_v1_catalog_offers_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/catalog/offers/{offer_id}": {
         parameters: {
             query?: never;
@@ -119,6 +136,23 @@ export interface paths {
         post: operations["subscribe_offer_availability_api_v1_catalog_offers__offer_id__availability_subscriptions_post"];
         /** Cancel Offer Availability Subscription */
         delete: operations["cancel_offer_availability_subscription_api_v1_catalog_offers__offer_id__availability_subscriptions_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/products/{product_id}/alternatives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Product Alternatives */
+        get: operations["list_product_alternatives_api_v1_catalog_products__product_id__alternatives_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1106,6 +1140,75 @@ export interface paths {
         put?: never;
         /** Execute Account Disablement */
         post: operations["execute_account_disablement_api_v1_operator_privacy_requests__request_id__disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/product-alternatives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Product Alternatives */
+        get: operations["list_product_alternatives_api_v1_operator_product_alternatives_get"];
+        put?: never;
+        /** Create Product Alternative */
+        post: operations["create_product_alternative_api_v1_operator_product_alternatives_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/product-alternatives/{alternative_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Product Alternative */
+        patch: operations["update_product_alternative_api_v1_operator_product_alternatives__alternative_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/operator/product-alternatives/{alternative_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Product Alternative */
+        post: operations["approve_product_alternative_api_v1_operator_product_alternatives__alternative_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/product-alternatives/{alternative_id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire Product Alternative */
+        post: operations["retire_product_alternative_api_v1_operator_product_alternatives__alternative_id__retire_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4153,6 +4256,12 @@ export interface components {
             items: components["schemas"]["NotificationListItem"][];
             page: components["schemas"]["OffsetPageMetadata"];
         };
+        /** OffsetPage[OfferListItem] */
+        OffsetPage_OfferListItem_: {
+            /** Items */
+            items: components["schemas"]["OfferListItem"][];
+            page: components["schemas"]["OffsetPageMetadata"];
+        };
         /** OffsetPage[OrderListItem] */
         OffsetPage_OrderListItem_: {
             /** Items */
@@ -4188,6 +4297,45 @@ export interface components {
             remaining?: (components["schemas"]["RemainingGramsInput"] | components["schemas"]["RemainingLevelInput"]) | null;
             /** Remaining Grams */
             remaining_grams?: number | null;
+        };
+        /** OperatorProductAlternativeResponse */
+        OperatorProductAlternativeResponse: {
+            /**
+             * Alternative Product Id
+             * Format: uuid
+             */
+            alternative_product_id: string;
+            /** Approved At */
+            approved_at: string | null;
+            /** Approved By Operator Id */
+            approved_by_operator_id: string | null;
+            /** Compatibility Notes Fa */
+            compatibility_notes_fa: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Proposed By Operator Id
+             * Format: uuid
+             */
+            proposed_by_operator_id: string;
+            /** Rank */
+            rank: number;
+            /** Rationale Fa */
+            rationale_fa: string;
+            /** Retired At */
+            retired_at: string | null;
+            /** Retired By Operator Id */
+            retired_by_operator_id: string | null;
+            /**
+             * Source Product Id
+             * Format: uuid
+             */
+            source_product_id: string;
+            /** Status */
+            status: string;
         };
         /** OrderAddressSnapshotResponse */
         OrderAddressSnapshotResponse: {
@@ -4752,6 +4900,70 @@ export interface components {
              * @enum {string}
              */
             status: "requested" | "awaiting_policy" | "completed" | "rejected";
+        };
+        /** ProductAlternativeActionBody */
+        ProductAlternativeActionBody: {
+            /** Reason */
+            reason: string;
+        };
+        /** ProductAlternativeCreateBody */
+        ProductAlternativeCreateBody: {
+            /**
+             * Alternative Product Id
+             * Format: uuid
+             */
+            alternative_product_id: string;
+            /** Compatibility Notes Fa */
+            compatibility_notes_fa?: string | null;
+            /**
+             * Rank
+             * @default 0
+             */
+            rank: number;
+            /** Rationale Fa */
+            rationale_fa: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Source Product Id
+             * Format: uuid
+             */
+            source_product_id: string;
+        };
+        /**
+         * ProductAlternativeResponse
+         * @description An approved, operator-curated alternative with its current offer.
+         *
+         *     Platform-curated, not a guaranteed clinical/nutritional substitute --
+         *     see the customer-facing label the frontend renders alongside this.
+         */
+        ProductAlternativeResponse: {
+            /** Compatibility Notes Fa */
+            compatibility_notes_fa?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            offer: components["schemas"]["OfferListItem"];
+            /** Rank */
+            rank: number;
+            /** Rationale Fa */
+            rationale_fa: string;
+        };
+        /** ProductAlternativeUpdateBody */
+        ProductAlternativeUpdateBody: {
+            /** Compatibility Notes Fa */
+            compatibility_notes_fa?: string | null;
+            /**
+             * Rank
+             * @default 0
+             */
+            rank: number;
+            /** Rationale Fa */
+            rationale_fa: string;
+            /** Reason */
+            reason: string;
         };
         /** ProductBody */
         ProductBody: {
@@ -5589,6 +5801,39 @@ export interface operations {
             };
         };
     };
+    search_offers_api_v1_catalog_offers_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OffsetPage_OfferListItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     offer_detail_api_v1_catalog_offers__offer_id__get: {
         parameters: {
             query?: never;
@@ -5669,6 +5914,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AvailabilitySubscriptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_product_alternatives_api_v1_catalog_products__product_id__alternatives_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductAlternativeResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -7648,6 +7924,176 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_product_alternatives_api_v1_operator_product_alternatives_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                source_product_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorProductAlternativeResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_product_alternative_api_v1_operator_product_alternatives_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductAlternativeCreateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_product_alternative_api_v1_operator_product_alternatives__alternative_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alternative_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductAlternativeUpdateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorProductAlternativeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_product_alternative_api_v1_operator_product_alternatives__alternative_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alternative_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductAlternativeActionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorProductAlternativeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retire_product_alternative_api_v1_operator_product_alternatives__alternative_id__retire_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alternative_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductAlternativeActionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorProductAlternativeResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
