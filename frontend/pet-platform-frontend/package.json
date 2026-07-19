@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "next dev",
     "generate:api": "node scripts/generate-openapi.mjs",
-    "check:contract": "node scripts/check-openapi.mjs && node scripts/check-design-contract.mjs",
+    "check:contract": "node scripts/check-openapi.mjs && node scripts/check-design-contract.mjs && node scripts/check-bff-contract-coverage.mjs",
     "check:design-contract": "node scripts/check-design-contract.mjs",
     "check:traceability": "node scripts/check-design-traceability.mjs",
+    "check:bff-coverage": "node scripts/check-bff-contract-coverage.mjs",
     "check:api": "pnpm run check:contract",
     "typecheck": "tsc --noEmit",
     "build": "next build",
