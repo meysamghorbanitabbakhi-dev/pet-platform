@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Computed,
     DateTime,
     ForeignKey,
     Integer,
@@ -97,6 +98,63 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     sourcing_capacity_status: Mapped[str] = mapped_column(
         String(20), default="open", nullable=False
     )
+    # PostgreSQL STORED GENERATED columns (migration 20260719_0027):
+    # fa_normalize_search_text(title_fa | sku). Computed(...) tells
+    # SQLAlchemy to never write these -- Postgres rejects any explicit
+    # INSERT/UPDATE value for a GENERATED ALWAYS column -- and to fetch the
+    # DB-computed value back instead.
+    title_fa_search: Mapped[str] = mapped_column(
+        Text, Computed("fa_normalize_search_text(title_fa)"), nullable=False
+    )
+    sku_search: Mapped[str] = mapped_column(
+        Text, Computed("fa_normalize_search_text(sku)"), nullable=False
+    )
+
+
+class ProductAlternative(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Operator-curated, directed product-to-product substitutability.
+
+    Never inferred from product names/categories -- see ADR decision on
+    G5-SHOP-13. source_product_id -> alternative_product_id is one
+    direction only; the reverse relationship (if wanted) is a separate row.
+    """
+
+    __tablename__ = "catalog_product_alternatives"
+    __table_args__ = (
+        CheckConstraint(
+            "source_product_id != alternative_product_id", name="no_self_alternative"
+        ),
+        CheckConstraint(
+            "status IN ('proposed','approved','retired')", name="valid_status"
+        ),
+        UniqueConstraint(
+            "source_product_id",
+            "alternative_product_id",
+            name="unique_product_alternative_pair",
+        ),
+    )
+
+    source_product_id: Mapped[UUID] = mapped_column(
+        ForeignKey("catalog_products.id"), index=True, nullable=False
+    )
+    alternative_product_id: Mapped[UUID] = mapped_column(
+        ForeignKey("catalog_products.id"), index=True, nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(20), default="proposed", nullable=False)
+    rank: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    rationale_fa: Mapped[str] = mapped_column(Text, nullable=False)
+    compatibility_notes_fa: Mapped[str | None] = mapped_column(Text)
+    proposed_by_operator_id: Mapped[UUID] = mapped_column(
+        ForeignKey("identity_auth_identities.id"), nullable=False
+    )
+    approved_by_operator_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("identity_auth_identities.id")
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retired_by_operator_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("identity_auth_identities.id")
+    )
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class CatalogAvailabilitySubscription(UUIDPrimaryKeyMixin, TimestampMixin, Base):

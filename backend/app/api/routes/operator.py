@@ -29,7 +29,7 @@ from app.integrations.payment.factory import (
 )
 from app.integrations.payment.zarinpal import ZarinpalError
 from app.modules.catalog.availability import notify_available_subscribers
-from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.catalog.models import Offer, Product, ProductAlternative, Supplier
 from app.modules.households.models import Household, HouseholdMembership
 from app.modules.identity.models import AuthIdentity, AuthSession
 from app.modules.identity.privacy import PrivacyRequest
@@ -1560,6 +1560,247 @@ async def record_reference_evidence(
     )
     await session.commit()
     return CreatedResponse(id=evidence.id)
+
+
+class ProductAlternativeCreateBody(BaseModel):
+    source_product_id: UUID
+    alternative_product_id: UUID
+    rationale_fa: str = Field(min_length=5, max_length=1000)
+    compatibility_notes_fa: str | None = Field(default=None, max_length=1000)
+    rank: int = Field(default=0, ge=0, le=1000)
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+class ProductAlternativeUpdateBody(BaseModel):
+    rationale_fa: str = Field(min_length=5, max_length=1000)
+    compatibility_notes_fa: str | None = Field(default=None, max_length=1000)
+    rank: int = Field(default=0, ge=0, le=1000)
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+class ProductAlternativeActionBody(BaseModel):
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+class OperatorProductAlternativeResponse(BaseModel):
+    id: UUID
+    source_product_id: UUID
+    alternative_product_id: UUID
+    status: str
+    rank: int
+    rationale_fa: str
+    compatibility_notes_fa: str | None
+    proposed_by_operator_id: UUID
+    approved_by_operator_id: UUID | None
+    approved_at: datetime | None
+    retired_by_operator_id: UUID | None
+    retired_at: datetime | None
+
+
+def _operator_alternative_response(
+    alternative: ProductAlternative,
+) -> OperatorProductAlternativeResponse:
+    return OperatorProductAlternativeResponse(
+        id=alternative.id,
+        source_product_id=alternative.source_product_id,
+        alternative_product_id=alternative.alternative_product_id,
+        status=alternative.status,
+        rank=alternative.rank,
+        rationale_fa=alternative.rationale_fa,
+        compatibility_notes_fa=alternative.compatibility_notes_fa,
+        proposed_by_operator_id=alternative.proposed_by_operator_id,
+        approved_by_operator_id=alternative.approved_by_operator_id,
+        approved_at=alternative.approved_at,
+        retired_by_operator_id=alternative.retired_by_operator_id,
+        retired_at=alternative.retired_at,
+    )
+
+
+@router.get(
+    "/product-alternatives",
+    response_model=list[OperatorProductAlternativeResponse],
+)
+async def list_product_alternatives(
+    _: CurrentOperator,
+    session: SessionDependency,
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+    source_product_id: UUID | None = None,
+) -> list[OperatorProductAlternativeResponse]:
+    if status_filter is not None and status_filter not in ("proposed", "approved", "retired"):
+        raise HTTPException(status_code=422, detail="invalid_status_filter")
+    query = select(ProductAlternative).order_by(ProductAlternative.created_at.desc())
+    if status_filter is not None:
+        query = query.where(ProductAlternative.status == status_filter)
+    if source_product_id is not None:
+        query = query.where(ProductAlternative.source_product_id == source_product_id)
+    rows = list((await session.scalars(query.limit(200))).all())
+    return [_operator_alternative_response(row) for row in rows]
+
+
+@router.post(
+    "/product-alternatives",
+    response_model=CreatedResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_product_alternative(
+    body: ProductAlternativeCreateBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> CreatedResponse:
+    if body.source_product_id == body.alternative_product_id:
+        raise HTTPException(status_code=422, detail="alternative_cannot_reference_itself")
+    for product_id in (body.source_product_id, body.alternative_product_id):
+        if await session.get(Product, product_id) is None:
+            raise HTTPException(status_code=404, detail="product_not_found")
+    existing = await session.scalar(
+        select(ProductAlternative).where(
+            ProductAlternative.source_product_id == body.source_product_id,
+            ProductAlternative.alternative_product_id == body.alternative_product_id,
+        )
+    )
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="alternative_pair_already_exists")
+    alternative = ProductAlternative(
+        source_product_id=body.source_product_id,
+        alternative_product_id=body.alternative_product_id,
+        status="proposed",
+        rank=body.rank,
+        rationale_fa=body.rationale_fa,
+        compatibility_notes_fa=body.compatibility_notes_fa,
+        proposed_by_operator_id=operator.id,
+    )
+    session.add(alternative)
+    await session.flush()
+    _audit(
+        session,
+        request,
+        operator.id,
+        "product_alternative.created",
+        "product_alternative",
+        alternative.id,
+        body.reason,
+        {
+            "source_product_id": str(body.source_product_id),
+            "alternative_product_id": str(body.alternative_product_id),
+            "rank": body.rank,
+        },
+    )
+    await session.commit()
+    return CreatedResponse(id=alternative.id)
+
+
+@router.patch(
+    "/product-alternatives/{alternative_id}",
+    response_model=OperatorProductAlternativeResponse,
+)
+async def update_product_alternative(
+    alternative_id: UUID,
+    body: ProductAlternativeUpdateBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> OperatorProductAlternativeResponse:
+    alternative = await session.get(ProductAlternative, alternative_id, with_for_update=True)
+    if alternative is None:
+        raise HTTPException(status_code=404, detail="product_alternative_not_found")
+    if alternative.status == "retired":
+        raise HTTPException(status_code=409, detail="product_alternative_retired")
+    before_facts = {
+        "rationale_fa": alternative.rationale_fa,
+        "compatibility_notes_fa": alternative.compatibility_notes_fa,
+        "rank": alternative.rank,
+    }
+    alternative.rationale_fa = body.rationale_fa
+    alternative.compatibility_notes_fa = body.compatibility_notes_fa
+    alternative.rank = body.rank
+    await session.flush()
+    record_operator_action(
+        session,
+        operator_identity_id=operator.id,
+        action="product_alternative.updated",
+        resource_type="product_alternative",
+        resource_id=str(alternative.id),
+        request_id=request_id_context.get(),
+        reason=body.reason,
+        before_facts=before_facts,
+        after_facts={
+            "rationale_fa": alternative.rationale_fa,
+            "compatibility_notes_fa": alternative.compatibility_notes_fa,
+            "rank": alternative.rank,
+        },
+        source_ip=request.client.host if request.client else None,
+    )
+    await session.commit()
+    return _operator_alternative_response(alternative)
+
+
+@router.post(
+    "/product-alternatives/{alternative_id}/approve",
+    response_model=OperatorProductAlternativeResponse,
+)
+async def approve_product_alternative(
+    alternative_id: UUID,
+    body: ProductAlternativeActionBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> OperatorProductAlternativeResponse:
+    alternative = await session.get(ProductAlternative, alternative_id, with_for_update=True)
+    if alternative is None:
+        raise HTTPException(status_code=404, detail="product_alternative_not_found")
+    if alternative.status == "retired":
+        raise HTTPException(status_code=409, detail="product_alternative_retired")
+    if alternative.status != "approved":
+        alternative.status = "approved"
+        alternative.approved_by_operator_id = operator.id
+        alternative.approved_at = utc_now()
+        await session.flush()
+        _audit(
+            session,
+            request,
+            operator.id,
+            "product_alternative.approved",
+            "product_alternative",
+            alternative.id,
+            body.reason,
+            {"status": alternative.status, "approved_at": alternative.approved_at.isoformat()},
+        )
+    await session.commit()
+    return _operator_alternative_response(alternative)
+
+
+@router.post(
+    "/product-alternatives/{alternative_id}/retire",
+    response_model=OperatorProductAlternativeResponse,
+)
+async def retire_product_alternative(
+    alternative_id: UUID,
+    body: ProductAlternativeActionBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> OperatorProductAlternativeResponse:
+    alternative = await session.get(ProductAlternative, alternative_id, with_for_update=True)
+    if alternative is None:
+        raise HTTPException(status_code=404, detail="product_alternative_not_found")
+    if alternative.status != "retired":
+        alternative.status = "retired"
+        alternative.retired_by_operator_id = operator.id
+        alternative.retired_at = utc_now()
+        await session.flush()
+        _audit(
+            session,
+            request,
+            operator.id,
+            "product_alternative.retired",
+            "product_alternative",
+            alternative.id,
+            body.reason,
+            {"status": alternative.status, "retired_at": alternative.retired_at.isoformat()},
+        )
+    await session.commit()
+    return _operator_alternative_response(alternative)
 
 
 @router.post("/order-lines/{line_id}/confirm-sourced", status_code=status.HTTP_204_NO_CONTENT)

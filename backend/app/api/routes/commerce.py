@@ -1,9 +1,10 @@
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import and_, delete, func, or_, select, tuple_
+from sqlalchemy import ColumnElement, and_, delete, func, or_, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +24,7 @@ from app.api.contracts import (
     OrderPolicyFieldsResponse,
     PaymentCallbackResponse,
     PaymentRedirectResponse,
+    ProductAlternativeResponse,
     ProductMediaResponse,
     SafePaymentSummaryResponse,
     SourcedUnitResponse,
@@ -42,6 +44,7 @@ from app.modules.catalog.models import (
     CatalogAvailabilitySubscription,
     Offer,
     Product,
+    ProductAlternative,
     ProductMedia,
     Supplier,
 )
@@ -52,6 +55,7 @@ from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderDelayAcknowledgement, OrderLine, OrderLinePetPlan
 from app.modules.payments.models import PaymentAttempt
 from app.modules.payments.service import PaymentService, PaymentWorkflowError
+from app.modules.pet_knowledge.search import normalize_persian_search
 from app.modules.pets.models import Pet
 from app.modules.system.idempotency import canonical_request_hash
 from app.modules.trust.models import SourcedUnitEvidence
@@ -107,6 +111,38 @@ def _order_item(order: Order) -> OrderListItem:
     )
 
 
+def _offer_availability_filters(now: datetime) -> tuple[ColumnElement[bool], ...]:
+    return (
+        Offer.status == "active",
+        Offer.stock_posture == "sourced_after_payment",
+        Offer.sourcing_capacity_status == "open",
+        (Offer.available_from.is_(None)) | (Offer.available_from <= now),
+        (Offer.available_until.is_(None)) | (Offer.available_until > now),
+    )
+
+
+def _offer_list_item(offer: Offer, supplier: Supplier) -> OfferListItem:
+    return OfferListItem(
+        id=offer.id,
+        product_id=offer.product_id,
+        sku=offer.sku,
+        title_fa=offer.title_fa,
+        unit_label_fa=offer.unit_label_fa,
+        price_irr=offer.price_irr,
+        reference_price_irr=offer.reference_price_irr,
+        supplier_country=supplier.country_code,
+        stock_posture=offer.stock_posture,
+        authenticity="supplier_verified",
+        minimum_shelf_life_months=offer.minimum_shelf_life_months,
+        reference_price_reviewed_at=(
+            offer.reference_price_reviewed_at.date().isoformat()
+            if offer.reference_price_reviewed_at
+            else None
+        ),
+        available_until=(offer.available_until.isoformat() if offer.available_until else None),
+    )
+
+
 @router.get("/catalog/offers", response_model=list[OfferListItem])
 async def list_offers(session: SessionDependency) -> list[OfferListItem]:
     now = utc_now()
@@ -114,38 +150,49 @@ async def list_offers(session: SessionDependency) -> list[OfferListItem]:
         await session.execute(
             select(Offer, Supplier)
             .join(Supplier, Supplier.id == Offer.supplier_id)
-            .where(
-                Offer.status == "active",
-                Offer.stock_posture == "sourced_after_payment",
-                Offer.sourcing_capacity_status == "open",
-                (Offer.available_from.is_(None)) | (Offer.available_from <= now),
-                (Offer.available_until.is_(None)) | (Offer.available_until > now),
-            )
+            .where(*_offer_availability_filters(now))
             .order_by(Offer.title_fa)
         )
     ).all()
-    return [
-        OfferListItem(
-            id=offer.id,
-            product_id=offer.product_id,
-            sku=offer.sku,
-            title_fa=offer.title_fa,
-            unit_label_fa=offer.unit_label_fa,
-            price_irr=offer.price_irr,
-            reference_price_irr=offer.reference_price_irr,
-            supplier_country=supplier.country_code,
-            stock_posture=offer.stock_posture,
-            authenticity="supplier_verified",
-            minimum_shelf_life_months=offer.minimum_shelf_life_months,
-            reference_price_reviewed_at=(
-                offer.reference_price_reviewed_at.date().isoformat()
-                if offer.reference_price_reviewed_at
-                else None
-            ),
-            available_until=(offer.available_until.isoformat() if offer.available_until else None),
+    return [_offer_list_item(offer, supplier) for offer, supplier in rows]
+
+
+def _escape_like_term(normalized: str) -> str:
+    escaped = normalized.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+@router.get("/catalog/offers/search", response_model=OffsetPage[OfferListItem])
+async def search_offers(
+    session: SessionDependency,
+    pagination: PaginationDependency,
+    q: Annotated[str, Query(min_length=1, max_length=200)],
+) -> dict[str, object]:
+    now = utc_now()
+    normalized = normalize_persian_search(q)
+    if not normalized:
+        return page([], total=0, pagination=pagination)
+    availability = _offer_availability_filters(now)
+    term = _escape_like_term(normalized)
+    match = or_(
+        Offer.title_fa_search.like(term, escape="\\"),
+        Offer.sku_search.like(term, escape="\\"),
+    )
+    total = int(
+        await session.scalar(select(func.count(Offer.id)).where(*availability, match)) or 0
+    )
+    rows = (
+        await session.execute(
+            select(Offer, Supplier)
+            .join(Supplier, Supplier.id == Offer.supplier_id)
+            .where(*availability, match)
+            .order_by(Offer.title_fa, Offer.id)
+            .limit(pagination.limit)
+            .offset(pagination.offset)
         )
-        for offer, supplier in rows
-    ]
+    ).all()
+    items = [_offer_list_item(offer, supplier) for offer, supplier in rows]
+    return page(items, total=total, pagination=pagination)
 
 
 @router.get("/catalog/offers/{offer_id}", response_model=OfferDetailResponse)
@@ -209,6 +256,66 @@ async def offer_detail(offer_id: UUID, session: SessionDependency) -> OfferDetai
         available_from=offer.available_from,
         available_until=offer.available_until,
     )
+
+
+@router.get(
+    "/catalog/products/{product_id}/alternatives",
+    response_model=list[ProductAlternativeResponse],
+)
+async def list_product_alternatives(
+    product_id: UUID, session: SessionDependency
+) -> list[ProductAlternativeResponse]:
+    now = utc_now()
+    alternatives = list(
+        (
+            await session.scalars(
+                select(ProductAlternative)
+                .where(
+                    ProductAlternative.source_product_id == product_id,
+                    ProductAlternative.status == "approved",
+                )
+                .order_by(ProductAlternative.rank, ProductAlternative.id)
+            )
+        ).all()
+    )
+    if not alternatives:
+        return []
+    alternative_product_ids = {a.alternative_product_id for a in alternatives}
+    rows = (
+        await session.execute(
+            select(Offer, Supplier)
+            .join(Supplier, Supplier.id == Offer.supplier_id)
+            .where(
+                Offer.product_id.in_(alternative_product_ids),
+                *_offer_availability_filters(now),
+            )
+            .order_by(Offer.product_id, Offer.price_irr, Offer.id)
+        )
+    ).all()
+    # Revalidated at read time, not cached: one representative (cheapest
+    # currently-available) offer per alternative product. An alternative
+    # whose product currently has no available offer is silently omitted,
+    # never shown as a substitute that cannot actually be bought.
+    best_offer_by_product: dict[UUID, tuple[Offer, Supplier]] = {}
+    for offer, supplier in rows:
+        if offer.product_id not in best_offer_by_product:
+            best_offer_by_product[offer.product_id] = (offer, supplier)
+    items: list[ProductAlternativeResponse] = []
+    for alternative in alternatives:
+        found = best_offer_by_product.get(alternative.alternative_product_id)
+        if found is None:
+            continue
+        offer, supplier = found
+        items.append(
+            ProductAlternativeResponse(
+                id=alternative.id,
+                rank=alternative.rank,
+                rationale_fa=alternative.rationale_fa,
+                compatibility_notes_fa=alternative.compatibility_notes_fa,
+                offer=_offer_list_item(offer, supplier),
+            )
+        )
+    return items
 
 
 @router.post(

@@ -104,6 +104,20 @@ class OfferListItem(BaseModel):
     available_until: str | None = None
 
 
+class ProductAlternativeResponse(BaseModel):
+    """An approved, operator-curated alternative with its current offer.
+
+    Platform-curated, not a guaranteed clinical/nutritional substitute --
+    see the customer-facing label the frontend renders alongside this.
+    """
+
+    id: UUID
+    rank: int
+    rationale_fa: str
+    compatibility_notes_fa: str | None = None
+    offer: OfferListItem
+
+
 class OrderListItem(BaseModel):
     id: UUID
     household_id: UUID

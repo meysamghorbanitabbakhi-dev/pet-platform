@@ -6,6 +6,7 @@ def test_metadata_contains_foundation_and_transactional_commerce_tables() -> Non
     assert set(Base.metadata.tables) == {
         "catalog_offers",
         "catalog_availability_subscriptions",
+        "catalog_product_alternatives",
         "catalog_product_media",
         "catalog_products",
         "catalog_suppliers",
