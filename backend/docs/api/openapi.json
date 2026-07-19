@@ -4958,6 +4958,39 @@
         "title": "OfferListItem",
         "type": "object"
       },
+      "OfferSourcingConfigBody": {
+        "properties": {
+          "default_batch_threshold_quantity": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Batch Threshold Quantity"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          },
+          "sourcing_route": {
+            "pattern": "^(aggregated|individual)$",
+            "title": "Sourcing Route",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourcing_route",
+          "reason"
+        ],
+        "title": "OfferSourcingConfigBody",
+        "type": "object"
+      },
       "OffsetPageMetadata": {
         "properties": {
           "has_more": {
@@ -7138,6 +7171,467 @@
           "completion_percent"
         ],
         "title": "ProfileCompletenessResponse",
+        "type": "object"
+      },
+      "PurchaseBatchAdjustBody": {
+        "properties": {
+          "deadline_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline At"
+          },
+          "minimum_viable_threshold_quantity": {
+            "exclusiveMinimum": 0.0,
+            "title": "Minimum Viable Threshold Quantity",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "minimum_viable_threshold_quantity",
+          "reason"
+        ],
+        "title": "PurchaseBatchAdjustBody",
+        "type": "object"
+      },
+      "PurchaseBatchAllocationResponse": {
+        "properties": {
+          "allocated_at": {
+            "format": "date-time",
+            "title": "Allocated At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_line_id": {
+            "format": "uuid",
+            "title": "Order Line Id",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "order_line_id",
+          "quantity",
+          "allocated_at"
+        ],
+        "title": "PurchaseBatchAllocationResponse",
+        "type": "object"
+      },
+      "PurchaseBatchCommitBody": {
+        "properties": {
+          "commitment_reference": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commitment Reference"
+          },
+          "evidence_file_id": {
+            "format": "uuid",
+            "title": "Evidence File Id",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidence_file_id",
+          "reason"
+        ],
+        "title": "PurchaseBatchCommitBody",
+        "type": "object"
+      },
+      "PurchaseBatchDetailResponse": {
+        "properties": {
+          "allocated_quantity": {
+            "title": "Allocated Quantity",
+            "type": "integer"
+          },
+          "allocations": {
+            "items": {
+              "$ref": "#/components/schemas/PurchaseBatchAllocationResponse"
+            },
+            "title": "Allocations",
+            "type": "array"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "cancelled_by_operator_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled By Operator Id"
+          },
+          "commitment_evidence_file_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commitment Evidence File Id"
+          },
+          "commitment_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commitment Reference"
+          },
+          "committed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Committed At"
+          },
+          "committed_by_operator_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Committed By Operator Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deadline_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline At"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/PurchaseBatchEventResponse"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "grouping_mode": {
+            "title": "Grouping Mode",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "minimum_viable_threshold_quantity": {
+            "title": "Minimum Viable Threshold Quantity",
+            "type": "integer"
+          },
+          "offer_id": {
+            "format": "uuid",
+            "title": "Offer Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "threshold_reached_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Reached At"
+          }
+        },
+        "required": [
+          "id",
+          "offer_id",
+          "grouping_mode",
+          "status",
+          "deadline_at",
+          "minimum_viable_threshold_quantity",
+          "allocated_quantity",
+          "threshold_reached_at",
+          "committed_at",
+          "committed_by_operator_id",
+          "commitment_evidence_file_id",
+          "commitment_reference",
+          "cancelled_at",
+          "cancelled_by_operator_id",
+          "created_at",
+          "allocations",
+          "events"
+        ],
+        "title": "PurchaseBatchDetailResponse",
+        "type": "object"
+      },
+      "PurchaseBatchEventResponse": {
+        "properties": {
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "operator_identity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Identity Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "id",
+          "event_type",
+          "occurred_at",
+          "reason",
+          "operator_identity_id"
+        ],
+        "title": "PurchaseBatchEventResponse",
+        "type": "object"
+      },
+      "PurchaseBatchResponse": {
+        "properties": {
+          "allocated_quantity": {
+            "title": "Allocated Quantity",
+            "type": "integer"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "cancelled_by_operator_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled By Operator Id"
+          },
+          "commitment_evidence_file_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commitment Evidence File Id"
+          },
+          "commitment_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commitment Reference"
+          },
+          "committed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Committed At"
+          },
+          "committed_by_operator_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Committed By Operator Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deadline_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline At"
+          },
+          "grouping_mode": {
+            "title": "Grouping Mode",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "minimum_viable_threshold_quantity": {
+            "title": "Minimum Viable Threshold Quantity",
+            "type": "integer"
+          },
+          "offer_id": {
+            "format": "uuid",
+            "title": "Offer Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "threshold_reached_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Reached At"
+          }
+        },
+        "required": [
+          "id",
+          "offer_id",
+          "grouping_mode",
+          "status",
+          "deadline_at",
+          "minimum_viable_threshold_quantity",
+          "allocated_quantity",
+          "threshold_reached_at",
+          "committed_at",
+          "committed_by_operator_id",
+          "commitment_evidence_file_id",
+          "commitment_reference",
+          "cancelled_at",
+          "cancelled_by_operator_id",
+          "created_at"
+        ],
+        "title": "PurchaseBatchResponse",
         "type": "object"
       },
       "ReconciliationBody": {
@@ -11390,6 +11884,57 @@
         ]
       }
     },
+    "/api/v1/operator/offers/{offer_id}/sourcing-config": {
+      "patch": {
+        "operationId": "update_offer_sourcing_config_api_v1_operator_offers__offer_id__sourcing_config_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfferSourcingConfigBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Offer Sourcing Config",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
     "/api/v1/operator/order-lines/{line_id}/confirm-sourced": {
       "post": {
         "operationId": "confirm_sourced_unit_api_v1_operator_order_lines__line_id__confirm_sourced_post",
@@ -12802,6 +13347,243 @@
           }
         ],
         "summary": "Create Product",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/purchase-batches": {
+      "get": {
+        "operationId": "list_purchase_batches_api_v1_operator_purchase_batches_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "offer_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Offer Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PurchaseBatchResponse"
+                  },
+                  "title": "Response List Purchase Batches Api V1 Operator Purchase Batches Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Purchase Batches",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/purchase-batches/{batch_id}": {
+      "get": {
+        "operationId": "get_purchase_batch_api_v1_operator_purchase_batches__batch_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseBatchDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Purchase Batch",
+        "tags": [
+          "operator"
+        ]
+      },
+      "patch": {
+        "operationId": "adjust_purchase_batch_api_v1_operator_purchase_batches__batch_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseBatchAdjustBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Adjust Purchase Batch",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/purchase-batches/{batch_id}/commit": {
+      "post": {
+        "operationId": "commit_purchase_batch_api_v1_operator_purchase_batches__batch_id__commit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseBatchCommitBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Commit Purchase Batch",
         "tags": [
           "operator"
         ]

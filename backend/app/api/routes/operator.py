@@ -68,6 +68,8 @@ from app.modules.pet_knowledge.service import (
 )
 from app.modules.pet_knowledge.validation import canonical_bytes, validate_bundle
 from app.modules.pets.models import Pet
+from app.modules.purchasing.models import PurchaseBatch, PurchaseBatchAllocation, PurchaseBatchEvent
+from app.modules.purchasing.service import PurchasingError, commit_batch
 from app.modules.sourcing.models import SourcingJob
 from app.modules.system.audit import record_operator_action
 from app.modules.system.models import OperatorAuditLog, OutboxEvent, WebhookInboxEvent
@@ -1468,6 +1470,287 @@ async def update_offer_capacity(
     )
     await notify_available_subscribers(session, offer)
     await session.commit()
+
+
+class OfferSourcingConfigBody(BaseModel):
+    sourcing_route: str = Field(pattern=r"^(aggregated|individual)$")
+    default_batch_threshold_quantity: int | None = Field(default=None, gt=0)
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+@router.patch("/offers/{offer_id}/sourcing-config", status_code=status.HTTP_204_NO_CONTENT)
+async def update_offer_sourcing_config(
+    offer_id: UUID,
+    body: OfferSourcingConfigBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> None:
+    offer = await session.get(Offer, offer_id, with_for_update=True)
+    if offer is None:
+        raise HTTPException(status_code=404, detail="offer_not_found")
+    before = {
+        "sourcing_route": offer.sourcing_route,
+        "default_batch_threshold_quantity": offer.default_batch_threshold_quantity,
+    }
+    offer.sourcing_route = body.sourcing_route
+    offer.default_batch_threshold_quantity = body.default_batch_threshold_quantity
+    _audit(
+        session,
+        request,
+        operator.id,
+        "offer.sourcing_config_updated",
+        "offer",
+        offer.id,
+        body.reason,
+        {
+            "before": before,
+            "sourcing_route": offer.sourcing_route,
+            "default_batch_threshold_quantity": offer.default_batch_threshold_quantity,
+        },
+    )
+    await session.commit()
+
+
+class PurchaseBatchResponse(BaseModel):
+    id: UUID
+    offer_id: UUID
+    grouping_mode: str
+    status: str
+    deadline_at: datetime | None
+    minimum_viable_threshold_quantity: int
+    allocated_quantity: int
+    threshold_reached_at: datetime | None
+    committed_at: datetime | None
+    committed_by_operator_id: UUID | None
+    commitment_evidence_file_id: UUID | None
+    commitment_reference: str | None
+    cancelled_at: datetime | None
+    cancelled_by_operator_id: UUID | None
+    created_at: datetime
+
+
+class PurchaseBatchAllocationResponse(BaseModel):
+    id: UUID
+    order_line_id: UUID
+    quantity: int
+    allocated_at: datetime
+
+
+class PurchaseBatchEventResponse(BaseModel):
+    id: UUID
+    event_type: str
+    occurred_at: datetime
+    reason: str | None
+    operator_identity_id: UUID | None
+
+
+class PurchaseBatchDetailResponse(PurchaseBatchResponse):
+    allocations: list[PurchaseBatchAllocationResponse]
+    events: list[PurchaseBatchEventResponse]
+
+
+class PurchaseBatchAdjustBody(BaseModel):
+    minimum_viable_threshold_quantity: int = Field(gt=0)
+    deadline_at: datetime | None = None
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+class PurchaseBatchCommitBody(BaseModel):
+    evidence_file_id: UUID
+    commitment_reference: str | None = Field(default=None, max_length=300)
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+def _purchase_batch_response(batch: PurchaseBatch) -> PurchaseBatchResponse:
+    return PurchaseBatchResponse(
+        id=batch.id,
+        offer_id=batch.offer_id,
+        grouping_mode=batch.grouping_mode,
+        status=batch.status,
+        deadline_at=batch.deadline_at,
+        minimum_viable_threshold_quantity=batch.minimum_viable_threshold_quantity,
+        allocated_quantity=batch.allocated_quantity,
+        threshold_reached_at=batch.threshold_reached_at,
+        committed_at=batch.committed_at,
+        committed_by_operator_id=batch.committed_by_operator_id,
+        commitment_evidence_file_id=batch.commitment_evidence_file_id,
+        commitment_reference=batch.commitment_reference,
+        cancelled_at=batch.cancelled_at,
+        cancelled_by_operator_id=batch.cancelled_by_operator_id,
+        created_at=batch.created_at,
+    )
+
+
+@router.get("/purchase-batches", response_model=list[PurchaseBatchResponse])
+async def list_purchase_batches(
+    _: CurrentOperator,
+    session: SessionDependency,
+    offer_id: UUID | None = None,
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+) -> list[PurchaseBatchResponse]:
+    if status_filter is not None and status_filter not in ("open", "committed", "cancelled"):
+        raise HTTPException(status_code=422, detail="invalid_status_filter")
+    query = select(PurchaseBatch).order_by(PurchaseBatch.created_at.desc())
+    if offer_id is not None:
+        query = query.where(PurchaseBatch.offer_id == offer_id)
+    if status_filter is not None:
+        query = query.where(PurchaseBatch.status == status_filter)
+    rows = list((await session.scalars(query.limit(200))).all())
+    return [_purchase_batch_response(row) for row in rows]
+
+
+@router.get("/purchase-batches/{batch_id}", response_model=PurchaseBatchDetailResponse)
+async def get_purchase_batch(
+    batch_id: UUID, _: CurrentOperator, session: SessionDependency
+) -> PurchaseBatchDetailResponse:
+    batch = await session.get(PurchaseBatch, batch_id)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="purchase_batch_not_found")
+    allocations = list(
+        (
+            await session.scalars(
+                select(PurchaseBatchAllocation)
+                .where(PurchaseBatchAllocation.purchase_batch_id == batch.id)
+                .order_by(PurchaseBatchAllocation.allocated_at)
+            )
+        ).all()
+    )
+    events = list(
+        (
+            await session.scalars(
+                select(PurchaseBatchEvent)
+                .where(PurchaseBatchEvent.purchase_batch_id == batch.id)
+                .order_by(PurchaseBatchEvent.occurred_at)
+            )
+        ).all()
+    )
+    return PurchaseBatchDetailResponse(
+        **_purchase_batch_response(batch).model_dump(),
+        allocations=[
+            PurchaseBatchAllocationResponse(
+                id=item.id,
+                order_line_id=item.order_line_id,
+                quantity=item.quantity,
+                allocated_at=item.allocated_at,
+            )
+            for item in allocations
+        ],
+        events=[
+            PurchaseBatchEventResponse(
+                id=item.id,
+                event_type=item.event_type,
+                occurred_at=item.occurred_at,
+                reason=item.reason,
+                operator_identity_id=item.operator_identity_id,
+            )
+            for item in events
+        ],
+    )
+
+
+@router.patch("/purchase-batches/{batch_id}", response_model=PurchaseBatchResponse)
+async def adjust_purchase_batch(
+    batch_id: UUID,
+    body: PurchaseBatchAdjustBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> PurchaseBatchResponse:
+    batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="purchase_batch_not_found")
+    if batch.status != "open":
+        raise HTTPException(status_code=409, detail="purchase_batch_not_open")
+    before = {
+        "minimum_viable_threshold_quantity": batch.minimum_viable_threshold_quantity,
+        "deadline_at": batch.deadline_at.isoformat() if batch.deadline_at else None,
+    }
+    batch.minimum_viable_threshold_quantity = body.minimum_viable_threshold_quantity
+    batch.deadline_at = body.deadline_at
+    # A lowered threshold can retroactively cross what's already allocated.
+    # threshold_reached_at is a forward-only, system-computed fact (ADR-006)
+    # -- once set it is never unset by a later, higher threshold.
+    newly_reached = False
+    if (
+        batch.threshold_reached_at is None
+        and batch.allocated_quantity >= batch.minimum_viable_threshold_quantity
+    ):
+        batch.threshold_reached_at = utc_now()
+        newly_reached = True
+        session.add(
+            PurchaseBatchEvent(
+                purchase_batch_id=batch.id,
+                event_type="threshold_reached",
+                occurred_at=batch.threshold_reached_at,
+                reason=body.reason,
+                operator_identity_id=operator.id,
+            )
+        )
+    await session.flush()
+    _audit(
+        session,
+        request,
+        operator.id,
+        "purchase_batch.adjusted",
+        "purchase_batch",
+        batch.id,
+        body.reason,
+        {
+            "before": before,
+            "minimum_viable_threshold_quantity": batch.minimum_viable_threshold_quantity,
+            "deadline_at": batch.deadline_at.isoformat() if batch.deadline_at else None,
+            "threshold_reached_by_adjustment": newly_reached,
+        },
+    )
+    await session.commit()
+    return _purchase_batch_response(batch)
+
+
+@router.post("/purchase-batches/{batch_id}/commit", response_model=PurchaseBatchResponse)
+async def commit_purchase_batch(
+    batch_id: UUID,
+    body: PurchaseBatchCommitBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> PurchaseBatchResponse:
+    batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="purchase_batch_not_found")
+    evidence = await session.get(EvidenceFile, body.evidence_file_id)
+    if evidence is None:
+        raise HTTPException(status_code=404, detail="evidence_file_not_found")
+    already_committed = batch.status == "committed"
+    try:
+        batch = await commit_batch(
+            session,
+            batch=batch,
+            operator_id=operator.id,
+            evidence_file_id=evidence.id,
+            commitment_reference=body.commitment_reference,
+            reason=body.reason,
+        )
+    except PurchasingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not already_committed:
+        _audit(
+            session,
+            request,
+            operator.id,
+            "purchase_batch.committed",
+            "purchase_batch",
+            batch.id,
+            body.reason,
+            {
+                "offer_id": str(batch.offer_id),
+                "allocated_quantity": batch.allocated_quantity,
+                "evidence_file_id": str(evidence.id),
+                "commitment_reference": batch.commitment_reference,
+            },
+        )
+    await session.commit()
+    return _purchase_batch_response(batch)
 
 
 @router.post(

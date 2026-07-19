@@ -70,3 +70,17 @@ Added to close the last open rows of the accepted 152-state design contract (G5-
 | POST | `/operator/product-alternatives/{alternative_id}/retire` | Operator retirement; idempotent |
 
 No customer-facing operator UI exists for product alternatives, matching every other operator capability in this catalog (price intelligence, supplier management, etc.) — operator routes are API-only by established convention.
+
+## Purchasing batch endpoints (2026-07-19, Workstream 2A)
+
+Aggregated/individual purchasing-cycle management. Every paid order line is allocated to a batch at payment-verification time (not through these endpoints); operators use these to configure sourcing routing and record the durable supplier financial-commitment fact that Workstream 2B's cancellation boundary reads. See `docs/adr/ADR-006-purchasing-batch-architecture.md`.
+
+| Method | Endpoint | Capability |
+|---|---|---|
+| PATCH | `/operator/offers/{offer_id}/sourcing-config` | Sets an offer's explicit, operator-chosen sourcing route (`aggregated`\|`individual`) and default batch threshold quantity — never inferred |
+| GET | `/operator/purchase-batches` | Batch list/queue, filterable by offer and status |
+| GET | `/operator/purchase-batches/{batch_id}` | Batch detail with allocations and append-only status-history events |
+| PATCH | `/operator/purchase-batches/{batch_id}` | Adjusts threshold/deadline while a batch is still open; a lowered threshold that the batch already meets retroactively records `threshold_reached`, but a later raise never un-sets an already-reached fact |
+| POST | `/operator/purchase-batches/{batch_id}/commit` | Records the operator-evidenced supplier financial commitment; idempotent (replaying an already-committed batch is a no-op, not a duplicate audit entry) |
+
+No customer-facing endpoints exist for purchasing batches — customers never see batch/pooling mechanics directly.

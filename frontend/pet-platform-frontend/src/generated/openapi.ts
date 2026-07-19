@@ -839,6 +839,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/offers/{offer_id}/sourcing-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Offer Sourcing Config */
+        patch: operations["update_offer_sourcing_config_api_v1_operator_offers__offer_id__sourcing_config_patch"];
+        trace?: never;
+    };
     "/api/v1/operator/order-lines/{line_id}/confirm-sourced": {
         parameters: {
             query?: never;
@@ -1226,6 +1243,58 @@ export interface paths {
         put?: never;
         /** Create Product */
         post: operations["create_product_api_v1_operator_products_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/purchase-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Purchase Batches */
+        get: operations["list_purchase_batches_api_v1_operator_purchase_batches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/purchase-batches/{batch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Purchase Batch */
+        get: operations["get_purchase_batch_api_v1_operator_purchase_batches__batch_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Adjust Purchase Batch */
+        patch: operations["adjust_purchase_batch_api_v1_operator_purchase_batches__batch_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/operator/purchase-batches/{batch_id}/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commit Purchase Batch */
+        post: operations["commit_purchase_batch_api_v1_operator_purchase_batches__batch_id__commit_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4227,6 +4296,15 @@ export interface components {
             /** Unit Label Fa */
             unit_label_fa: string;
         };
+        /** OfferSourcingConfigBody */
+        OfferSourcingConfigBody: {
+            /** Default Batch Threshold Quantity */
+            default_batch_threshold_quantity?: number | null;
+            /** Reason */
+            reason: string;
+            /** Sourcing Route */
+            sourcing_route: string;
+        };
         /** OffsetPageMetadata */
         OffsetPageMetadata: {
             /** Has More */
@@ -5004,6 +5082,154 @@ export interface components {
             missing_fields: string[];
             /** Next Prompt */
             next_prompt?: string | null;
+        };
+        /** PurchaseBatchAdjustBody */
+        PurchaseBatchAdjustBody: {
+            /** Deadline At */
+            deadline_at?: string | null;
+            /** Minimum Viable Threshold Quantity */
+            minimum_viable_threshold_quantity: number;
+            /** Reason */
+            reason: string;
+        };
+        /** PurchaseBatchAllocationResponse */
+        PurchaseBatchAllocationResponse: {
+            /**
+             * Allocated At
+             * Format: date-time
+             */
+            allocated_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Order Line Id
+             * Format: uuid
+             */
+            order_line_id: string;
+            /** Quantity */
+            quantity: number;
+        };
+        /** PurchaseBatchCommitBody */
+        PurchaseBatchCommitBody: {
+            /** Commitment Reference */
+            commitment_reference?: string | null;
+            /**
+             * Evidence File Id
+             * Format: uuid
+             */
+            evidence_file_id: string;
+            /** Reason */
+            reason: string;
+        };
+        /** PurchaseBatchDetailResponse */
+        PurchaseBatchDetailResponse: {
+            /** Allocated Quantity */
+            allocated_quantity: number;
+            /** Allocations */
+            allocations: components["schemas"]["PurchaseBatchAllocationResponse"][];
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Cancelled By Operator Id */
+            cancelled_by_operator_id: string | null;
+            /** Commitment Evidence File Id */
+            commitment_evidence_file_id: string | null;
+            /** Commitment Reference */
+            commitment_reference: string | null;
+            /** Committed At */
+            committed_at: string | null;
+            /** Committed By Operator Id */
+            committed_by_operator_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deadline At */
+            deadline_at: string | null;
+            /** Events */
+            events: components["schemas"]["PurchaseBatchEventResponse"][];
+            /** Grouping Mode */
+            grouping_mode: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Minimum Viable Threshold Quantity */
+            minimum_viable_threshold_quantity: number;
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+            /** Status */
+            status: string;
+            /** Threshold Reached At */
+            threshold_reached_at: string | null;
+        };
+        /** PurchaseBatchEventResponse */
+        PurchaseBatchEventResponse: {
+            /** Event Type */
+            event_type: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Operator Identity Id */
+            operator_identity_id: string | null;
+            /** Reason */
+            reason: string | null;
+        };
+        /** PurchaseBatchResponse */
+        PurchaseBatchResponse: {
+            /** Allocated Quantity */
+            allocated_quantity: number;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Cancelled By Operator Id */
+            cancelled_by_operator_id: string | null;
+            /** Commitment Evidence File Id */
+            commitment_evidence_file_id: string | null;
+            /** Commitment Reference */
+            commitment_reference: string | null;
+            /** Committed At */
+            committed_at: string | null;
+            /** Committed By Operator Id */
+            committed_by_operator_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deadline At */
+            deadline_at: string | null;
+            /** Grouping Mode */
+            grouping_mode: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Minimum Viable Threshold Quantity */
+            minimum_viable_threshold_quantity: number;
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+            /** Status */
+            status: string;
+            /** Threshold Reached At */
+            threshold_reached_at: string | null;
         };
         /** ReconciliationBody */
         ReconciliationBody: {
@@ -7313,6 +7539,39 @@ export interface operations {
             };
         };
     };
+    update_offer_sourcing_config_api_v1_operator_offers__offer_id__sourcing_config_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferSourcingConfigBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     confirm_sourced_unit_api_v1_operator_order_lines__line_id__confirm_sourced_post: {
         parameters: {
             query?: never;
@@ -8126,6 +8385,139 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreatedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_purchase_batches_api_v1_operator_purchase_batches_get: {
+        parameters: {
+            query?: {
+                offer_id?: string | null;
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseBatchResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_purchase_batch_api_v1_operator_purchase_batches__batch_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseBatchDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adjust_purchase_batch_api_v1_operator_purchase_batches__batch_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseBatchAdjustBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseBatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    commit_purchase_batch_api_v1_operator_purchase_batches__batch_id__commit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseBatchCommitBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseBatchResponse"];
                 };
             };
             /** @description Validation Error */

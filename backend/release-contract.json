@@ -1,12 +1,12 @@
 {
   "alembic": {
     "heads": [
-      "20260719_0028"
+      "20260719_0030"
     ]
   },
   "openapi": {
-    "operation_count": 157,
-    "path_count": 141,
+    "operation_count": 162,
+    "path_count": 145,
     "required_constants": {
       "OfferDetailResponse.authenticity": "supplier_verified",
       "TodayFoodEstimated.state": "estimated",
@@ -420,8 +420,8 @@
         "expires_in_seconds"
       ]
     },
-    "schema_count": 202,
-    "sha256": "0f3ef4ccdfe468c871e6f0ff79e55e020358480f89f10c51691975726df22e6d"
+    "schema_count": 209,
+    "sha256": "4eaa743a681a7355b39358690d022e21355cc804a81ba5b365241c7db5960189"
   },
   "policy_defaults": {
     "care_journey_delivery_enabled": true,
