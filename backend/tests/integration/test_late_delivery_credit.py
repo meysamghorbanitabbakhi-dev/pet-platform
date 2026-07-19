@@ -115,9 +115,11 @@ async def test_on_time_delivery_never_grants_a_credit() -> None:
         delivered_at=now - timedelta(hours=40),  # delivered before the commitment deadline
         status="delivered",
     )
-    created = await process_overdue_orders(SessionFactory)
+    # process_overdue_orders scans the whole orders table, which in a shared
+    # test database may contain other tests' orders too -- assert only on
+    # this test's own order, not the global created count.
+    await process_overdue_orders(SessionFactory)
     assert await _credit_count(seed.order_id) == 0
-    assert created == 0
 
 
 async def test_overdue_and_still_undelivered_grants_correct_amount_and_expiry() -> None:
@@ -129,8 +131,7 @@ async def test_overdue_and_still_undelivered_grants_correct_amount_and_expiry() 
         delivered_at=None,
         status="sourcing",
     )
-    created = await process_overdue_orders(SessionFactory)
-    assert created == 1
+    await process_overdue_orders(SessionFactory)
     async with SessionFactory() as session:
         credit = await session.scalar(
             select(WalletCredit).where(
@@ -155,8 +156,7 @@ async def test_overdue_but_delivered_after_the_deadline_still_grants_credit() ->
         delivered_at=commitment + timedelta(hours=5),  # delivered, but after the deadline
         status="delivered",
     )
-    created = await process_overdue_orders(SessionFactory)
-    assert created == 1
+    await process_overdue_orders(SessionFactory)
     assert await _credit_count(seed.order_id) == 1
 
 
@@ -171,8 +171,7 @@ async def test_failed_and_cancelled_orders_are_excluded_even_when_overdue(
         delivered_at=None,
         status=excluded_status,
     )
-    created = await process_overdue_orders(SessionFactory)
-    assert created == 0
+    await process_overdue_orders(SessionFactory)
     assert await _credit_count(seed.order_id) == 0
 
 
@@ -224,9 +223,8 @@ async def test_process_overdue_orders_does_not_duplicate_an_already_credited_ord
         await grant_late_delivery_credit(session, order_id=seed.order_id)
         await session.commit()
 
-    created = await process_overdue_orders(SessionFactory)
-    assert created == 0
-    assert await _credit_count(seed.order_id) == 1
+    await process_overdue_orders(SessionFactory)
+    assert await _credit_count(seed.order_id) == 1  # still exactly one, not a second grant
 
 
 async def test_fifo_debit_draws_the_earliest_expiring_credit_first() -> None:
@@ -593,15 +591,27 @@ async def test_outbox_event_flows_through_dispatcher_into_a_real_notification() 
     assert pending.status == "pending"
     assert pending.disposition == "handler"
 
-    dispatcher = OutboxDispatcher(SessionFactory, batch_size=10)
+    dispatcher = OutboxDispatcher(SessionFactory, batch_size=200)
     dispatcher.register(
         "wallet.late_delivery_credit_granted",
         lambda payload: enqueue_wallet_credit_notification(
             SessionFactory, payload, customer_visible=True
         ),
     )
-    processed = await dispatcher.dispatch_batch()
-    assert processed >= 1
+    # dispatch_batch() claims oldest-first across the *whole* outbox table,
+    # not just this test's event -- a long-running shared test database can
+    # have other tests' backlog ahead of ours. Drain in a bounded loop
+    # (unrelated events with no handler registered here just get marked
+    # failed/retried by the dispatcher itself, which is safe) until our
+    # specific event is published or the queue is empty.
+    for _ in range(25):
+        async with SessionFactory() as session:
+            refreshed = await session.get(OutboxEvent, pending.id)
+        if refreshed is not None and refreshed.status == "published":
+            break
+        processed = await dispatcher.dispatch_batch()
+        if processed == 0:
+            break
 
     async with SessionFactory() as session:
         refreshed = await session.get(OutboxEvent, pending.id)

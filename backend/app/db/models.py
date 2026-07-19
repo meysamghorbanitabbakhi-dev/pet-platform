@@ -52,6 +52,11 @@ from app.modules.price_intelligence.models import (
     ExternalProductMatchReview,
     ExternalSeller,
 )
+from app.modules.purchasing.models import (
+    PurchaseBatch,
+    PurchaseBatchAllocation,
+    PurchaseBatchEvent,
+)
 from app.modules.sourcing.models import SourcingJob
 from app.modules.support.models import CustomerRequest, CustomerRequestStatusAudit
 from app.modules.system.models import (
@@ -133,6 +138,9 @@ __all__ = [
     "SourcedUnitEvidence",
     "ReferencePriceEvidence",
     "EvidenceFile",
+    "PurchaseBatch",
+    "PurchaseBatchAllocation",
+    "PurchaseBatchEvent",
     "SourcingJob",
     "IdempotencyRecord",
     "OperatorAuditLog",

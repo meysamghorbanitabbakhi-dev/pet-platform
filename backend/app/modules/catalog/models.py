@@ -77,6 +77,13 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint(
             "sourcing_capacity_status IN ('open','paused')", name="valid_capacity_status"
         ),
+        CheckConstraint(
+            "sourcing_route IN ('aggregated','individual')", name="valid_sourcing_route"
+        ),
+        CheckConstraint(
+            "default_batch_threshold_quantity IS NULL OR default_batch_threshold_quantity > 0",
+            name="positive_default_batch_threshold",
+        ),
     )
 
     product_id: Mapped[UUID] = mapped_column(ForeignKey("catalog_products.id"), index=True)
@@ -98,6 +105,19 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     sourcing_capacity_status: Mapped[str] = mapped_column(
         String(20), default="open", nullable=False
     )
+    # 'aggregated' (default): pools into a shared, threshold-tracked purchase
+    # batch with other customers' orders for the same offer. 'individual':
+    # exceptional/high-value offers sourced one order line at a time, never
+    # pooled -- see app.modules.purchasing. Operator-set, never inferred.
+    sourcing_route: Mapped[str] = mapped_column(
+        String(20), default="aggregated", nullable=False
+    )
+    # Default minimum-viable-quantity threshold for batches auto-opened
+    # against this offer (app.modules.purchasing.service). Null until an
+    # operator configures it; a batch opened with no configured default
+    # falls back to a threshold of 1 (i.e. no real aggregation benefit),
+    # never a guessed number -- see ADR-006.
+    default_batch_threshold_quantity: Mapped[int | None] = mapped_column(Integer)
     # PostgreSQL STORED GENERATED columns (migration 20260719_0027):
     # fa_normalize_search_text(title_fa | sku). Computed(...) tells
     # SQLAlchemy to never write these -- Postgres rejects any explicit

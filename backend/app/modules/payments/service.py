@@ -10,8 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.time import utc_now
 from app.integrations.payment.port import PaymentGateway, PaymentRequest
-from app.modules.orders.models import Order
+from app.modules.catalog.models import Offer
+from app.modules.orders.models import Order, OrderLine
 from app.modules.payments.models import PaymentAttempt
+from app.modules.purchasing.service import allocate_order_line_to_batch
 from app.modules.sourcing.models import SourcingJob
 from app.modules.system.idempotency import canonical_request_hash
 from app.modules.system.outbox import DomainEvent, add_outbox_event
@@ -158,6 +160,15 @@ class PaymentService:
             order.paid_at = now
             order.delivery_commitment_at = now + timedelta(hours=self._delivery_commitment_hours)
             session.add(SourcingJob(order_id=order.id, status="pending"))
+            rows = (
+                await session.execute(
+                    select(OrderLine, Offer)
+                    .join(Offer, Offer.id == OrderLine.offer_id)
+                    .where(OrderLine.order_id == order.id)
+                )
+            ).all()
+            for order_line, offer in rows:
+                await allocate_order_line_to_batch(session, order_line=order_line, offer=offer)
             add_outbox_event(
                 session,
                 DomainEvent(
