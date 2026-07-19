@@ -1444,6 +1444,8 @@ The current baseline can be summarized as follows:
 
 > A premium, immersive pet-nutrition commerce experience acquires urban Iranian dog and cat owners through supplier-verified products, transparent product-level savings, and a firm 14-day delivery commitment. The platform operates the initial assortment through hybrid demand aggregation and individual sourcing. Checkout activates a household account, progressive pet profiles, wallet, missions, and an immersive order journey. Purchases may belong to one pet, multiple pets, or shared household supply. Consumption is estimated progressively, and replenishment may be reserved 14 days before predicted depletion with explicit customer approval. The shop is the first system in a larger curated pet platform that will eventually coordinate products, services, care journeys, and history around each pet.
 
+**The "firm 14-day delivery commitment" wording in the paragraph above is superseded.** See Amendment PPDR-A1 in Part XXIV: the currently locked, implemented commitment is exactly 366 hours, not 14 days. This paragraph is left as originally written (not silently edited) per this document's own governance rule (§67-69) that changes are recorded as amendments, not retroactive rewrites; read it historically alongside PPDR-A1, not as the current figure. The 14-day replenishment-reservation lead time (Decision 0.30) is a separate, still-current figure and is not affected by this amendment.
+
 ---
 
 ## 70. Approval Status
@@ -1454,4 +1456,69 @@ The final decision recorded is:
 
 > Products below the six-month shelf-life threshold may only be offered with exact expiry disclosure, explicit customer approval, and an additional discount.
 
-Any later change should be recorded as a formal amendment rather than silently replacing this baseline.
+Any later change should be recorded as a formal amendment rather than silently replacing this baseline. See Part XXIV for amendments recorded after this baseline was written.
+
+---
+
+# Part XXIV — Amendments
+
+Amendments follow the format defined in §69. Each amendment is dated and additive; none of them edit the decision text above in place.
+
+## Amendment PPDR-A1 — Delivery commitment is 366 hours, not 14 days
+
+```text
+Decision ID: PPDR-A1 (amends Decision 0.14, Decision 0.15, Decision 0.16, Decision 0.18)
+Previous decision: "The order must reach the customer within 14 days" (0.14); the 14-day clock
+  starts at successful payment (0.15); missed-commitment handling and the day-15 compensation
+  trigger are expressed in calendar days (0.16, 0.18).
+New decision: The firm delivery commitment is exactly 366 hours from verified successful
+  payment, not a 14-calendar-day approximation. 366 hours is approximately 15 days and 6 hours
+  -- later than a literal "day 15" reading of 0.18's compensation trigger. Implementation must
+  compute the deadline and the compensation trigger as an hour-precise offset
+  (delivery_commitment_at = payment_verified_at + 366h), never by adding 14 or 15 calendar days.
+  No product copy, UI string, or documentation may describe this commitment as "14 days"; use
+  the actual hour figure or an accurate day-and-hour phrasing (e.g. "within about 15 days").
+Reason: ADR-002 (Money and paid-order commitment, approved 2026-07-16) and ADR-004 (K9 policy
+  configuration boundaries, accepted for K9.0) both postdate this product decision record's
+  Decision 0.14-0.18 and lock delivery_commitment_hours=366 as the founder-approved runtime
+  value (see backend/release-contract.json -> policy_defaults.delivery_commitment_hours and
+  Settings.delivery_commitment_hours). Per this document's own source-of-truth rule (§67), a
+  later-approved decision supersedes an earlier one; this amendment records that resolution
+  explicitly instead of leaving the two documents silently contradicting each other, which is
+  what the design-state matrix and mission brief that prompted this pass both found.
+Affected flows: product page delivery-commitment copy, checkout, order detail, order journey,
+  homepage value proposition (Part XVIII §56-58), wait-communication copy (Part VI §27).
+Affected data: OrderDetailResponse.policies.delivery_commitment_hours,
+  Order.delivery_commitment_at (already computed as payment_verified_at + 366h in the current
+  implementation -- code was already correct; this amendment brings the product decision record
+  into agreement with it).
+Affected policies: none change; DELIVERY_COMMITMENT_HOURS=366 is already the enforced,
+  validated Settings value and this amendment does not alter runtime behavior.
+Migration required: none (no schema or behavior change; documentation-only correction).
+Approved by: recorded per ADR-002/ADR-004's existing approval; no new approval sought since no
+  behavior changes, only which document is treated as authoritative for this specific figure.
+Approval date: 2026-07-16 (ADR-002/ADR-004 approval date; this amendment recorded 2026-07-19).
+```
+
+## Amendment PPDR-A2 — Design-state matrix summary corrected from row-level evidence
+
+```text
+Decision ID: PPDR-A2
+Previous decision: none (documentation-accuracy correction, not a product decision change).
+New decision: frontend/docs/design-state-implementation-matrix.md's "Status summary" and "By
+  flow group" tables are recomputed from the 152 row-level statuses rather than a summary table
+  that had drifted out of sync with them. See that document's "Program-closure pass (2026-07-19)"
+  section for the reconciliation and the corrected counts.
+Reason: a 2026-07-19 audit found the matrix's own summary table (139 IMPLEMENTED / 5 PARTIAL /
+  3 MISSING / 3 BACKEND_BLOCKED / 0 POLICY_HIDDEN / 2 OBSOLETE_BY_CONTRACT) did not match what an
+  exhaustive scan of the 152 row-level status cells actually showed (146 / 1 / 0 / 3 / 0 / 2 at
+  the time of the audit, before this pass's own closures). The row data was correct; only the
+  aggregate table had gone stale.
+Affected flows: none (documentation only).
+Affected data: none.
+Affected policies: none.
+Migration required: none.
+Approved by: recorded as part of this engineering pass per the mission's explicit instruction to
+  "never silently resolve a conflict" between documents.
+Approval date: 2026-07-19.
+```

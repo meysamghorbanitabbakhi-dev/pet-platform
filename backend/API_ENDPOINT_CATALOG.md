@@ -54,3 +54,19 @@ The checked OpenAPI contract's path and operation counts are governed by `releas
 ## Policy-hidden customer capabilities
 
 There are no executable customer endpoints for reserve-now, self-service cancellation after sourcing, refund, replacement, substitution or delay compensation. Push notifications are not claimed in K9.
+
+## Design-contract closure endpoints (2026-07-19)
+
+Added to close the last open rows of the accepted 152-state design contract (G5-AUTH-02, G5-SHOP-13, G5-SHOP-14) — see `frontend/docs/design-state-implementation-matrix.md`.
+
+| Method | Endpoint | Capability |
+|---|---|---|
+| GET | `/catalog/offers/search` | Backend-owned, Persian-normalized (ی/ي, ک/ك, diacritics, ZWNJ, casefold) substring search over title and SKU; bounded `OffsetPage`, deterministic ordering, same availability filtering as `/catalog/offers` |
+| GET | `/catalog/products/{product_id}/alternatives` | Public read of operator-approved product alternatives, revalidated against currently-available offers at read time |
+| POST | `/operator/product-alternatives` | Operator proposes a directed product-to-product alternative (self-reference and duplicate pairs rejected) |
+| GET | `/operator/product-alternatives` | Operator list/review queue, filterable by status and source product |
+| PATCH | `/operator/product-alternatives/{alternative_id}` | Operator edits rationale/compatibility notes/rank; rejected once retired |
+| POST | `/operator/product-alternatives/{alternative_id}/approve` | Operator approval; idempotent (replaying an already-approved id is a no-op, not a duplicate audit entry) |
+| POST | `/operator/product-alternatives/{alternative_id}/retire` | Operator retirement; idempotent |
+
+No customer-facing operator UI exists for product alternatives, matching every other operator capability in this catalog (price intelligence, supplier management, etc.) — operator routes are API-only by established convention.
