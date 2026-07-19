@@ -5341,6 +5341,152 @@
         "title": "OperatorProductAlternativeResponse",
         "type": "object"
       },
+      "OperatorShelfLifeExceptionResponse": {
+        "properties": {
+          "additional_discount_irr": {
+            "title": "Additional Discount Irr",
+            "type": "integer"
+          },
+          "evidence_file_id": {
+            "format": "uuid",
+            "title": "Evidence File Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_line_id": {
+            "format": "uuid",
+            "title": "Order Line Id",
+            "type": "string"
+          },
+          "proposed_at": {
+            "format": "date-time",
+            "title": "Proposed At",
+            "type": "string"
+          },
+          "proposed_by_operator_id": {
+            "format": "uuid",
+            "title": "Proposed By Operator Id",
+            "type": "string"
+          },
+          "proposed_exact_expiry_date": {
+            "format": "date",
+            "title": "Proposed Exact Expiry Date",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "refund_amount_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refund Amount Irr"
+          },
+          "refund_attested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refund Attested At"
+          },
+          "refund_attested_by_operator_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refund Attested By Operator Id"
+          },
+          "refund_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refund Reference"
+          },
+          "refund_status": {
+            "title": "Refund Status",
+            "type": "string"
+          },
+          "respond_by": {
+            "format": "date-time",
+            "title": "Respond By",
+            "type": "string"
+          },
+          "responded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responded At"
+          },
+          "responded_by_customer_identity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responded By Customer Identity Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "order_line_id",
+          "proposed_exact_expiry_date",
+          "additional_discount_irr",
+          "reason",
+          "evidence_file_id",
+          "proposed_by_operator_id",
+          "proposed_at",
+          "respond_by",
+          "status",
+          "responded_at",
+          "responded_by_customer_identity_id",
+          "refund_status",
+          "refund_amount_irr",
+          "refund_attested_at",
+          "refund_attested_by_operator_id",
+          "refund_reference"
+        ],
+        "title": "OperatorShelfLifeExceptionResponse",
+        "type": "object"
+      },
       "OrderAddressSnapshotResponse": {
         "properties": {
           "address_line": {
@@ -7991,6 +8137,39 @@
         "title": "RefreshBody",
         "type": "object"
       },
+      "RefundAttestBody": {
+        "properties": {
+          "evidence_file_id": {
+            "format": "uuid",
+            "title": "Evidence File Id",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          }
+        },
+        "required": [
+          "evidence_file_id",
+          "reason"
+        ],
+        "title": "RefundAttestBody",
+        "type": "object"
+      },
       "ReleaseSummary": {
         "properties": {
           "checksum_sha256": {
@@ -8401,6 +8580,131 @@
           "currency"
         ],
         "title": "SafePaymentSummaryResponse",
+        "type": "object"
+      },
+      "ShelfLifeExceptionProposeBody": {
+        "properties": {
+          "additional_discount_irr": {
+            "minimum": 0.0,
+            "title": "Additional Discount Irr",
+            "type": "integer"
+          },
+          "evidence_file_id": {
+            "format": "uuid",
+            "title": "Evidence File Id",
+            "type": "string"
+          },
+          "proposed_exact_expiry_date": {
+            "format": "date",
+            "title": "Proposed Exact Expiry Date",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposed_exact_expiry_date",
+          "additional_discount_irr",
+          "evidence_file_id",
+          "reason"
+        ],
+        "title": "ShelfLifeExceptionProposeBody",
+        "type": "object"
+      },
+      "ShelfLifeExceptionResponse": {
+        "properties": {
+          "additional_discount_irr": {
+            "title": "Additional Discount Irr",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_line_id": {
+            "format": "uuid",
+            "title": "Order Line Id",
+            "type": "string"
+          },
+          "proposed_exact_expiry_date": {
+            "format": "date",
+            "title": "Proposed Exact Expiry Date",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "refund_amount_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refund Amount Irr"
+          },
+          "refund_auto_processed": {
+            "const": false,
+            "default": false,
+            "title": "Refund Auto Processed",
+            "type": "boolean"
+          },
+          "refund_status": {
+            "enum": [
+              "not_applicable",
+              "owed",
+              "operator_attested"
+            ],
+            "title": "Refund Status",
+            "type": "string"
+          },
+          "respond_by": {
+            "format": "date-time",
+            "title": "Respond By",
+            "type": "string"
+          },
+          "responded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responded At"
+          },
+          "status": {
+            "enum": [
+              "proposed",
+              "accepted",
+              "declined",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "order_line_id",
+          "proposed_exact_expiry_date",
+          "additional_discount_irr",
+          "reason",
+          "status",
+          "respond_by",
+          "refund_status"
+        ],
+        "title": "ShelfLifeExceptionResponse",
         "type": "object"
       },
       "SmsPreferenceResponse": {
@@ -12016,6 +12320,64 @@
         ]
       }
     },
+    "/api/v1/operator/order-cancellations/{cancellation_id}/attest-refund": {
+      "post": {
+        "operationId": "attest_order_cancellation_refund_api_v1_operator_order_cancellations__cancellation_id__attest_refund_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cancellation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cancellation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundAttestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCancellationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Attest Order Cancellation Refund",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
     "/api/v1/operator/order-lines/{line_id}/confirm-sourced": {
       "post": {
         "operationId": "confirm_sourced_unit_api_v1_operator_order_lines__line_id__confirm_sourced_post",
@@ -12062,6 +12424,64 @@
           }
         ],
         "summary": "Confirm Sourced Unit",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/order-lines/{line_id}/shelf-life-exceptions": {
+      "post": {
+        "operationId": "propose_order_line_shelf_life_exception_api_v1_operator_order_lines__line_id__shelf_life_exceptions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "line_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Line Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShelfLifeExceptionProposeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorShelfLifeExceptionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Propose Order Line Shelf Life Exception",
         "tags": [
           "operator"
         ]
@@ -13670,6 +14090,170 @@
         ]
       }
     },
+    "/api/v1/operator/shelf-life-exceptions": {
+      "get": {
+        "operationId": "list_shelf_life_exceptions_api_v1_operator_shelf_life_exceptions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OperatorShelfLifeExceptionResponse"
+                  },
+                  "title": "Response List Shelf Life Exceptions Api V1 Operator Shelf Life Exceptions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Shelf Life Exceptions",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/shelf-life-exceptions/{exception_id}": {
+      "get": {
+        "operationId": "get_shelf_life_exception_api_v1_operator_shelf_life_exceptions__exception_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorShelfLifeExceptionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Shelf Life Exception",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/shelf-life-exceptions/{exception_id}/attest-refund": {
+      "post": {
+        "operationId": "attest_shelf_life_exception_refund_api_v1_operator_shelf_life_exceptions__exception_id__attest_refund_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundAttestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorShelfLifeExceptionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Attest Shelf Life Exception Refund",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
     "/api/v1/operator/suppliers": {
       "post": {
         "operationId": "create_supplier_api_v1_operator_suppliers_post",
@@ -14378,6 +14962,174 @@
           }
         ],
         "summary": "Replace Order Pet Plan",
+        "tags": [
+          "commerce"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/shelf-life-exceptions": {
+      "get": {
+        "operationId": "list_order_shelf_life_exceptions_api_v1_orders__order_id__shelf_life_exceptions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShelfLifeExceptionResponse"
+                  },
+                  "title": "Response List Order Shelf Life Exceptions Api V1 Orders  Order Id  Shelf Life Exceptions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Order Shelf Life Exceptions",
+        "tags": [
+          "commerce"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/shelf-life-exceptions/{exception_id}/accept": {
+      "post": {
+        "operationId": "accept_order_shelf_life_exception_api_v1_orders__order_id__shelf_life_exceptions__exception_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShelfLifeExceptionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Order Shelf Life Exception",
+        "tags": [
+          "commerce"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/shelf-life-exceptions/{exception_id}/decline": {
+      "post": {
+        "operationId": "decline_order_shelf_life_exception_api_v1_orders__order_id__shelf_life_exceptions__exception_id__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShelfLifeExceptionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline Order Shelf Life Exception",
         "tags": [
           "commerce"
         ]

@@ -39,6 +39,7 @@ import type {
   OrderCancellationBody,
   OrderCancellationResponse,
   OrderListPage,
+  ShelfLifeExceptionResponse,
   PrivacyRequestBody,
   PrivacyRequestPage,
   PrivacyRequestResponse,
@@ -1303,6 +1304,57 @@ export async function cancelOrderBackend(
       body,
       headers,
     }),
+  );
+}
+
+export async function listShelfLifeExceptionsBackend(
+  orderId: string,
+): Promise<ShelfLifeExceptionResponse[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listShelfLifeExceptions(orderId);
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/orders/{order_id}/shelf-life-exceptions", {
+      params: { path: { order_id: orderId } },
+      headers,
+    }),
+  );
+}
+
+export async function acceptShelfLifeExceptionBackend(
+  orderId: string,
+  exceptionId: string,
+): Promise<ShelfLifeExceptionResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.respondToShelfLifeException(orderId, exceptionId, "accept");
+  }
+  return withAuth((headers) =>
+    backendClient.POST(
+      "/api/v1/orders/{order_id}/shelf-life-exceptions/{exception_id}/accept",
+      {
+        params: { path: { order_id: orderId, exception_id: exceptionId } },
+        headers,
+      },
+    ),
+  );
+}
+
+export async function declineShelfLifeExceptionBackend(
+  orderId: string,
+  exceptionId: string,
+): Promise<ShelfLifeExceptionResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.respondToShelfLifeException(orderId, exceptionId, "decline");
+  }
+  return withAuth((headers) =>
+    backendClient.POST(
+      "/api/v1/orders/{order_id}/shelf-life-exceptions/{exception_id}/decline",
+      {
+        params: { path: { order_id: orderId, exception_id: exceptionId } },
+        headers,
+      },
+    ),
   );
 }
 

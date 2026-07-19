@@ -39,6 +39,11 @@ EVENT_REGISTRY: dict[str, EventDefinition] = {
         disposition="audit_only",
         description="Journey completion created diary and Garden effects.",
     ),
+    "orders.shelf_life_exception_proposed": EventDefinition(
+        event_type="orders.shelf_life_exception_proposed",
+        disposition="handler",
+        description="Notifies the household owner a shelf-life exception needs a response.",
+    ),
 }
 
 

@@ -86,6 +86,7 @@ export type DelayAcknowledgementResponse =
   Schema<"DelayAcknowledgementResponse">;
 export type OrderCancellationBody = Schema<"OrderCancellationBody">;
 export type OrderCancellationResponse = Schema<"OrderCancellationResponse">;
+export type ShelfLifeExceptionResponse = Schema<"ShelfLifeExceptionResponse">;
 export type SourcedUnitResponse = Schema<"SourcedUnitResponse">;
 export type AvailabilitySubscriptionPage =
   Schema<"OffsetPage_AvailabilitySubscriptionResponse_">;

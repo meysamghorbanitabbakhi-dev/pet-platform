@@ -37,6 +37,7 @@ def test_metadata_contains_foundation_and_transactional_commerce_tables() -> Non
         "orders_delay_acknowledgements",
         "orders_orders",
         "orders_resolutions",
+        "orders_shelf_life_exceptions",
         "payments_attempts",
         "pet_health_measurements",
         "pet_health_benchmark_definitions",

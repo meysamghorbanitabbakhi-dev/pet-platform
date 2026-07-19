@@ -28,6 +28,7 @@ from app.api.contracts import (
     ProductAlternativeResponse,
     ProductMediaResponse,
     SafePaymentSummaryResponse,
+    ShelfLifeExceptionResponse,
     SourcedUnitResponse,
 )
 from app.api.cursor import CursorError, CursorPosition, cursor_page, decode_cursor, encode_cursor
@@ -60,6 +61,12 @@ from app.modules.orders.cancellation import (
 )
 from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderDelayAcknowledgement, OrderLine, OrderLinePetPlan
+from app.modules.orders.shelf_life_exceptions import (
+    ShelfLifeException,
+    ShelfLifeExceptionError,
+    accept_shelf_life_exception,
+    decline_shelf_life_exception,
+)
 from app.modules.payments.models import PaymentAttempt
 from app.modules.payments.service import PaymentService, PaymentWorkflowError
 from app.modules.pet_knowledge.search import normalize_persian_search
@@ -960,6 +967,119 @@ async def cancel_order(
         refund_amount_irr=cancellation.refund_amount_irr,
         refund_status=cancellation.refund_status,
     )
+
+
+def _shelf_life_exception_response(
+    exception: ShelfLifeException,
+) -> ShelfLifeExceptionResponse:
+    return ShelfLifeExceptionResponse(
+        id=exception.id,
+        order_line_id=exception.order_line_id,
+        proposed_exact_expiry_date=exception.proposed_exact_expiry_date,
+        additional_discount_irr=exception.additional_discount_irr,
+        reason=exception.reason,
+        status=exception.status,
+        respond_by=exception.respond_by,
+        responded_at=exception.responded_at,
+        refund_status=exception.refund_status,
+        refund_amount_irr=exception.refund_amount_irr,
+    )
+
+
+async def _owned_shelf_life_exception(
+    session: AsyncSession, *, order_id: UUID, exception_id: UUID, customer_identity_id: UUID
+) -> tuple[ShelfLifeException, OrderLine]:
+    order = await session.scalar(select(Order).where(Order.id == order_id).with_for_update())
+    if order is None or order.customer_identity_id != customer_identity_id:
+        raise HTTPException(status_code=404, detail="order_not_found")
+    row = (
+        await session.execute(
+            select(ShelfLifeException, OrderLine)
+            .join(OrderLine, OrderLine.id == ShelfLifeException.order_line_id)
+            .where(ShelfLifeException.id == exception_id, OrderLine.order_id == order.id)
+            .with_for_update(of=ShelfLifeException)
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="shelf_life_exception_not_found")
+    exception, order_line = row
+    return exception, order_line
+
+
+@router.get(
+    "/orders/{order_id}/shelf-life-exceptions",
+    response_model=list[ShelfLifeExceptionResponse],
+)
+async def list_order_shelf_life_exceptions(
+    order_id: UUID, identity: CurrentIdentity, session: SessionDependency
+) -> list[ShelfLifeExceptionResponse]:
+    order = await session.get(Order, order_id)
+    if order is None or order.customer_identity_id != identity.id:
+        raise HTTPException(status_code=404, detail="order_not_found")
+    rows = list(
+        (
+            await session.scalars(
+                select(ShelfLifeException)
+                .join(OrderLine, OrderLine.id == ShelfLifeException.order_line_id)
+                .where(OrderLine.order_id == order.id)
+                .order_by(ShelfLifeException.proposed_at.desc())
+            )
+        ).all()
+    )
+    return [_shelf_life_exception_response(item) for item in rows]
+
+
+@router.post(
+    "/orders/{order_id}/shelf-life-exceptions/{exception_id}/accept",
+    response_model=ShelfLifeExceptionResponse,
+)
+async def accept_order_shelf_life_exception(
+    order_id: UUID,
+    exception_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+) -> ShelfLifeExceptionResponse:
+    exception, order_line = await _owned_shelf_life_exception(
+        session, order_id=order_id, exception_id=exception_id, customer_identity_id=identity.id
+    )
+    offer = await session.get(Offer, order_line.offer_id)
+    if offer is None:
+        raise HTTPException(status_code=404, detail="offer_not_found")
+    try:
+        exception = await accept_shelf_life_exception(
+            session,
+            exception=exception,
+            order_line=order_line,
+            supplier_id=offer.supplier_id,
+            customer_identity_id=identity.id,
+        )
+    except ShelfLifeExceptionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return _shelf_life_exception_response(exception)
+
+
+@router.post(
+    "/orders/{order_id}/shelf-life-exceptions/{exception_id}/decline",
+    response_model=ShelfLifeExceptionResponse,
+)
+async def decline_order_shelf_life_exception(
+    order_id: UUID,
+    exception_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+) -> ShelfLifeExceptionResponse:
+    exception, order_line = await _owned_shelf_life_exception(
+        session, order_id=order_id, exception_id=exception_id, customer_identity_id=identity.id
+    )
+    try:
+        exception = await decline_shelf_life_exception(
+            session, exception=exception, order_line=order_line, customer_identity_id=identity.id
+        )
+    except ShelfLifeExceptionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return _shelf_life_exception_response(exception)
 
 
 @router.put("/orders/{order_id}/pet-plan", status_code=status.HTTP_204_NO_CONTENT)

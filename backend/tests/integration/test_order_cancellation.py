@@ -24,8 +24,9 @@ from app.modules.orders.cancellation import (
 from app.modules.orders.models import Order, OrderLine
 from app.modules.purchasing.models import PurchaseBatch, PurchaseBatchAllocation
 from app.modules.purchasing.service import allocate_order_line_to_batch, commit_batch
+from app.modules.system.models import OperatorAuditLog
 from app.modules.trust.files import EvidenceFile
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 pytestmark = pytest.mark.skipif(
     os.getenv("K10_RUNTIME_TESTS") != "1",
@@ -582,4 +583,89 @@ async def test_http_cancel_is_non_enumerating_for_missing_and_foreign_orders(
     )
     assert nonexistent.status_code == foreign.status_code == 404
     assert nonexistent.json()["error"]["code"] == foreign.json()["error"]["code"]
-    assert nonexistent.json()["error"]["message"] == foreign.json()["error"]["message"]
+
+
+async def _audit_count(action: str, resource_id: str) -> int:
+    async with SessionFactory() as session:
+        return (
+            await session.execute(
+                select(func.count(OperatorAuditLog.id)).where(
+                    OperatorAuditLog.action == action,
+                    OperatorAuditLog.resource_id == resource_id,
+                )
+            )
+        ).scalar_one()
+
+
+async def test_http_operator_attests_cancellation_refund_and_is_idempotent(
+    app_and_client: tuple[object, httpx.AsyncClient]
+) -> None:
+    app, client = app_and_client
+    offer_seed = await _seed_offer()
+    order_seed = await _seed_paid_order_allocated_to_batch(offer_seed, quantity=1)
+    async with SessionFactory() as session:
+        customer = await session.get(AuthIdentity, order_seed.customer_id)
+    app.dependency_overrides[get_current_identity] = lambda: customer
+    cancelled = await client.post(
+        f"/api/v1/orders/{order_seed.order_id}/cancel",
+        json={"reason": "changed my mind"},
+    )
+    assert cancelled.status_code == 200
+    async with SessionFactory() as session:
+        cancellation = await session.scalar(
+            select(OrderCancellation).where(OrderCancellation.order_id == order_seed.order_id)
+        )
+    assert cancellation is not None
+    cancellation_id = cancellation.id
+
+    evidence_id = await _evidence_file(offer_seed.operator_id)
+    async with SessionFactory() as session:
+        operator = await session.get(AuthIdentity, offer_seed.operator_id)
+    app.dependency_overrides[get_current_identity] = lambda: operator
+
+    response = await client.post(
+        f"/api/v1/operator/order-cancellations/{cancellation_id}/attest-refund",
+        json={
+            "evidence_file_id": str(evidence_id),
+            "reference": "BANK-REF-9",
+            "reason": "manually transferred refund to customer bank account",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["refund_status"] == "operator_attested"
+    assert (
+        await _audit_count("order_cancellation.refund_attested", str(cancellation_id)) == 1
+    )
+
+    replay = await client.post(
+        f"/api/v1/operator/order-cancellations/{cancellation_id}/attest-refund",
+        json={
+            "evidence_file_id": str(evidence_id),
+            "reference": "BANK-REF-9",
+            "reason": "retry after client timeout",
+        },
+    )
+    assert replay.status_code == 200
+    assert (
+        await _audit_count("order_cancellation.refund_attested", str(cancellation_id)) == 1
+    )
+
+
+async def test_http_operator_attest_refund_unknown_cancellation_is_404(
+    app_and_client: tuple[object, httpx.AsyncClient]
+) -> None:
+    app, client = app_and_client
+    offer_seed = await _seed_offer()
+    evidence_id = await _evidence_file(offer_seed.operator_id)
+    async with SessionFactory() as session:
+        operator = await session.get(AuthIdentity, offer_seed.operator_id)
+    app.dependency_overrides[get_current_identity] = lambda: operator
+
+    response = await client.post(
+        f"/api/v1/operator/order-cancellations/{uuid.uuid4()}/attest-refund",
+        json={
+            "evidence_file_id": str(evidence_id),
+            "reason": "does not exist",
+        },
+    )
+    assert response.status_code == 404

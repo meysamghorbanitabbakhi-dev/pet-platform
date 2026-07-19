@@ -49,6 +49,7 @@ import type {
   OrderCancellationBody,
   OrderCancellationResponse,
   OrderDetailResponse,
+  ShelfLifeExceptionResponse,
   OrderJourneyResponse,
   ProductAlternativeResponse,
   OrderListPage,
@@ -482,6 +483,26 @@ export function cancelOrder(orderId: string, body: OrderCancellationBody) {
     method: "POST",
     body,
   });
+}
+
+export function listShelfLifeExceptions(orderId: string) {
+  return bff<ShelfLifeExceptionResponse[]>(
+    `/api/bff/orders/${orderId}/shelf-life-exceptions`,
+  );
+}
+
+export function acceptShelfLifeException(orderId: string, exceptionId: string) {
+  return bff<ShelfLifeExceptionResponse>(
+    `/api/bff/orders/${orderId}/shelf-life-exceptions/${exceptionId}/accept`,
+    { method: "POST" },
+  );
+}
+
+export function declineShelfLifeException(orderId: string, exceptionId: string) {
+  return bff<ShelfLifeExceptionResponse>(
+    `/api/bff/orders/${orderId}/shelf-life-exceptions/${exceptionId}/decline`,
+    { method: "POST" },
+  );
 }
 
 export function getOrderJourney(orderId: string) {

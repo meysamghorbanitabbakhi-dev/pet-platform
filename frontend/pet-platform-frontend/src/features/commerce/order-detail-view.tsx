@@ -15,16 +15,20 @@ import {
   Skeleton,
 } from "@/components/primitives";
 import {
+  acceptShelfLifeException,
   acknowledgeOrderDelay,
   cancelOrder,
+  declineShelfLifeException,
   getMeContext,
   getOrderDetail,
   getOrderJourney,
+  listShelfLifeExceptions,
   replaceOrderPetPlan,
 } from "@/lib/api/client";
 import type {
   OrderDetailResponse,
   OrderJourneyResponse,
+  ShelfLifeExceptionResponse,
 } from "@/lib/api-types";
 import { ApiError } from "@/lib/api/errors";
 import { clearCart } from "@/lib/cart";
@@ -87,6 +91,11 @@ export function OrderDetailView({
   const journeyQuery = useQuery({
     queryKey: ["orders", orderId, "journey"],
     queryFn: () => getOrderJourney(orderId ?? ""),
+    enabled: Boolean(orderId),
+  });
+  const exceptionsQuery = useQuery({
+    queryKey: ["orders", orderId, "shelf-life-exceptions"],
+    queryFn: () => listShelfLifeExceptions(orderId ?? ""),
     enabled: Boolean(orderId),
   });
 
@@ -161,8 +170,115 @@ export function OrderDetailView({
         </Banner>
       ) : null}
       <OrderSummary order={orderQuery.data} journey={journeyQuery.data} />
+      <ShelfLifeExceptions
+        orderId={orderQuery.data.id}
+        exceptions={exceptionsQuery.data ?? []}
+      />
       <OptionalPetPlan order={orderQuery.data} />
     </div>
+  );
+}
+
+function ShelfLifeExceptions({
+  orderId,
+  exceptions,
+}: {
+  orderId: string;
+  exceptions: ShelfLifeExceptionResponse[];
+}) {
+  const queryClient = useQueryClient();
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+
+  async function invalidate() {
+    await queryClient.invalidateQueries({
+      queryKey: ["orders", orderId, "shelf-life-exceptions"],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["orders", orderId] });
+  }
+
+  const acceptMutation = useMutation({
+    mutationFn: (exceptionId: string) => acceptShelfLifeException(orderId, exceptionId),
+    onSuccess: invalidate,
+    onSettled: () => setRespondingId(null),
+  });
+  const declineMutation = useMutation({
+    mutationFn: (exceptionId: string) => declineShelfLifeException(orderId, exceptionId),
+    onSuccess: invalidate,
+    onSettled: () => setRespondingId(null),
+  });
+
+  if (exceptions.length === 0) return null;
+
+  return (
+    <Card className="stack">
+      <div className="eyebrow">استثنای تاریخ انقضا</div>
+      {exceptions.map((exception) => (
+        <div className="stack" key={exception.id}>
+          {exception.status === "proposed" ? (
+            <Banner tone="warning">
+              <p>
+                تامین‌کننده کالایی با تاریخ انقضای{" "}
+                {formatIranDate(exception.proposed_exact_expiry_date)} ارسال کرده
+                که کوتاه‌تر از تعهد اولیه سفارش است.
+                {exception.additional_discount_irr > 0
+                  ? ` در صورت پذیرش، مبلغ ${formatTomanFromIrr(exception.additional_discount_irr)} بازگردانده می‌شود.`
+                  : ""}
+              </p>
+              <p className="caption">دلیل: {exception.reason}</p>
+              <p className="caption">
+                مهلت پاسخ: {formatIranDateTime(exception.respond_by)}
+              </p>
+              {respondingId === exception.id &&
+              (acceptMutation.isError || declineMutation.isError) ? (
+                <Banner tone="error">
+                  {errorText(acceptMutation.error ?? declineMutation.error)}
+                </Banner>
+              ) : null}
+              <div className="cluster">
+                <Button
+                  loading={acceptMutation.isPending && respondingId === exception.id}
+                  disabled={acceptMutation.isPending || declineMutation.isPending}
+                  onClick={() => {
+                    setRespondingId(exception.id);
+                    acceptMutation.mutate(exception.id);
+                  }}
+                >
+                  پذیرش و ادامه سفارش
+                </Button>
+                <Button
+                  variant="ghost"
+                  loading={declineMutation.isPending && respondingId === exception.id}
+                  disabled={acceptMutation.isPending || declineMutation.isPending}
+                  onClick={() => {
+                    setRespondingId(exception.id);
+                    declineMutation.mutate(exception.id);
+                  }}
+                >
+                  رد و بازگشت وجه
+                </Button>
+              </div>
+            </Banner>
+          ) : (
+            <Banner tone="info">
+              {exception.status === "accepted"
+                ? "استثنای تاریخ انقضا پذیرفته شد و سفارش ادامه می‌یابد."
+                : exception.status === "declined"
+                  ? "این قلم رد شد و تحویل داده نخواهد شد."
+                  : "مهلت پاسخ به این استثنا بدون پاسخ به پایان رسید؛ این قلم تحویل داده نخواهد شد."}
+              {exception.refund_amount_irr ? (
+                <>
+                  {" "}
+                  مبلغ {formatTomanFromIrr(exception.refund_amount_irr)}{" "}
+                  {exception.refund_status === "operator_attested"
+                    ? "بازگردانده شد."
+                    : "بازگردانده خواهد شد؛ بازگشت وجه به صورت دستی توسط تیم پشتیبانی انجام می‌شود و هنوز پرداخت نشده است."}
+                </>
+              ) : null}
+            </Banner>
+          )}
+        </div>
+      ))}
+    </Card>
   );
 }
 

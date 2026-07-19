@@ -1,4 +1,3 @@
-import calendar
 import csv
 import hashlib
 import io
@@ -17,10 +16,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.contracts import JourneyContentResponse
+from app.api.contracts import JourneyContentResponse, OrderCancellationResponse
 from app.api.dependencies import CurrentOperator
 from app.api.middleware import request_id_context
-from app.common.time import utc_now
+from app.common.time import add_months, utc_now
 from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.integrations.payment.factory import (
@@ -38,12 +37,19 @@ from app.modules.inventory.projection import DeliveryProjectionError, project_de
 from app.modules.journeys.content import valid_journey_content
 from app.modules.journeys.models import JourneyDefinition, PetJourney
 from app.modules.notifications.models import Notification, NotificationTemplate
+from app.modules.orders.cancellation import OrderCancellation
 from app.modules.orders.fulfillment import (
     FulfillmentTransitionError,
     apply_fulfillment_transition,
 )
 from app.modules.orders.models import Order, OrderLine
+from app.modules.orders.refund_attestation import RefundAttestationError, attest_refund
 from app.modules.orders.resolutions import OrderResolution
+from app.modules.orders.shelf_life_exceptions import (
+    ShelfLifeException,
+    ShelfLifeExceptionError,
+    propose_shelf_life_exception,
+)
 from app.modules.payments.models import PaymentAttempt
 from app.modules.payments.service import PaymentService, PaymentWorkflowError
 from app.modules.pet_health.models import BenchmarkDefinition, BodyAssessment
@@ -2109,7 +2115,7 @@ async def confirm_sourced_unit(
     line, order, offer, supplier = row
     if order.delivery_commitment_at is None:
         raise HTTPException(status_code=409, detail="order_has_no_delivery_commitment")
-    minimum_date = _add_months_date(
+    minimum_date = add_months(
         order.delivery_commitment_at.date(), offer.minimum_shelf_life_months
     )
     if body.exact_expiry_date < minimum_date:
@@ -2157,6 +2163,252 @@ async def confirm_sourced_unit(
         },
     )
     await session.commit()
+
+
+class ShelfLifeExceptionProposeBody(BaseModel):
+    proposed_exact_expiry_date: date
+    additional_discount_irr: int = Field(ge=0)
+    evidence_file_id: UUID
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+class OperatorShelfLifeExceptionResponse(BaseModel):
+    id: UUID
+    order_line_id: UUID
+    proposed_exact_expiry_date: date
+    additional_discount_irr: int
+    reason: str
+    evidence_file_id: UUID
+    proposed_by_operator_id: UUID
+    proposed_at: datetime
+    respond_by: datetime
+    status: str
+    responded_at: datetime | None
+    responded_by_customer_identity_id: UUID | None
+    refund_status: str
+    refund_amount_irr: int | None
+    refund_attested_at: datetime | None
+    refund_attested_by_operator_id: UUID | None
+    refund_reference: str | None
+
+
+class RefundAttestBody(BaseModel):
+    evidence_file_id: UUID
+    reference: str | None = Field(default=None, max_length=300)
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+def _shelf_life_exception_response(
+    exception: ShelfLifeException,
+) -> OperatorShelfLifeExceptionResponse:
+    return OperatorShelfLifeExceptionResponse(
+        id=exception.id,
+        order_line_id=exception.order_line_id,
+        proposed_exact_expiry_date=exception.proposed_exact_expiry_date,
+        additional_discount_irr=exception.additional_discount_irr,
+        reason=exception.reason,
+        evidence_file_id=exception.evidence_file_id,
+        proposed_by_operator_id=exception.proposed_by_operator_id,
+        proposed_at=exception.proposed_at,
+        respond_by=exception.respond_by,
+        status=exception.status,
+        responded_at=exception.responded_at,
+        responded_by_customer_identity_id=exception.responded_by_customer_identity_id,
+        refund_status=exception.refund_status,
+        refund_amount_irr=exception.refund_amount_irr,
+        refund_attested_at=exception.refund_attested_at,
+        refund_attested_by_operator_id=exception.refund_attested_by_operator_id,
+        refund_reference=exception.refund_reference,
+    )
+
+
+@router.post(
+    "/order-lines/{line_id}/shelf-life-exceptions",
+    response_model=OperatorShelfLifeExceptionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def propose_order_line_shelf_life_exception(
+    line_id: UUID,
+    body: ShelfLifeExceptionProposeBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> OperatorShelfLifeExceptionResponse:
+    row = (
+        await session.execute(
+            select(OrderLine, Order, Offer)
+            .join(Order, Order.id == OrderLine.order_id)
+            .join(Offer, Offer.id == OrderLine.offer_id)
+            .where(OrderLine.id == line_id)
+            .with_for_update(of=OrderLine)
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="order_line_not_found")
+    line, order, offer = row
+    evidence = await session.get(EvidenceFile, body.evidence_file_id)
+    if evidence is None:
+        raise HTTPException(status_code=404, detail="evidence_file_not_found")
+    try:
+        exception = await propose_shelf_life_exception(
+            session,
+            order_line=line,
+            order=order,
+            minimum_shelf_life_months=offer.minimum_shelf_life_months,
+            operator_id=operator.id,
+            proposed_exact_expiry_date=body.proposed_exact_expiry_date,
+            additional_discount_irr=body.additional_discount_irr,
+            reason=body.reason,
+            evidence_file_id=evidence.id,
+        )
+    except ShelfLifeExceptionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    _audit(
+        session,
+        request,
+        operator.id,
+        "shelf_life_exception.proposed",
+        "order_line",
+        line.id,
+        body.reason,
+        {
+            "shelf_life_exception_id": str(exception.id),
+            "proposed_exact_expiry_date": body.proposed_exact_expiry_date.isoformat(),
+            "additional_discount_irr": body.additional_discount_irr,
+            "respond_by": exception.respond_by.isoformat(),
+        },
+    )
+    await session.commit()
+    return _shelf_life_exception_response(exception)
+
+
+@router.get("/shelf-life-exceptions", response_model=list[OperatorShelfLifeExceptionResponse])
+async def list_shelf_life_exceptions(
+    _: CurrentOperator,
+    session: SessionDependency,
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+) -> list[OperatorShelfLifeExceptionResponse]:
+    if status_filter is not None and status_filter not in (
+        "proposed",
+        "accepted",
+        "declined",
+        "expired",
+    ):
+        raise HTTPException(status_code=422, detail="invalid_status_filter")
+    query = select(ShelfLifeException).order_by(ShelfLifeException.proposed_at.desc())
+    if status_filter is not None:
+        query = query.where(ShelfLifeException.status == status_filter)
+    rows = list((await session.scalars(query.limit(200))).all())
+    return [_shelf_life_exception_response(row) for row in rows]
+
+
+@router.get(
+    "/shelf-life-exceptions/{exception_id}", response_model=OperatorShelfLifeExceptionResponse
+)
+async def get_shelf_life_exception(
+    exception_id: UUID, _: CurrentOperator, session: SessionDependency
+) -> OperatorShelfLifeExceptionResponse:
+    exception = await session.get(ShelfLifeException, exception_id)
+    if exception is None:
+        raise HTTPException(status_code=404, detail="shelf_life_exception_not_found")
+    return _shelf_life_exception_response(exception)
+
+
+@router.post(
+    "/shelf-life-exceptions/{exception_id}/attest-refund",
+    response_model=OperatorShelfLifeExceptionResponse,
+)
+async def attest_shelf_life_exception_refund(
+    exception_id: UUID,
+    body: RefundAttestBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> OperatorShelfLifeExceptionResponse:
+    exception = await session.get(ShelfLifeException, exception_id, with_for_update=True)
+    if exception is None:
+        raise HTTPException(status_code=404, detail="shelf_life_exception_not_found")
+    evidence = await session.get(EvidenceFile, body.evidence_file_id)
+    if evidence is None:
+        raise HTTPException(status_code=404, detail="evidence_file_not_found")
+    already_attested = exception.refund_status == "operator_attested"
+    try:
+        attest_refund(
+            exception,
+            operator_id=operator.id,
+            evidence_id=evidence.id,
+            reference=body.reference,
+        )
+    except RefundAttestationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not already_attested:
+        _audit(
+            session,
+            request,
+            operator.id,
+            "shelf_life_exception.refund_attested",
+            "shelf_life_exception",
+            exception.id,
+            body.reason,
+            {
+                "refund_amount_irr": exception.refund_amount_irr,
+                "evidence_file_id": str(evidence.id),
+            },
+        )
+    await session.commit()
+    return _shelf_life_exception_response(exception)
+
+
+@router.post(
+    "/order-cancellations/{cancellation_id}/attest-refund",
+    response_model=OrderCancellationResponse,
+)
+async def attest_order_cancellation_refund(
+    cancellation_id: UUID,
+    body: RefundAttestBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> OrderCancellationResponse:
+    cancellation = await session.get(OrderCancellation, cancellation_id, with_for_update=True)
+    if cancellation is None:
+        raise HTTPException(status_code=404, detail="order_cancellation_not_found")
+    evidence = await session.get(EvidenceFile, body.evidence_file_id)
+    if evidence is None:
+        raise HTTPException(status_code=404, detail="evidence_file_not_found")
+    already_attested = cancellation.refund_status == "operator_attested"
+    try:
+        attest_refund(
+            cancellation,
+            operator_id=operator.id,
+            evidence_id=evidence.id,
+            reference=body.reference,
+        )
+    except RefundAttestationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not already_attested:
+        _audit(
+            session,
+            request,
+            operator.id,
+            "order_cancellation.refund_attested",
+            "order_cancellation",
+            cancellation.id,
+            body.reason,
+            {
+                "refund_amount_irr": cancellation.refund_amount_irr,
+                "evidence_file_id": str(evidence.id),
+            },
+        )
+    await session.commit()
+    return OrderCancellationResponse(
+        order_id=cancellation.order_id,
+        status="cancelled",
+        cancelled_at=cancellation.created_at,
+        reason=cancellation.reason,
+        refund_amount_irr=cancellation.refund_amount_irr,
+        refund_status=cancellation.refund_status,
+    )
 
 
 @router.post(
@@ -2908,14 +3160,6 @@ def _audit(
     )
 
 
-def _add_months_date(value: date, months: int) -> date:
-    month_index = value.month - 1 + months
-    year = value.year + month_index // 12
-    month = month_index % 12 + 1
-    day = min(value.day, calendar.monthrange(year, month)[1])
-    return value.replace(year=year, month=month, day=day)
-
-
 def _validate_template_fields(event_key: str, body: str) -> None:
     allowed: dict[str, set[str]] = {
         "wallet.late_delivery_credit_granted": {
@@ -2923,7 +3167,14 @@ def _validate_template_fields(event_key: str, body: str) -> None:
             "household_id",
             "amount_irr",
             "expires_at",
-        }
+        },
+        "orders.shelf_life_exception_proposed": {
+            "order_id",
+            "household_id",
+            "shelf_life_exception_id",
+            "order_line_id",
+            "respond_by",
+        },
     }
     if event_key not in allowed:
         raise HTTPException(status_code=422, detail="unsupported_notification_event")

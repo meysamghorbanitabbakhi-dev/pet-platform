@@ -67,6 +67,12 @@ class OrderLine(UUIDPrimaryKeyMixin, Base):
     unit_price_irr: Mapped[int] = mapped_column(Integer, nullable=False)
     line_total_irr: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Set when a shelf-life exception (Workstream 2E) for this line is
+    # declined or expires unanswered: this line will never be delivered
+    # (it is refunded instead), so project_delivered_order must skip it
+    # rather than block the *other* lines in the same order forever
+    # waiting for evidence that will never exist.
+    excluded_from_delivery_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class OrderLinePetPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):

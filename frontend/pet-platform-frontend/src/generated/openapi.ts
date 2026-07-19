@@ -856,6 +856,23 @@ export interface paths {
         patch: operations["update_offer_sourcing_config_api_v1_operator_offers__offer_id__sourcing_config_patch"];
         trace?: never;
     };
+    "/api/v1/operator/order-cancellations/{cancellation_id}/attest-refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attest Order Cancellation Refund */
+        post: operations["attest_order_cancellation_refund_api_v1_operator_order_cancellations__cancellation_id__attest_refund_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/order-lines/{line_id}/confirm-sourced": {
         parameters: {
             query?: never;
@@ -867,6 +884,23 @@ export interface paths {
         put?: never;
         /** Confirm Sourced Unit */
         post: operations["confirm_sourced_unit_api_v1_operator_order_lines__line_id__confirm_sourced_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/order-lines/{line_id}/shelf-life-exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Propose Order Line Shelf Life Exception */
+        post: operations["propose_order_line_shelf_life_exception_api_v1_operator_order_lines__line_id__shelf_life_exceptions_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1301,6 +1335,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/shelf-life-exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Shelf Life Exceptions */
+        get: operations["list_shelf_life_exceptions_api_v1_operator_shelf_life_exceptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/shelf-life-exceptions/{exception_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shelf Life Exception */
+        get: operations["get_shelf_life_exception_api_v1_operator_shelf_life_exceptions__exception_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/shelf-life-exceptions/{exception_id}/attest-refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attest Shelf Life Exception Refund */
+        post: operations["attest_shelf_life_exception_refund_api_v1_operator_shelf_life_exceptions__exception_id__attest_refund_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/suppliers": {
         parameters: {
             query?: never;
@@ -1516,6 +1601,57 @@ export interface paths {
         /** Replace Order Pet Plan */
         put: operations["replace_order_pet_plan_api_v1_orders__order_id__pet_plan_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{order_id}/shelf-life-exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Order Shelf Life Exceptions */
+        get: operations["list_order_shelf_life_exceptions_api_v1_orders__order_id__shelf_life_exceptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{order_id}/shelf-life-exceptions/{exception_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Order Shelf Life Exception */
+        post: operations["accept_order_shelf_life_exception_api_v1_orders__order_id__shelf_life_exceptions__exception_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{order_id}/shelf-life-exceptions/{exception_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Order Shelf Life Exception */
+        post: operations["decline_order_shelf_life_exception_api_v1_orders__order_id__shelf_life_exceptions__exception_id__decline_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4432,6 +4568,64 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** OperatorShelfLifeExceptionResponse */
+        OperatorShelfLifeExceptionResponse: {
+            /** Additional Discount Irr */
+            additional_discount_irr: number;
+            /**
+             * Evidence File Id
+             * Format: uuid
+             */
+            evidence_file_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Order Line Id
+             * Format: uuid
+             */
+            order_line_id: string;
+            /**
+             * Proposed At
+             * Format: date-time
+             */
+            proposed_at: string;
+            /**
+             * Proposed By Operator Id
+             * Format: uuid
+             */
+            proposed_by_operator_id: string;
+            /**
+             * Proposed Exact Expiry Date
+             * Format: date
+             */
+            proposed_exact_expiry_date: string;
+            /** Reason */
+            reason: string;
+            /** Refund Amount Irr */
+            refund_amount_irr: number | null;
+            /** Refund Attested At */
+            refund_attested_at: string | null;
+            /** Refund Attested By Operator Id */
+            refund_attested_by_operator_id: string | null;
+            /** Refund Reference */
+            refund_reference: string | null;
+            /** Refund Status */
+            refund_status: string;
+            /**
+             * Respond By
+             * Format: date-time
+             */
+            respond_by: string;
+            /** Responded At */
+            responded_at: string | null;
+            /** Responded By Customer Identity Id */
+            responded_by_customer_identity_id: string | null;
+            /** Status */
+            status: string;
+        };
         /** OrderAddressSnapshotResponse */
         OrderAddressSnapshotResponse: {
             /** Address Line */
@@ -5390,6 +5584,18 @@ export interface components {
             /** Refresh Token */
             refresh_token: string;
         };
+        /** RefundAttestBody */
+        RefundAttestBody: {
+            /**
+             * Evidence File Id
+             * Format: uuid
+             */
+            evidence_file_id: string;
+            /** Reason */
+            reason: string;
+            /** Reference */
+            reference?: string | null;
+        };
         /** ReleaseSummary */
         ReleaseSummary: {
             /** Checksum Sha256 */
@@ -5545,6 +5751,70 @@ export interface components {
             paid_at?: string | null;
             /** Status */
             status: string;
+        };
+        /** ShelfLifeExceptionProposeBody */
+        ShelfLifeExceptionProposeBody: {
+            /** Additional Discount Irr */
+            additional_discount_irr: number;
+            /**
+             * Evidence File Id
+             * Format: uuid
+             */
+            evidence_file_id: string;
+            /**
+             * Proposed Exact Expiry Date
+             * Format: date
+             */
+            proposed_exact_expiry_date: string;
+            /** Reason */
+            reason: string;
+        };
+        /** ShelfLifeExceptionResponse */
+        ShelfLifeExceptionResponse: {
+            /** Additional Discount Irr */
+            additional_discount_irr: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Order Line Id
+             * Format: uuid
+             */
+            order_line_id: string;
+            /**
+             * Proposed Exact Expiry Date
+             * Format: date
+             */
+            proposed_exact_expiry_date: string;
+            /** Reason */
+            reason: string;
+            /** Refund Amount Irr */
+            refund_amount_irr?: number | null;
+            /**
+             * Refund Auto Processed
+             * @default false
+             * @constant
+             */
+            refund_auto_processed: false;
+            /**
+             * Refund Status
+             * @enum {string}
+             */
+            refund_status: "not_applicable" | "owed" | "operator_attested";
+            /**
+             * Respond By
+             * Format: date-time
+             */
+            respond_by: string;
+            /** Responded At */
+            responded_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "proposed" | "accepted" | "declined" | "expired";
         };
         /** SmsPreferenceResponse */
         SmsPreferenceResponse: {
@@ -7630,6 +7900,41 @@ export interface operations {
             };
         };
     };
+    attest_order_cancellation_refund_api_v1_operator_order_cancellations__cancellation_id__attest_refund_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cancellation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundAttestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderCancellationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     confirm_sourced_unit_api_v1_operator_order_lines__line_id__confirm_sourced_post: {
         parameters: {
             query?: never;
@@ -7651,6 +7956,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_order_line_shelf_life_exception_api_v1_operator_order_lines__line_id__shelf_life_exceptions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                line_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShelfLifeExceptionProposeBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorShelfLifeExceptionResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -8589,6 +8929,103 @@ export interface operations {
             };
         };
     };
+    list_shelf_life_exceptions_api_v1_operator_shelf_life_exceptions_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorShelfLifeExceptionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shelf_life_exception_api_v1_operator_shelf_life_exceptions__exception_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exception_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorShelfLifeExceptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attest_shelf_life_exception_refund_api_v1_operator_shelf_life_exceptions__exception_id__attest_refund_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exception_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundAttestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorShelfLifeExceptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_supplier_api_v1_operator_suppliers_post: {
         parameters: {
             query?: never;
@@ -9001,6 +9438,101 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_order_shelf_life_exceptions_api_v1_orders__order_id__shelf_life_exceptions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShelfLifeExceptionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_order_shelf_life_exception_api_v1_orders__order_id__shelf_life_exceptions__exception_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+                exception_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShelfLifeExceptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_order_shelf_life_exception_api_v1_orders__order_id__shelf_life_exceptions__exception_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+                exception_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShelfLifeExceptionResponse"];
+                };
             };
             /** @description Validation Error */
             422: {

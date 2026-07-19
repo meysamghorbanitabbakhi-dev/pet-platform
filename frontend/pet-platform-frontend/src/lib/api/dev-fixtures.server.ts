@@ -491,6 +491,30 @@ export async function loadDevelopmentApi() {
       void _orderId;
       return fixtures.orderDetailFixture;
     },
+    listShelfLifeExceptions: async (_orderId: string) => {
+      void _orderId;
+      return [];
+    },
+    respondToShelfLifeException: async (
+      _orderId: string,
+      exceptionId: string,
+      decision: "accept" | "decline",
+    ) => {
+      void _orderId;
+      return {
+        additional_discount_irr: 0,
+        id: exceptionId,
+        order_line_id: fixtures.orderDetailFixture.lines[0].id,
+        reason: "نمونه دلیل استثنا در محیط توسعه",
+        refund_amount_irr: decision === "decline" ? 4_800_000 : null,
+        refund_auto_processed: false as const,
+        refund_status: decision === "decline" ? ("owed" as const) : ("not_applicable" as const),
+        respond_by: "2026-07-22T12:00:00Z",
+        responded_at: "2026-07-19T12:00:00Z",
+        status: decision === "decline" ? ("declined" as const) : ("accepted" as const),
+        proposed_exact_expiry_date: "2026-09-01",
+      };
+    },
     getOrderJourney: async (_orderId: string) => {
       void _orderId;
       return fixtures.orderJourneyFixture;

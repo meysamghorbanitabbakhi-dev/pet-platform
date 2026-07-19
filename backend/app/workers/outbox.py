@@ -9,7 +9,10 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.redis import close_redis, get_redis
 from app.db.session import SessionFactory, close_database
-from app.modules.notifications.service import enqueue_wallet_credit_notification
+from app.modules.notifications.service import (
+    enqueue_shelf_life_exception_notification,
+    enqueue_wallet_credit_notification,
+)
 from app.modules.system.outbox import OutboxDispatcher
 
 logger = logging.getLogger(__name__)
@@ -26,6 +29,10 @@ async def run() -> None:
             payload,
             customer_visible=settings.late_credit_customer_visible,
         ),
+    )
+    dispatcher.register(
+        "orders.shelf_life_exception_proposed",
+        lambda payload: enqueue_shelf_life_exception_notification(SessionFactory, payload),
     )
     redis = get_redis()
     stop = asyncio.Event()

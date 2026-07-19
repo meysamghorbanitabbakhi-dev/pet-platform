@@ -38,6 +38,8 @@ async def project_delivered_order(
     now = utc_now()
     units: list[InventoryUnit] = []
     for line, offer, evidence in rows:
+        if line.excluded_from_delivery_at is not None:
+            continue
         if evidence is None:
             raise DeliveryProjectionError(
                 f"order line {line.id} has no confirmed sourced-unit evidence"

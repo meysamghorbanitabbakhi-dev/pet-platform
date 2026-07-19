@@ -19,6 +19,7 @@ from app.modules.orders.cancellation import OrderCancellation
 from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderDelayAcknowledgement, OrderLine
 from app.modules.orders.resolutions import OrderResolution
+from app.modules.orders.shelf_life_exceptions import ShelfLifeException
 from app.modules.payments.models import PaymentAttempt
 from app.modules.pet_health.models import (
     BenchmarkDefinition,
@@ -109,6 +110,7 @@ __all__ = [
     "OrderDelayAcknowledgement",
     "OrderLine",
     "OrderResolution",
+    "ShelfLifeException",
     "PaymentAttempt",
     "HealthMeasurement",
     "MeasurementReminder",

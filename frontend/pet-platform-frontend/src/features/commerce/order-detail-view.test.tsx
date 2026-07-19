@@ -4,11 +4,14 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  acceptShelfLifeException,
   acknowledgeOrderDelay,
   cancelOrder,
+  declineShelfLifeException,
   getMeContext,
   getOrderDetail,
   getOrderJourney,
+  listShelfLifeExceptions,
   replaceOrderPetPlan,
 } from "@/lib/api/client";
 import {
@@ -27,11 +30,14 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/api/client", () => ({
+  acceptShelfLifeException: vi.fn(),
   acknowledgeOrderDelay: vi.fn(),
   cancelOrder: vi.fn(),
+  declineShelfLifeException: vi.fn(),
   getMeContext: vi.fn(),
   getOrderDetail: vi.fn(),
   getOrderJourney: vi.fn(),
+  listShelfLifeExceptions: vi.fn(),
   replaceOrderPetPlan: vi.fn(),
 }));
 
@@ -51,6 +57,7 @@ describe("OrderDetailView", () => {
       ...meContextFixture,
       pets: [],
     });
+    vi.mocked(listShelfLifeExceptions).mockResolvedValue([]);
   });
 
   it("shows the real authenticity field from the backend, never a hardcoded claim", async () => {
@@ -304,6 +311,115 @@ describe("OrderDetailView", () => {
     renderWithQuery(<OrderDetailView orderId="order-1" />);
 
     expect(await screen.findByText(/این سفارش در تاریخ/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/بازگردانده خواهد شد؛ بازگشت وجه به صورت دستی/),
+    ).toBeInTheDocument();
+  });
+
+  it("lets the customer accept a proposed shelf-life exception", async () => {
+    vi.mocked(getOrderDetail).mockResolvedValue(orderDetailFixture);
+    vi.mocked(getOrderJourney).mockResolvedValue(orderJourneyFixture);
+    const pending = {
+      additional_discount_irr: 200_000,
+      id: "sle-1",
+      order_line_id: orderDetailFixture.lines[0].id,
+      proposed_exact_expiry_date: "2026-09-01",
+      reason: "محموله با تاریخ انقضای کوتاه‌تر رسید",
+      refund_amount_irr: null,
+      refund_auto_processed: false as const,
+      refund_status: "not_applicable" as const,
+      respond_by: "2026-07-22T12:00:00Z",
+      responded_at: null,
+      status: "proposed" as const,
+    };
+    vi.mocked(listShelfLifeExceptions).mockResolvedValue([pending]);
+    vi.mocked(acceptShelfLifeException).mockResolvedValue({
+      ...pending,
+      responded_at: "2026-07-19T12:00:00Z",
+      status: "accepted",
+    });
+    const user = userEvent.setup();
+
+    renderWithQuery(<OrderDetailView orderId="order-1" />);
+
+    expect(
+      await screen.findByText(/کوتاه‌تر از تعهد اولیه سفارش است/),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "پذیرش و ادامه سفارش" }),
+    );
+
+    await waitFor(() =>
+      expect(acceptShelfLifeException).toHaveBeenCalledWith(
+        orderDetailFixture.id,
+        "sle-1",
+      ),
+    );
+  });
+
+  it("lets the customer decline a proposed shelf-life exception", async () => {
+    vi.mocked(getOrderDetail).mockResolvedValue(orderDetailFixture);
+    vi.mocked(getOrderJourney).mockResolvedValue(orderJourneyFixture);
+    const pending = {
+      additional_discount_irr: 0,
+      id: "sle-2",
+      order_line_id: orderDetailFixture.lines[0].id,
+      proposed_exact_expiry_date: "2026-09-01",
+      reason: "محموله با تاریخ انقضای کوتاه‌تر رسید",
+      refund_amount_irr: null,
+      refund_auto_processed: false as const,
+      refund_status: "not_applicable" as const,
+      respond_by: "2026-07-22T12:00:00Z",
+      responded_at: null,
+      status: "proposed" as const,
+    };
+    vi.mocked(listShelfLifeExceptions).mockResolvedValue([pending]);
+    vi.mocked(declineShelfLifeException).mockResolvedValue({
+      ...pending,
+      refund_amount_irr: orderDetailFixture.lines[0].line_total_irr,
+      refund_status: "owed",
+      responded_at: "2026-07-19T12:00:00Z",
+      status: "declined",
+    });
+    const user = userEvent.setup();
+
+    renderWithQuery(<OrderDetailView orderId="order-1" />);
+    await user.click(
+      await screen.findByRole("button", { name: "رد و بازگشت وجه" }),
+    );
+
+    await waitFor(() =>
+      expect(declineShelfLifeException).toHaveBeenCalledWith(
+        orderDetailFixture.id,
+        "sle-2",
+      ),
+    );
+  });
+
+  it("shows the refund-owed disclosure for a declined exception, not a false already-refunded claim", async () => {
+    vi.mocked(getOrderDetail).mockResolvedValue(orderDetailFixture);
+    vi.mocked(getOrderJourney).mockResolvedValue(orderJourneyFixture);
+    vi.mocked(listShelfLifeExceptions).mockResolvedValue([
+      {
+        additional_discount_irr: 0,
+        id: "sle-3",
+        order_line_id: orderDetailFixture.lines[0].id,
+        proposed_exact_expiry_date: "2026-09-01",
+        reason: "محموله با تاریخ انقضای کوتاه‌تر رسید",
+        refund_amount_irr: orderDetailFixture.lines[0].line_total_irr,
+        refund_auto_processed: false,
+        refund_status: "owed",
+        respond_by: "2026-07-22T12:00:00Z",
+        responded_at: "2026-07-19T12:00:00Z",
+        status: "declined",
+      },
+    ]);
+
+    renderWithQuery(<OrderDetailView orderId="order-1" />);
+
+    expect(
+      await screen.findByText(/این قلم رد شد و تحویل داده نخواهد شد/),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/بازگردانده خواهد شد؛ بازگشت وجه به صورت دستی/),
     ).toBeInTheDocument();

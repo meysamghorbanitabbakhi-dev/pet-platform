@@ -441,6 +441,20 @@ class OrderCancellationResponse(BaseModel):
     refund_auto_processed: Literal[False] = False
 
 
+class ShelfLifeExceptionResponse(BaseModel):
+    id: UUID
+    order_line_id: UUID
+    proposed_exact_expiry_date: date
+    additional_discount_irr: int
+    reason: str
+    status: Literal["proposed", "accepted", "declined", "expired"]
+    respond_by: datetime
+    responded_at: datetime | None = None
+    refund_status: Literal["not_applicable", "owed", "operator_attested"]
+    refund_amount_irr: int | None = None
+    refund_auto_processed: Literal[False] = False
+
+
 class PetSummary(BaseModel):
     id: UUID
     name: str

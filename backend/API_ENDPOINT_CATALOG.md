@@ -87,10 +87,27 @@ No customer-facing endpoints exist for purchasing batches — customers never se
 
 ## Customer order cancellation (2026-07-19, Workstream 2B)
 
-Cancellation before supplier financial commitment. Eligibility is governed by the durable batch-commitment fact from Workstream 2A (`PurchaseBatch.committed_at`, not bare order status), checked under the same row locks `commit_batch` takes, so the cancel-vs-commit race is linearizable. Refunds are operator-attested (manual), never an automatic payment-gateway reversal — `refund_status` starts `owed` and there is no endpoint yet that transitions it to `operator_attested`; that lands with Workstream 2E's shared refund-attestation mechanism.
+Cancellation before supplier financial commitment. Eligibility is governed by the durable batch-commitment fact from Workstream 2A (`PurchaseBatch.committed_at`, not bare order status), checked under the same row locks `commit_batch` takes, so the cancel-vs-commit race is linearizable. Refunds are operator-attested (manual), never an automatic payment-gateway reversal — `refund_status` starts `owed`; `POST /operator/order-cancellations/{cancellation_id}/attest-refund` (added with Workstream 2E, see below) transitions it to `operator_attested`.
 
 | Method | Endpoint | Capability |
 |---|---|---|
 | POST | `/orders/{order_id}/cancel` | Customer cancellation with a required reason; idempotent (replaying an already-cancelled order returns the same record); non-enumerating 404 for a nonexistent or not-owned order; 409 once the order's batch is already committed |
 
 `GET /orders/{order_id}` now also returns `cancellation_eligible` (whether this endpoint would currently succeed) and `cancellation` (the cancellation + refund-owed record, once one exists).
+
+## Shelf-life exceptions (2026-07-19, Workstream 2E)
+
+`POST /operator/order-lines/{line_id}/confirm-sourced`'s existing hard block (rejecting a sourced unit whose exact expiry falls short of the offer's `minimum_shelf_life_months` guarantee) now has an explicit escape hatch: an operator-proposed exception the customer must accept or decline. There is no fulfillment path around this — `SourcedUnitEvidence`, which delivery projection requires for every line, is only created on acceptance. Refunds are operator-attested (manual), the same mechanism and product decision as Workstream 2B's order cancellation.
+
+| Method | Endpoint | Capability |
+|---|---|---|
+| POST | `/operator/order-lines/{line_id}/shelf-life-exceptions` | Operator proposes an exception (exact expiry, additional discount, reason, evidence) for a line that would otherwise hard-block; rejected if the expiry actually meets the guarantee, the line is already sourced, or an exception already exists for it |
+| GET | `/operator/shelf-life-exceptions` | Operator list/queue, filterable by status |
+| GET | `/operator/shelf-life-exceptions/{exception_id}` | Operator detail |
+| POST | `/operator/shelf-life-exceptions/{exception_id}/attest-refund` | Operator-attested manual refund once `refund_status` is `owed`; idempotent |
+| POST | `/operator/order-cancellations/{cancellation_id}/attest-refund` | Same mechanism, for Workstream 2B order cancellations |
+| GET | `/orders/{order_id}/shelf-life-exceptions` | Customer list for their own order |
+| POST | `/orders/{order_id}/shelf-life-exceptions/{exception_id}/accept` | Customer accepts the shorter expiry (and any discount); creates the sourced-unit evidence that unblocks delivery for that line; idempotent |
+| POST | `/orders/{order_id}/shelf-life-exceptions/{exception_id}/decline` | Customer declines; the full line total becomes refund-owed and the line is excluded from delivery projection (the order's *other* lines are unaffected); idempotent |
+
+An unanswered exception automatically becomes `expired` (same refund outcome as a decline) via a scheduler sweep once its response deadline passes; both accept and decline also self-expire on a late response, so a race between a customer's click and the sweep can never produce an inconsistent state. Concurrent accept-vs-decline on the same exception is resolved by row lock — proven under real concurrency, not just reasoned about.
