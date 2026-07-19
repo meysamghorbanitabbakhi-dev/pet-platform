@@ -1335,6 +1335,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/reservations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reservations */
+        get: operations["list_reservations_api_v1_operator_reservations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/reservations/{reservation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Reservation */
+        get: operations["get_reservation_api_v1_operator_reservations__reservation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/reservations/{reservation_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operator Decline Reservation Endpoint */
+        post: operations["operator_decline_reservation_endpoint_api_v1_operator_reservations__reservation_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/reservations/{reservation_id}/reconfirm-and-propose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reconfirm And Propose Reservation Endpoint */
+        post: operations["reconfirm_and_propose_reservation_endpoint_api_v1_operator_reservations__reservation_id__reconfirm_and_propose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/shelf-life-exceptions": {
         parameters: {
             query?: never;
@@ -2582,6 +2650,75 @@ export interface paths {
         get: operations["get_my_privacy_request_api_v1_privacy_requests__request_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reservations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reservations */
+        get: operations["list_reservations_api_v1_reservations_get"];
+        put?: never;
+        /** Create Reservation */
+        post: operations["create_reservation_api_v1_reservations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reservations/{reservation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Reservation */
+        get: operations["get_reservation_api_v1_reservations__reservation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reservations/{reservation_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Reservation */
+        post: operations["approve_reservation_api_v1_reservations__reservation_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reservations/{reservation_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Reservation Endpoint */
+        post: operations["decline_reservation_endpoint_api_v1_reservations__reservation_id__decline_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4568,6 +4705,61 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** OperatorReservationResponse */
+        OperatorReservationResponse: {
+            /** Converted At */
+            converted_at: string | null;
+            /**
+             * Customer Identity Id
+             * Format: uuid
+             */
+            customer_identity_id: string;
+            /** Customer Respond By */
+            customer_respond_by: string | null;
+            /** Decline Reason */
+            decline_reason: string | null;
+            /**
+             * Household Id
+             * Format: uuid
+             */
+            household_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+            /**
+             * Operator Review By
+             * Format: date-time
+             */
+            operator_review_by: string;
+            /** Order Id */
+            order_id: string | null;
+            /** Proposed At */
+            proposed_at: string | null;
+            /** Quantity */
+            quantity: number;
+            /** Reconfirmed Available */
+            reconfirmed_available: boolean | null;
+            /** Reconfirmed Price Irr */
+            reconfirmed_price_irr: number | null;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /** Requested Price Irr */
+            requested_price_irr: number;
+            /** Responded At */
+            responded_at: string | null;
+            /** Status */
+            status: string;
+        };
         /** OperatorShelfLifeExceptionResponse */
         OperatorShelfLifeExceptionResponse: {
             /** Additional Discount Irr */
@@ -5713,6 +5905,83 @@ export interface components {
              */
             hours: number;
         };
+        /** ReservationApproveBody */
+        ReservationApproveBody: {
+            /**
+             * Address Id
+             * Format: uuid
+             */
+            address_id: string;
+        };
+        /** ReservationCreateBody */
+        ReservationCreateBody: {
+            /**
+             * Household Id
+             * Format: uuid
+             */
+            household_id: string;
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+            /** Quantity */
+            quantity: number;
+        };
+        /** ReservationReconfirmBody */
+        ReservationReconfirmBody: {
+            /** Reason */
+            reason: string;
+            /** Reconfirmed Available */
+            reconfirmed_available: boolean;
+            /** Reconfirmed Price Irr */
+            reconfirmed_price_irr: number;
+        };
+        /** ReservationResponse */
+        ReservationResponse: {
+            /** Customer Respond By */
+            customer_respond_by?: string | null;
+            /**
+             * Deposit Charged Irr
+             * @default 0
+             * @constant
+             */
+            deposit_charged_irr: 0;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+            /**
+             * Operator Review By
+             * Format: date-time
+             */
+            operator_review_by: string;
+            /** Order Id */
+            order_id?: string | null;
+            /** Proposal Reason */
+            proposal_reason?: string | null;
+            /** Quantity */
+            quantity: number;
+            /** Reconfirmed Available */
+            reconfirmed_available?: boolean | null;
+            /** Reconfirmed Price Irr */
+            reconfirmed_price_irr?: number | null;
+            /** Requested Price Irr */
+            requested_price_irr: number;
+            /** Responded At */
+            responded_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "requested" | "proposed" | "converted" | "customer_declined" | "operator_declined" | "expired";
+        };
         /** ResolutionBody */
         ResolutionBody: {
             /** Proposed Facts */
@@ -6195,6 +6464,16 @@ export interface components {
              * @enum {string}
              */
             state: "no_measurements";
+        };
+        /** ReservationDeclineBody */
+        app__api__routes__commerce__ReservationDeclineBody: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /** ReservationDeclineBody */
+        app__api__routes__operator__ReservationDeclineBody: {
+            /** Reason */
+            reason: string;
         };
     };
     responses: never;
@@ -8916,6 +9195,138 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseBatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reservations_api_v1_operator_reservations_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorReservationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_reservation_api_v1_operator_reservations__reservation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorReservationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    operator_decline_reservation_endpoint_api_v1_operator_reservations__reservation_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["app__api__routes__operator__ReservationDeclineBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorReservationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reconfirm_and_propose_reservation_endpoint_api_v1_operator_reservations__reservation_id__reconfirm_and_propose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReservationReconfirmBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorReservationResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11660,6 +12071,162 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PrivacyRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reservations_api_v1_reservations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationResponse"][];
+                };
+            };
+        };
+    };
+    create_reservation_api_v1_reservations_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReservationCreateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_reservation_api_v1_reservations__reservation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_reservation_api_v1_reservations__reservation_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReservationApproveBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_reservation_endpoint_api_v1_reservations__reservation_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["app__api__routes__commerce__ReservationDeclineBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationResponse"];
                 };
             };
             /** @description Validation Error */

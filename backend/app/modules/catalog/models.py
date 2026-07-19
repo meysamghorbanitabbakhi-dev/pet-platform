@@ -84,6 +84,7 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "default_batch_threshold_quantity IS NULL OR default_batch_threshold_quantity > 0",
             name="positive_default_batch_threshold",
         ),
+        CheckConstraint("mode IN ('full_payment','reserve')", name="valid_mode"),
     )
 
     product_id: Mapped[UUID] = mapped_column(ForeignKey("catalog_products.id"), index=True)
@@ -118,6 +119,13 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # falls back to a threshold of 1 (i.e. no real aggregation benefit),
     # never a guessed number -- see ADR-006.
     default_batch_threshold_quantity: Mapped[int | None] = mapped_column(Integer)
+    # 'full_payment' (default): the existing, only-live checkout path.
+    # 'reserve': zero-charge reservation -> operator source/price
+    # reconfirmation -> customer approval -> full-payment order (Workstream
+    # 2C, app.modules.reservations) -- gated off entirely behind
+    # settings.reserve_now_enabled=False until a launch decision is made.
+    # Never invents a deposit/partial-payment concept either way.
+    mode: Mapped[str] = mapped_column(String(20), default="full_payment", nullable=False)
     # PostgreSQL STORED GENERATED columns (migration 20260719_0027):
     # fa_normalize_search_text(title_fa | sku). Computed(...) tells
     # SQLAlchemy to never write these -- Postgres rejects any explicit

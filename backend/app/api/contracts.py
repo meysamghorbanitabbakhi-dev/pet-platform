@@ -455,6 +455,29 @@ class ShelfLifeExceptionResponse(BaseModel):
     refund_auto_processed: Literal[False] = False
 
 
+class ReservationResponse(BaseModel):
+    id: UUID
+    offer_id: UUID
+    quantity: int
+    requested_price_irr: int
+    status: Literal[
+        "requested",
+        "proposed",
+        "converted",
+        "customer_declined",
+        "operator_declined",
+        "expired",
+    ]
+    operator_review_by: datetime
+    reconfirmed_price_irr: int | None = None
+    reconfirmed_available: bool | None = None
+    proposal_reason: str | None = None
+    customer_respond_by: datetime | None = None
+    responded_at: datetime | None = None
+    order_id: UUID | None = None
+    deposit_charged_irr: Literal[0] = 0
+
+
 class PetSummary(BaseModel):
     id: UUID
     name: str

@@ -14,6 +14,7 @@ from app.integrations.price_intelligence.scheduler import run_price_intelligence
 from app.modules.notifications.service import deliver_pending_sms
 from app.modules.orders.shelf_life_exceptions import expire_stale_shelf_life_exceptions
 from app.modules.pet_knowledge.jobs import process_knowledge_review_lifecycle
+from app.modules.reservations.service import expire_stale_reservations
 from app.modules.wallet.jobs import process_overdue_orders
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,8 @@ async def run() -> None:
     scheduler.register(lambda: _run_pending_sms_job())
     scheduler.register(lambda: _run_knowledge_review_job())
     scheduler.register(lambda: _run_shelf_life_exception_expiry_job())
+    if settings.reserve_now_enabled:
+        scheduler.register(lambda: _run_reservation_expiry_job())
     redis = get_redis()
     stop = asyncio.Event()
     _install_stop_handlers(stop)
@@ -114,6 +117,15 @@ async def _run_shelf_life_exception_expiry_job() -> None:
     expired = await expire_stale_shelf_life_exceptions(SessionFactory)
     if expired:
         logger.info("expired %s unanswered shelf-life exceptions", expired)
+
+
+async def _run_reservation_expiry_job() -> None:
+    settings = get_settings()
+    if not settings.reserve_now_enabled:
+        return
+    counts = await expire_stale_reservations(SessionFactory)
+    if any(counts.values()):
+        logger.info("expired stale reservations: %s", counts)
 
 
 async def _run_price_intelligence_job() -> None:

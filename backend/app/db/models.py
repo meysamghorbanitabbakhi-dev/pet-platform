@@ -59,6 +59,7 @@ from app.modules.purchasing.models import (
     PurchaseBatchAllocation,
     PurchaseBatchEvent,
 )
+from app.modules.reservations.models import Reservation, ReservationEvent
 from app.modules.sourcing.models import SourcingJob
 from app.modules.support.models import CustomerRequest, CustomerRequestStatusAudit
 from app.modules.system.models import (
@@ -145,6 +146,8 @@ __all__ = [
     "PurchaseBatch",
     "PurchaseBatchAllocation",
     "PurchaseBatchEvent",
+    "Reservation",
+    "ReservationEvent",
     "SourcingJob",
     "IdempotencyRecord",
     "OperatorAuditLog",

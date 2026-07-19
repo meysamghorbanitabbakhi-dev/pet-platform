@@ -76,6 +76,12 @@ from app.modules.pet_knowledge.validation import canonical_bytes, validate_bundl
 from app.modules.pets.models import Pet
 from app.modules.purchasing.models import PurchaseBatch, PurchaseBatchAllocation, PurchaseBatchEvent
 from app.modules.purchasing.service import PurchasingError, commit_batch
+from app.modules.reservations.models import Reservation
+from app.modules.reservations.service import (
+    ReservationError,
+    operator_decline_reservation,
+    reconfirm_and_propose_reservation,
+)
 from app.modules.sourcing.models import SourcingJob
 from app.modules.system.audit import record_operator_action
 from app.modules.system.models import OperatorAuditLog, OutboxEvent, WebhookInboxEvent
@@ -2411,6 +2417,187 @@ async def attest_order_cancellation_refund(
     )
 
 
+class ReservationReconfirmBody(BaseModel):
+    reconfirmed_price_irr: int = Field(gt=0)
+    reconfirmed_available: bool
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+class ReservationDeclineBody(BaseModel):
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+class OperatorReservationResponse(BaseModel):
+    id: UUID
+    customer_identity_id: UUID
+    household_id: UUID
+    offer_id: UUID
+    quantity: int
+    requested_price_irr: int
+    requested_at: datetime
+    operator_review_by: datetime
+    status: str
+    reconfirmed_price_irr: int | None
+    reconfirmed_available: bool | None
+    proposed_at: datetime | None
+    customer_respond_by: datetime | None
+    responded_at: datetime | None
+    decline_reason: str | None
+    order_id: UUID | None
+    converted_at: datetime | None
+
+
+def _operator_reservation_response(reservation: Reservation) -> OperatorReservationResponse:
+    return OperatorReservationResponse(
+        id=reservation.id,
+        customer_identity_id=reservation.customer_identity_id,
+        household_id=reservation.household_id,
+        offer_id=reservation.offer_id,
+        quantity=reservation.quantity,
+        requested_price_irr=reservation.requested_price_irr,
+        requested_at=reservation.requested_at,
+        operator_review_by=reservation.operator_review_by,
+        status=reservation.status,
+        reconfirmed_price_irr=reservation.reconfirmed_price_irr,
+        reconfirmed_available=reservation.reconfirmed_available,
+        proposed_at=reservation.proposed_at,
+        customer_respond_by=reservation.customer_respond_by,
+        responded_at=reservation.responded_at,
+        decline_reason=reservation.decline_reason,
+        order_id=reservation.order_id,
+        converted_at=reservation.converted_at,
+    )
+
+
+@router.get("/reservations", response_model=list[OperatorReservationResponse])
+async def list_reservations(
+    _: CurrentOperator,
+    session: SessionDependency,
+    settings: SettingsDependency,
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+) -> list[OperatorReservationResponse]:
+    if not settings.reserve_now_enabled:
+        raise HTTPException(status_code=409, detail="reserve_now_disabled")
+    valid_statuses = (
+        "requested",
+        "proposed",
+        "converted",
+        "customer_declined",
+        "operator_declined",
+        "expired",
+    )
+    if status_filter is not None and status_filter not in valid_statuses:
+        raise HTTPException(status_code=422, detail="invalid_status_filter")
+    query = select(Reservation).order_by(Reservation.requested_at.desc())
+    if status_filter is not None:
+        query = query.where(Reservation.status == status_filter)
+    rows = list((await session.scalars(query.limit(200))).all())
+    return [_operator_reservation_response(row) for row in rows]
+
+
+@router.get("/reservations/{reservation_id}", response_model=OperatorReservationResponse)
+async def get_reservation(
+    reservation_id: UUID,
+    _: CurrentOperator,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> OperatorReservationResponse:
+    if not settings.reserve_now_enabled:
+        raise HTTPException(status_code=409, detail="reserve_now_disabled")
+    reservation = await session.get(Reservation, reservation_id)
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="reservation_not_found")
+    return _operator_reservation_response(reservation)
+
+
+@router.post(
+    "/reservations/{reservation_id}/reconfirm-and-propose",
+    response_model=OperatorReservationResponse,
+)
+async def reconfirm_and_propose_reservation_endpoint(
+    reservation_id: UUID,
+    body: ReservationReconfirmBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> OperatorReservationResponse:
+    if not settings.reserve_now_enabled:
+        raise HTTPException(status_code=409, detail="reserve_now_disabled")
+    reservation = await session.get(Reservation, reservation_id, with_for_update=True)
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="reservation_not_found")
+    already_proposed = reservation.status == "proposed"
+    try:
+        reservation = await reconfirm_and_propose_reservation(
+            session,
+            reservation=reservation,
+            operator_id=operator.id,
+            reconfirmed_price_irr=body.reconfirmed_price_irr,
+            reconfirmed_available=body.reconfirmed_available,
+            reason=body.reason,
+        )
+    except ReservationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not already_proposed:
+        _audit(
+            session,
+            request,
+            operator.id,
+            "reservation.reconfirmed_and_proposed",
+            "reservation",
+            reservation.id,
+            body.reason,
+            {
+                "reconfirmed_price_irr": body.reconfirmed_price_irr,
+                "reconfirmed_available": body.reconfirmed_available,
+                "customer_respond_by": (
+                    reservation.customer_respond_by.isoformat()
+                    if reservation.customer_respond_by
+                    else None
+                ),
+            },
+        )
+    await session.commit()
+    return _operator_reservation_response(reservation)
+
+
+@router.post("/reservations/{reservation_id}/decline", response_model=OperatorReservationResponse)
+async def operator_decline_reservation_endpoint(
+    reservation_id: UUID,
+    body: ReservationDeclineBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> OperatorReservationResponse:
+    if not settings.reserve_now_enabled:
+        raise HTTPException(status_code=409, detail="reserve_now_disabled")
+    reservation = await session.get(Reservation, reservation_id, with_for_update=True)
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="reservation_not_found")
+    already_declined = reservation.status == "operator_declined"
+    try:
+        reservation = await operator_decline_reservation(
+            session, reservation=reservation, operator_id=operator.id, reason=body.reason
+        )
+    except ReservationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not already_declined:
+        _audit(
+            session,
+            request,
+            operator.id,
+            "reservation.operator_declined",
+            "reservation",
+            reservation.id,
+            body.reason,
+            {"reason": body.reason},
+        )
+    await session.commit()
+    return _operator_reservation_response(reservation)
+
+
 @router.post(
     "/notification-templates",
     response_model=CreatedResponse,
@@ -3174,6 +3361,12 @@ def _validate_template_fields(event_key: str, body: str) -> None:
             "shelf_life_exception_id",
             "order_line_id",
             "respond_by",
+        },
+        "reservations.proposed": {
+            "reservation_id",
+            "household_id",
+            "reconfirmed_price_irr",
+            "customer_respond_by",
         },
     }
     if event_key not in allowed:

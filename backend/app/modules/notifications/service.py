@@ -147,6 +147,66 @@ async def enqueue_shelf_life_exception_notification(
         await session.commit()
 
 
+async def enqueue_reservation_notification(
+    session_factory: async_sessionmaker[AsyncSession],
+    payload: dict[str, Any],
+) -> None:
+    """Notify the household owner a reservation's reconfirmed terms need a
+    response. Not gated behind a visibility flag, same reasoning as
+    enqueue_shelf_life_exception_notification -- this is the customer's
+    actual approve/decline right, not an optional informational surface.
+    """
+    household_id = UUID(str(payload["household_id"]))
+    source_id = str(payload["reservation_id"])
+    async with session_factory() as session:
+        owner = await session.scalar(
+            select(AuthIdentity)
+            .join(HouseholdMembership, HouseholdMembership.identity_id == AuthIdentity.id)
+            .where(
+                HouseholdMembership.household_id == household_id,
+                HouseholdMembership.role == "owner",
+                AuthIdentity.status == "active",
+            )
+            .order_by(HouseholdMembership.created_at)
+            .limit(1)
+        )
+        if owner is None:
+            raise RuntimeError("reservation household has no active owner")
+        preference = await session.scalar(
+            select(NotificationPreference).where(
+                NotificationPreference.identity_id == owner.id,
+                NotificationPreference.channel == "sms",
+                NotificationPreference.event_key == "reservations.proposed",
+            )
+        )
+        for channel in ("in_app", "sms"):
+            existing = await session.scalar(
+                select(Notification).where(
+                    Notification.event_key == "reservations.proposed",
+                    Notification.source_id == source_id,
+                    Notification.recipient_identity_id == owner.id,
+                    Notification.channel == channel,
+                )
+            )
+            if existing is not None:
+                continue
+            status = "sent" if channel == "in_app" else "queued"
+            if channel == "sms" and preference is not None and not preference.enabled:
+                status = "suppressed"
+            session.add(
+                Notification(
+                    recipient_identity_id=owner.id,
+                    event_key="reservations.proposed",
+                    source_id=source_id,
+                    channel=channel,
+                    payload=payload,
+                    status=status,
+                    destination_kind="none",
+                )
+            )
+        await session.commit()
+
+
 async def deliver_pending_sms(
     session_factory: async_sessionmaker[AsyncSession],
     provider: SmsProvider,

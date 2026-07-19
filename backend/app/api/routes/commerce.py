@@ -27,6 +27,7 @@ from app.api.contracts import (
     PaymentRedirectResponse,
     ProductAlternativeResponse,
     ProductMediaResponse,
+    ReservationResponse,
     SafePaymentSummaryResponse,
     ShelfLifeExceptionResponse,
     SourcedUnitResponse,
@@ -52,7 +53,7 @@ from app.modules.catalog.models import (
 )
 from app.modules.checkout.service import CheckoutError, CheckoutItem, CheckoutService
 from app.modules.households.access import HouseholdAccessError, require_household_membership
-from app.modules.households.models import HouseholdMembership
+from app.modules.households.models import HouseholdAddress, HouseholdMembership
 from app.modules.orders.cancellation import (
     CancellationError,
     OrderCancellation,
@@ -71,6 +72,13 @@ from app.modules.payments.models import PaymentAttempt
 from app.modules.payments.service import PaymentService, PaymentWorkflowError
 from app.modules.pet_knowledge.search import normalize_persian_search
 from app.modules.pets.models import Pet
+from app.modules.reservations.models import Reservation
+from app.modules.reservations.service import (
+    ReservationError,
+    approve_and_convert_reservation,
+    decline_reservation,
+    request_reservation,
+)
 from app.modules.system.idempotency import canonical_request_hash
 from app.modules.trust.models import SourcedUnitEvidence
 
@@ -510,6 +518,180 @@ async def create_order(
     except CheckoutError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return _order_response(order)
+
+
+class ReservationCreateBody(BaseModel):
+    household_id: UUID
+    offer_id: UUID
+    quantity: int = Field(ge=1, le=100)
+
+
+class ReservationApproveBody(BaseModel):
+    address_id: UUID
+
+
+class ReservationDeclineBody(BaseModel):
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+def _reservation_response(reservation: Reservation) -> ReservationResponse:
+    return ReservationResponse(
+        id=reservation.id,
+        offer_id=reservation.offer_id,
+        quantity=reservation.quantity,
+        requested_price_irr=reservation.requested_price_irr,
+        status=reservation.status,
+        operator_review_by=reservation.operator_review_by,
+        reconfirmed_price_irr=reservation.reconfirmed_price_irr,
+        reconfirmed_available=reservation.reconfirmed_available,
+        proposal_reason=reservation.proposal_reason,
+        customer_respond_by=reservation.customer_respond_by,
+        responded_at=reservation.responded_at,
+        order_id=reservation.order_id,
+    )
+
+
+@router.post(
+    "/reservations", response_model=ReservationResponse, status_code=status.HTTP_201_CREATED
+)
+async def create_reservation(
+    body: ReservationCreateBody,
+    idempotency_key: IdempotencyKey,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> ReservationResponse:
+    if not settings.reserve_now_enabled:
+        raise HTTPException(status_code=409, detail="reserve_now_disabled")
+    try:
+        await require_household_membership(
+            session, identity_id=identity.id, household_id=body.household_id
+        )
+    except HouseholdAccessError as exc:
+        raise HTTPException(status_code=404, detail="household_not_found") from exc
+    offer = await session.scalar(
+        select(Offer).where(Offer.id == body.offer_id).with_for_update()
+    )
+    if offer is None:
+        raise HTTPException(status_code=404, detail="offer_not_found")
+    try:
+        reservation = await request_reservation(
+            session,
+            offer=offer,
+            customer_identity_id=identity.id,
+            household_id=body.household_id,
+            quantity=body.quantity,
+            idempotency_key=idempotency_key,
+        )
+    except ReservationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return _reservation_response(reservation)
+
+
+@router.get("/reservations", response_model=list[ReservationResponse])
+async def list_reservations(
+    identity: CurrentIdentity, session: SessionDependency, settings: SettingsDependency
+) -> list[ReservationResponse]:
+    if not settings.reserve_now_enabled:
+        raise HTTPException(status_code=409, detail="reserve_now_disabled")
+    rows = list(
+        (
+            await session.scalars(
+                select(Reservation)
+                .where(Reservation.customer_identity_id == identity.id)
+                .order_by(Reservation.requested_at.desc())
+                .limit(200)
+            )
+        ).all()
+    )
+    return [_reservation_response(row) for row in rows]
+
+
+@router.get("/reservations/{reservation_id}", response_model=ReservationResponse)
+async def get_reservation(
+    reservation_id: UUID,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> ReservationResponse:
+    if not settings.reserve_now_enabled:
+        raise HTTPException(status_code=409, detail="reserve_now_disabled")
+    reservation = await session.get(Reservation, reservation_id)
+    if reservation is None or reservation.customer_identity_id != identity.id:
+        raise HTTPException(status_code=404, detail="reservation_not_found")
+    return _reservation_response(reservation)
+
+
+@router.post("/reservations/{reservation_id}/approve", response_model=OrderResponse)
+async def approve_reservation(
+    reservation_id: UUID,
+    body: ReservationApproveBody,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> OrderResponse:
+    if not settings.reserve_now_enabled:
+        raise HTTPException(status_code=409, detail="reserve_now_disabled")
+    reservation = await session.scalar(
+        select(Reservation).where(Reservation.id == reservation_id).with_for_update()
+    )
+    if reservation is None or reservation.customer_identity_id != identity.id:
+        raise HTTPException(status_code=404, detail="reservation_not_found")
+    row = (
+        await session.execute(
+            select(Offer, Supplier)
+            .join(Supplier, Supplier.id == Offer.supplier_id)
+            .where(Offer.id == reservation.offer_id)
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="offer_not_found")
+    offer, supplier = row
+    address = await session.get(HouseholdAddress, body.address_id)
+    if address is None:
+        raise HTTPException(status_code=404, detail="address_not_found")
+    try:
+        _, order = await approve_and_convert_reservation(
+            session,
+            reservation=reservation,
+            offer=offer,
+            supplier=supplier,
+            address=address,
+            customer_identity_id=identity.id,
+        )
+    except ReservationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return _order_response(order)
+
+
+@router.post("/reservations/{reservation_id}/decline", response_model=ReservationResponse)
+async def decline_reservation_endpoint(
+    reservation_id: UUID,
+    body: ReservationDeclineBody,
+    identity: CurrentIdentity,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> ReservationResponse:
+    if not settings.reserve_now_enabled:
+        raise HTTPException(status_code=409, detail="reserve_now_disabled")
+    reservation = await session.scalar(
+        select(Reservation).where(Reservation.id == reservation_id).with_for_update()
+    )
+    if reservation is None or reservation.customer_identity_id != identity.id:
+        raise HTTPException(status_code=404, detail="reservation_not_found")
+    try:
+        reservation = await decline_reservation(
+            session,
+            reservation=reservation,
+            customer_identity_id=identity.id,
+            reason=body.reason,
+        )
+    except ReservationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return _reservation_response(reservation)
 
 
 @router.post("/orders/{order_id}/payments/zarinpal", response_model=PaymentRedirectResponse)

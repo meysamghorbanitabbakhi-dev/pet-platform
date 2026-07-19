@@ -44,6 +44,11 @@ EVENT_REGISTRY: dict[str, EventDefinition] = {
         disposition="handler",
         description="Notifies the household owner a shelf-life exception needs a response.",
     ),
+    "reservations.proposed": EventDefinition(
+        event_type="reservations.proposed",
+        disposition="handler",
+        description="Notifies the household owner a reservation's reconfirmed terms need response.",
+    ),
 }
 
 

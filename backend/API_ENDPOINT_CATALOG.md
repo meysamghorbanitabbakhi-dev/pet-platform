@@ -53,7 +53,7 @@ The checked OpenAPI contract's path and operation counts are governed by `releas
 
 ## Policy-hidden customer capabilities
 
-There are no executable customer endpoints for reserve-now, refund, replacement, substitution or delay compensation. Push notifications are not claimed in K9. Self-service order cancellation exists but only up to the supplier financial-commitment boundary — see Workstream 2B below; there is still no customer-facing cancellation once a supplier has been committed.
+There are no executable customer endpoints for refund, replacement, substitution or delay compensation. Push notifications are not claimed in K9. Self-service order cancellation exists but only up to the supplier financial-commitment boundary — see Workstream 2B below; there is still no customer-facing cancellation once a supplier has been committed. Reserve-now (Workstream 2C, see below) is now fully built and endpoint-reachable but gated behind `reserve_now_enabled=false` — every reserve-now request 409s until that flag is explicitly turned on.
 
 ## Design-contract closure endpoints (2026-07-19)
 
@@ -111,3 +111,21 @@ Cancellation before supplier financial commitment. Eligibility is governed by th
 | POST | `/orders/{order_id}/shelf-life-exceptions/{exception_id}/decline` | Customer declines; the full line total becomes refund-owed and the line is excluded from delivery projection (the order's *other* lines are unaffected); idempotent |
 
 An unanswered exception automatically becomes `expired` (same refund outcome as a decline) via a scheduler sweep once its response deadline passes; both accept and decline also self-expire on a late response, so a race between a customer's click and the sweep can never produce an inconsistent state. Concurrent accept-vs-decline on the same exception is resolved by row lock — proven under real concurrency, not just reasoned about.
+
+## Reserve-now (2026-07-19, Workstream 2C — gated off, `reserve_now_enabled=false`)
+
+Zero-charge reservation → operator source/price reconfirmation and proposal → customer approval → full-payment order, with no deposit concept anywhere in the schema. Fully built and tested but every endpoint below returns `409 reserve_now_disabled` while the flag is off — see `docs/runbooks/reserve-now-rollout.md` and ADR-008 before ever turning it on.
+
+| Method | Endpoint | Capability |
+|---|---|---|
+| POST | `/reservations` | Customer zero-charge reservation request for a `mode='reserve'` offer; idempotent |
+| GET | `/reservations` | Customer list of their own reservations |
+| GET | `/reservations/{reservation_id}` | Customer detail; non-enumerating 404 for a missing or foreign reservation |
+| POST | `/reservations/{reservation_id}/approve` | Customer approves the operator-reconfirmed terms; creates a real, full-payment `Order` at the *reconfirmed* price (never whatever the live offer price happens to be at that instant) and returns it for the existing payment flow; idempotent, returns the same order on replay |
+| POST | `/reservations/{reservation_id}/decline` | Customer declines the proposed terms; idempotent |
+| POST | `/operator/reservations/{reservation_id}/reconfirm-and-propose` | Operator reconfirms current price/availability and proposes it to the customer for approval; idempotent |
+| POST | `/operator/reservations/{reservation_id}/decline` | Operator determines the offer cannot be sourced at all, skipping the customer entirely; idempotent |
+| GET | `/operator/reservations` | Operator list/queue, filterable by status |
+| GET | `/operator/reservations/{reservation_id}` | Operator detail |
+
+No frontend UI exists for reserve-now yet (unlike Workstreams 2A/2B/2E's live customer endpoints) — building it against endpoints that always 409 would be unverifiable, so it is deferred to whichever future pass enables the flag.
