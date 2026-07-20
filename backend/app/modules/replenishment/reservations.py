@@ -282,6 +282,37 @@ async def invalidate_reservation_for_unit(
     return reservation
 
 
+async def operator_invalidate_reservation(
+    session: AsyncSession,
+    *,
+    reservation: ReplenishmentReservation,
+    operator_id: UUID,
+    reason: str,
+) -> ReplenishmentReservation:
+    """Operator-initiated correction (Workstream 4): the system's
+    automatic recommendation was wrong for some reason a human caught
+    (e.g. the underlying estimate/product mapping looks off) and no
+    automatic correction/exhaustion event will invalidate it on its own.
+    Idempotent; a reservation that already reached any other terminal or
+    approved state cannot be invalidated this way -- mirrors
+    invalidate_reservation_for_unit's own pending_approval-only rule, just
+    reachable directly by reservation_id instead of inventory_unit_id, and
+    with an operator identity/reason recorded for the audit trail rather
+    than a system-triggered one. Caller must have already row-locked
+    `reservation`; does not commit."""
+    if reservation.status == "invalidated":
+        return reservation
+    if reservation.status != "pending_approval":
+        raise ReplenishmentReservationError(
+            f"reservation_not_invalidatable:{reservation.status}"
+        )
+    now = utc_now()
+    reservation.status = "invalidated"
+    reservation.invalidated_at = now
+    session.add(_event(reservation.id, "invalidated", now, identity_id=operator_id, reason=reason))
+    return reservation
+
+
 async def expire_stale_reservations(
     session_factory: async_sessionmaker[AsyncSession], *, batch_size: int = 100
 ) -> int:

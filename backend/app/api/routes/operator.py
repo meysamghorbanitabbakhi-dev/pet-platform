@@ -16,7 +16,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.contracts import JourneyContentResponse, OrderCancellationResponse
+from app.api.contracts import (
+    JourneyContentResponse,
+    OrderCancellationResponse,
+    ReplenishmentReservationResponse,
+)
 from app.api.dependencies import CurrentOperator
 from app.api.middleware import request_id_context
 from app.common.time import add_months, utc_now
@@ -76,6 +80,14 @@ from app.modules.pet_knowledge.validation import canonical_bytes, validate_bundl
 from app.modules.pets.models import Pet
 from app.modules.purchasing.models import PurchaseBatch, PurchaseBatchAllocation, PurchaseBatchEvent
 from app.modules.purchasing.service import PurchasingError, commit_batch
+from app.modules.replenishment.models import (
+    ReplenishmentReservation,
+    ReplenishmentReservationEvent,
+)
+from app.modules.replenishment.reservations import (
+    ReplenishmentReservationError,
+    operator_invalidate_reservation,
+)
 from app.modules.reporting.kpi import KPI_REGISTRY, KPIDefinition
 from app.modules.reporting.service import KPIResult, compute_all_kpis, compute_kpi
 from app.modules.reservations.models import Reservation
@@ -2598,6 +2610,147 @@ async def operator_decline_reservation_endpoint(
         )
     await session.commit()
     return _operator_reservation_response(reservation)
+
+
+class ReplenishmentReservationEventResponse(BaseModel):
+    event_type: str
+    occurred_at: datetime
+    reason: str | None
+    identity_id: UUID | None
+
+
+class ReplenishmentReservationDetailResponse(ReplenishmentReservationResponse):
+    events: list[ReplenishmentReservationEventResponse]
+
+
+class ReplenishmentInvalidateBody(BaseModel):
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+def _replenishment_reservation_response(
+    reservation: ReplenishmentReservation,
+) -> ReplenishmentReservationResponse:
+    return ReplenishmentReservationResponse(
+        id=reservation.id,
+        household_id=reservation.household_id,
+        pet_id=reservation.pet_id,
+        inventory_unit_id=reservation.inventory_unit_id,
+        product_id=reservation.product_id,
+        offer_id=reservation.offer_id,
+        quantity=reservation.quantity,
+        predicted_depletion_low_days=reservation.predicted_depletion_low_days,
+        predicted_depletion_high_days=reservation.predicted_depletion_high_days,
+        status=reservation.status,
+        approval_expires_at=reservation.approval_expires_at,
+        approved_at=reservation.approved_at,
+        declined_at=reservation.declined_at,
+        expired_at=reservation.expired_at,
+        invalidated_at=reservation.invalidated_at,
+        resulting_order_id=reservation.resulting_order_id,
+    )
+
+
+@router.get(
+    "/replenishment-reservations", response_model=list[ReplenishmentReservationResponse]
+)
+async def list_replenishment_reservations(
+    _: CurrentOperator,
+    session: SessionDependency,
+    settings: SettingsDependency,
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+) -> list[ReplenishmentReservationResponse]:
+    if not settings.replenishment_reservation_enabled:
+        raise HTTPException(status_code=409, detail="replenishment_reservation_disabled")
+    valid_statuses = ("pending_approval", "approved", "declined", "expired", "invalidated")
+    if status_filter is not None and status_filter not in valid_statuses:
+        raise HTTPException(status_code=422, detail="invalid_status_filter")
+    query = select(ReplenishmentReservation).order_by(
+        ReplenishmentReservation.created_at.desc()
+    )
+    if status_filter is not None:
+        query = query.where(ReplenishmentReservation.status == status_filter)
+    rows = list((await session.scalars(query.limit(200))).all())
+    return [_replenishment_reservation_response(row) for row in rows]
+
+
+@router.get(
+    "/replenishment-reservations/{reservation_id}",
+    response_model=ReplenishmentReservationDetailResponse,
+)
+async def get_replenishment_reservation(
+    reservation_id: UUID,
+    _: CurrentOperator,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> ReplenishmentReservationDetailResponse:
+    if not settings.replenishment_reservation_enabled:
+        raise HTTPException(status_code=409, detail="replenishment_reservation_disabled")
+    reservation = await session.get(ReplenishmentReservation, reservation_id)
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="replenishment_reservation_not_found")
+    events = list(
+        (
+            await session.scalars(
+                select(ReplenishmentReservationEvent)
+                .where(ReplenishmentReservationEvent.reservation_id == reservation_id)
+                .order_by(ReplenishmentReservationEvent.occurred_at)
+            )
+        ).all()
+    )
+    base = _replenishment_reservation_response(reservation)
+    return ReplenishmentReservationDetailResponse(
+        **base.model_dump(),
+        events=[
+            ReplenishmentReservationEventResponse(
+                event_type=event.event_type,
+                occurred_at=event.occurred_at,
+                reason=event.reason,
+                identity_id=event.identity_id,
+            )
+            for event in events
+        ],
+    )
+
+
+@router.post(
+    "/replenishment-reservations/{reservation_id}/invalidate",
+    response_model=ReplenishmentReservationResponse,
+)
+async def invalidate_replenishment_reservation(
+    reservation_id: UUID,
+    body: ReplenishmentInvalidateBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+    settings: SettingsDependency,
+) -> ReplenishmentReservationResponse:
+    if not settings.replenishment_reservation_enabled:
+        raise HTTPException(status_code=409, detail="replenishment_reservation_disabled")
+    reservation = await session.get(
+        ReplenishmentReservation, reservation_id, with_for_update=True
+    )
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="replenishment_reservation_not_found")
+    already_invalidated = reservation.status == "invalidated"
+    try:
+        reservation = await operator_invalidate_reservation(
+            session, reservation=reservation, operator_id=operator.id, reason=body.reason
+        )
+    except ReplenishmentReservationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not already_invalidated:
+        _audit(
+            session,
+            request,
+            operator.id,
+            "replenishment_reservation.invalidated",
+            "replenishment_reservation",
+            reservation.id,
+            body.reason,
+            {"reason": body.reason},
+        )
+    await session.commit()
+    return _replenishment_reservation_response(reservation)
 
 
 @router.post(

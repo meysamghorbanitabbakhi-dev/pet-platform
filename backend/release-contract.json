@@ -5,8 +5,8 @@
     ]
   },
   "openapi": {
-    "operation_count": 199,
-    "path_count": 181,
+    "operation_count": 202,
+    "path_count": 184,
     "required_constants": {
       "OfferDetailResponse.authenticity": "supplier_verified",
       "TodayFoodEstimated.state": "estimated",
@@ -422,8 +422,8 @@
         "expires_in_seconds"
       ]
     },
-    "schema_count": 237,
-    "sha256": "6f6493f3ac7755d2e76353d51405a3bd741b640172967c24fdce6a1af9cc07fc"
+    "schema_count": 240,
+    "sha256": "dc1e998caa549d9ffe8ccb702eb22448e54db4eef4c732d12176461b4a3ef571"
   },
   "policy_defaults": {
     "care_journey_delivery_enabled": true,
