@@ -349,6 +349,13 @@ async def accept_offer(
             address_id=address_id,
             items=[CheckoutItem(catalog_offer.id, offer.quantity)],
             idempotency_key=f"concierge:{offer.id}",
+            # Trusted internal conversion: catalog_offer was just created
+            # above specifically for this acceptance, mode='concierge_only'
+            # by construction -- not an arbitrary customer-supplied
+            # offer_id, so it is safe to allow the one mode this flow
+            # itself produces. Ordinary customer checkout never passes
+            # allowed_modes and stays restricted to full_payment.
+            allowed_modes=frozenset({"concierge_only"}),
         )
     except CheckoutError as exc:
         raise ConciergeOfferError(f"checkout_failed:{exc}") from exc

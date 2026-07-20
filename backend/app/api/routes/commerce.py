@@ -133,7 +133,18 @@ def _order_item(order: Order) -> OrderListItem:
     )
 
 
-def _offer_availability_filters(now: datetime) -> tuple[ColumnElement[bool], ...]:
+def _offer_availability_filters(
+    now: datetime, *, reserve_now_enabled: bool
+) -> tuple[ColumnElement[bool], ...]:
+    # A reserve-mode offer is only ever meant to be discovered through its
+    # own dedicated reserve-now flow (app.modules.reservations), which does
+    # not exist as a customer-facing discovery surface yet -- showing it in
+    # ordinary browse/search today would let a customer add it to cart and
+    # then have ordinary checkout reject it with no explanation. Excluded
+    # from general browse/search until reserve_now_enabled is true AND a
+    # real reserve-discovery UI exists to replace this gate with one that
+    # actually explains the workflow.
+    modes = ["full_payment"] if not reserve_now_enabled else ["full_payment", "reserve"]
     return (
         Offer.status == "active",
         Offer.stock_posture == "sourced_after_payment",
@@ -144,7 +155,7 @@ def _offer_availability_filters(now: datetime) -> tuple[ColumnElement[bool], ...
         # creates (Workstream 4) is reachable by id for its own checkout
         # but must never appear in ordinary browse/search -- only a
         # deliberate operator promotion (Decision 0.37) changes the mode.
-        Offer.mode != "concierge_only",
+        Offer.mode.in_(modes),
     )
 
 
@@ -171,13 +182,17 @@ def _offer_list_item(offer: Offer, supplier: Supplier) -> OfferListItem:
 
 
 @router.get("/catalog/offers", response_model=list[OfferListItem])
-async def list_offers(session: SessionDependency) -> list[OfferListItem]:
+async def list_offers(
+    session: SessionDependency, settings: SettingsDependency
+) -> list[OfferListItem]:
     now = utc_now()
     rows = (
         await session.execute(
             select(Offer, Supplier)
             .join(Supplier, Supplier.id == Offer.supplier_id)
-            .where(*_offer_availability_filters(now))
+            .where(
+                *_offer_availability_filters(now, reserve_now_enabled=settings.reserve_now_enabled)
+            )
             .order_by(Offer.title_fa)
         )
     ).all()
@@ -193,21 +208,22 @@ def _escape_like_term(normalized: str) -> str:
 async def search_offers(
     session: SessionDependency,
     pagination: PaginationDependency,
+    settings: SettingsDependency,
     q: Annotated[str, Query(min_length=1, max_length=200)],
 ) -> dict[str, object]:
     now = utc_now()
     normalized = normalize_persian_search(q)
     if not normalized:
         return page([], total=0, pagination=pagination)
-    availability = _offer_availability_filters(now)
+    availability = _offer_availability_filters(
+        now, reserve_now_enabled=settings.reserve_now_enabled
+    )
     term = _escape_like_term(normalized)
     match = or_(
         Offer.title_fa_search.like(term, escape="\\"),
         Offer.sku_search.like(term, escape="\\"),
     )
-    total = int(
-        await session.scalar(select(func.count(Offer.id)).where(*availability, match)) or 0
-    )
+    total = int(await session.scalar(select(func.count(Offer.id)).where(*availability, match)) or 0)
     rows = (
         await session.execute(
             select(Offer, Supplier)
@@ -233,6 +249,17 @@ async def offer_detail(offer_id: UUID, session: SessionDependency) -> OfferDetai
                 Offer.id == offer_id,
                 Offer.status.in_(("active", "unavailable")),
                 Product.status == "active",
+                # This route is fully public/unauthenticated -- reachable
+                # by anyone who has or guesses the id, with no ownership
+                # check possible. A concierge_only offer is priced and
+                # verified for one specific customer/request; it must
+                # never be disclosed here, matching the same exclusion
+                # already applied to list/search (_offer_availability_filters).
+                # The owning customer views it via the ownership-checked
+                # GET /concierge-offers/{offer_id} route instead, and their
+                # order detail already carries its own price/title
+                # snapshot independent of this route.
+                Offer.mode != "concierge_only",
             )
         )
     ).first()
@@ -290,7 +317,7 @@ async def offer_detail(offer_id: UUID, session: SessionDependency) -> OfferDetai
     response_model=list[ProductAlternativeResponse],
 )
 async def list_product_alternatives(
-    product_id: UUID, session: SessionDependency
+    product_id: UUID, session: SessionDependency, settings: SettingsDependency
 ) -> list[ProductAlternativeResponse]:
     now = utc_now()
     alternatives = list(
@@ -314,7 +341,7 @@ async def list_product_alternatives(
             .join(Supplier, Supplier.id == Offer.supplier_id)
             .where(
                 Offer.product_id.in_(alternative_product_ids),
-                *_offer_availability_filters(now),
+                *_offer_availability_filters(now, reserve_now_enabled=settings.reserve_now_enabled),
             )
             .order_by(Offer.product_id, Offer.price_irr, Offer.id)
         )
@@ -574,9 +601,7 @@ async def create_reservation(
         )
     except HouseholdAccessError as exc:
         raise HTTPException(status_code=404, detail="household_not_found") from exc
-    offer = await session.scalar(
-        select(Offer).where(Offer.id == body.offer_id).with_for_update()
-    )
+    offer = await session.scalar(select(Offer).where(Offer.id == body.offer_id).with_for_update())
     if offer is None:
         raise HTTPException(status_code=404, detail="offer_not_found")
     try:
@@ -1045,8 +1070,8 @@ async def customer_order_detail(
     cancellation = await session.scalar(
         select(OrderCancellation).where(OrderCancellation.order_id == order.id)
     )
-    cancellation_eligible = (
-        cancellation is None and await is_order_cancellation_eligible_now(session, order=order)
+    cancellation_eligible = cancellation is None and await is_order_cancellation_eligible_now(
+        session, order=order
     )
     snapshot = order.delivery_address_snapshot
     return OrderDetailResponse(

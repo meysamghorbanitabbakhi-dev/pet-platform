@@ -26,6 +26,9 @@ class CheckoutItem:
     quantity: int
 
 
+_ORDINARY_CHECKOUT_MODES = frozenset({"full_payment"})
+
+
 class CheckoutService:
     async def create_order(
         self,
@@ -36,7 +39,17 @@ class CheckoutService:
         address_id: UUID,
         items: list[CheckoutItem],
         idempotency_key: str,
+        allowed_modes: frozenset[str] = _ORDINARY_CHECKOUT_MODES,
     ) -> Order:
+        """allowed_modes defaults to the ordinary, customer-initiated
+        full_payment checkout path -- every route that lets a customer
+        submit an arbitrary offer_id must use that default. A caller may
+        pass a different, narrower frozenset ONLY when it is itself a
+        trusted internal conversion command that has already validated
+        the offer through its own domain rules and is converting exactly
+        the mode it expects (e.g. concierge acceptance converting the
+        concierge_only offer it just created for that exact request) --
+        never a blanket bypass. See ADR on offer-mode checkout eligibility."""
         if not items or any(item.quantity <= 0 for item in items):
             raise CheckoutError("checkout requires positive quantities")
         request_hash = canonical_request_hash(
@@ -115,6 +128,21 @@ class CheckoutService:
             raise CheckoutError("idempotency key was already used for another request") from exc
         for item in items:
             offer, supplier = offers[item.offer_id]
+            # Ordinary checkout (the default allowed_modes) is the
+            # full_payment path only. 'reserve' offers must go through
+            # app.modules.reservations (operator price/availability
+            # reconfirmation first); 'concierge_only' offers are bound to
+            # one specific customer/request and are only ever passed here
+            # by app.modules.concierge's own trusted accept flow (via a
+            # narrower allowed_modes). Both modes reach
+            # status='active'/sourcing_capacity_status='open' just like an
+            # ordinary offer, so without this check any customer who learns
+            # the offer_id (a leaked link, a shared concierge offer id,
+            # simple enumeration) could buy it here, bypassing the reserve
+            # reconfirmation workflow or another household's concierge
+            # verification and pricing entirely.
+            if offer.mode not in allowed_modes:
+                raise CheckoutError(f"offer {offer.id} is not eligible for this checkout path")
             if offer.status != "active" or offer.stock_posture != "sourced_after_payment":
                 raise CheckoutError(f"offer {offer.id} is unavailable")
             if offer.sourcing_capacity_status != "open":

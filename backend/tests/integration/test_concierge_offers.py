@@ -1015,10 +1015,19 @@ async def test_http_operator_queue_filters_by_status(
 # --- catalog hiding ----------------------------------------------------------
 
 
-async def test_accepted_concierge_offer_is_hidden_from_browse_and_search_but_reachable_by_id(
+async def test_accepted_concierge_offer_is_hidden_from_browse_search_and_direct_id(
     concierge_offers_enabled: None,
     app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
+    """Hardened by the gap-closure security pass: the public catalog detail
+    route is fully unauthenticated, so "reachable by id" was equivalent to
+    "disclosed to anyone who has or guesses the id" -- direct-id
+    enumeration must not disclose a concierge_only offer (bound to one
+    specific customer's verified, priced sourcing arrangement) to anyone
+    else. The owning customer views it via the ownership-checked
+    GET /concierge-offers/{offer_id} route and their order detail's own
+    price/title snapshot instead -- neither depends on the public catalog
+    route staying open for this mode."""
     app, client = app_and_client
     seed = await _seed_request()
     offer_id = await _presented_offer(
@@ -1049,5 +1058,5 @@ async def test_accepted_concierge_offer_is_hidden_from_browse_and_search_but_rea
     assert search.json()["page"]["total"] == 0
 
     direct = await client.get(f"/api/v1/catalog/offers/{promoted_offer_id}")
-    assert direct.status_code == 200
-    assert direct.json()["id"] == str(promoted_offer_id)
+    nonexistent = await client.get(f"/api/v1/catalog/offers/{uuid.uuid4()}")
+    assert direct.status_code == nonexistent.status_code == 404

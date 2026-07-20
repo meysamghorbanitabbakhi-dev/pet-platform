@@ -84,7 +84,9 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "default_batch_threshold_quantity IS NULL OR default_batch_threshold_quantity > 0",
             name="positive_default_batch_threshold",
         ),
-        CheckConstraint("mode IN ('full_payment','reserve')", name="valid_mode"),
+        CheckConstraint(
+            "mode IN ('full_payment','reserve','concierge_only')", name="valid_mode"
+        ),
     )
 
     product_id: Mapped[UUID] = mapped_column(ForeignKey("catalog_products.id"), index=True)
@@ -124,6 +126,11 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # reconfirmation -> customer approval -> full-payment order (Workstream
     # 2C, app.modules.reservations) -- gated off entirely behind
     # settings.reserve_now_enabled=False until a launch decision is made.
+    # 'concierge_only': a one-off Offer/Product pair lazily created when a
+    # customer accepts a verified concierge offer (Workstream 4,
+    # app.modules.concierge) -- hidden from public browse/search/detail
+    # until an operator deliberately promotes it; never returned by the
+    # ordinary full-payment checkout eligibility check.
     # Never invents a deposit/partial-payment concept either way.
     mode: Mapped[str] = mapped_column(String(20), default="full_payment", nullable=False)
     # PostgreSQL STORED GENERATED columns (migration 20260719_0027):

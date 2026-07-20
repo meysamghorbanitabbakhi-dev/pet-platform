@@ -45,13 +45,19 @@ def _event(
 
 async def _find_available_offer(session: AsyncSession, *, product_id: UUID) -> Offer | None:
     """Same 'reorderable' definition as _reorder_options in pet_life.py
-    (status=active, stock_posture=sourced_after_payment,
+    (mode=full_payment, status=active, stock_posture=sourced_after_payment,
     sourcing_capacity_status=open) -- deliberately not a second,
-    subtly-different notion of availability."""
+    subtly-different notion of availability. mode=full_payment excludes
+    'reserve' (needs its own operator reconfirmation workflow) and
+    'concierge_only' (bound to one specific customer/request) offers --
+    an automatic recommendation must never point at either, since
+    approval here converts straight into a real order via CheckoutService,
+    which itself now rejects both modes."""
     offer = await session.scalar(
         select(Offer)
         .where(
             Offer.product_id == product_id,
+            Offer.mode == "full_payment",
             Offer.status == "active",
             Offer.stock_posture == "sourced_after_payment",
             Offer.sourcing_capacity_status == "open",
