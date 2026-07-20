@@ -1,12 +1,12 @@
 {
   "alembic": {
     "heads": [
-      "20260719_0034"
+      "20260720_0035"
     ]
   },
   "openapi": {
-    "operation_count": 184,
-    "path_count": 166,
+    "operation_count": 195,
+    "path_count": 177,
     "required_constants": {
       "OfferDetailResponse.authenticity": "supplier_verified",
       "TodayFoodEstimated.state": "estimated",
@@ -390,6 +390,7 @@
         "full_payment_only",
         "reserve_now_enabled",
         "replenishment_reservation_enabled",
+        "concierge_offers_enabled",
         "care_journey_delivery_enabled",
         "semantic_level_estimation_enabled",
         "sourcing_start_rule",
@@ -421,11 +422,12 @@
         "expires_in_seconds"
       ]
     },
-    "schema_count": 225,
-    "sha256": "b9937d95f9a33d0526ef0d458dd238ad875a0744c683d42cfd8dfbcb66e65ce5"
+    "schema_count": 233,
+    "sha256": "debb3ad58f5805000256bbd15e5609987783784278cd7dd6af94e508918f28f8"
   },
   "policy_defaults": {
     "care_journey_delivery_enabled": true,
+    "concierge_offers_enabled": false,
     "delay_compensation_customer_visible": false,
     "delivery_commitment_hours": 366,
     "full_payment_only": true,

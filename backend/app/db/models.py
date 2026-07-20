@@ -1,6 +1,7 @@
 """Import all mapped classes so Alembic sees one complete metadata graph."""
 
 from app.modules.catalog.models import CatalogAvailabilitySubscription, Offer, Product, Supplier
+from app.modules.concierge.models import ConciergeOffer, ConciergeOfferEvent
 from app.modules.diary.models import DiaryEntry
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.garden.models import GardenReward
@@ -89,6 +90,8 @@ __all__ = [
     "AuthIdentity",
     "AuthSession",
     "ConsumptionAssignment",
+    "ConciergeOffer",
+    "ConciergeOfferEvent",
     "DiaryEntry",
     "CatalogAvailabilitySubscription",
     "ExchangeRateSnapshot",

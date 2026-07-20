@@ -140,6 +140,11 @@ def _offer_availability_filters(now: datetime) -> tuple[ColumnElement[bool], ...
         Offer.sourcing_capacity_status == "open",
         (Offer.available_from.is_(None)) | (Offer.available_from <= now),
         (Offer.available_until.is_(None)) | (Offer.available_until > now),
+        # The one-off Offer/Product a concierge offer acceptance lazily
+        # creates (Workstream 4) is reachable by id for its own checkout
+        # but must never appear in ordinary browse/search -- only a
+        # deliberate operator promotion (Decision 0.37) changes the mode.
+        Offer.mode != "concierge_only",
     )
 
 

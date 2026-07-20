@@ -11,6 +11,7 @@ from app.core.redis import close_redis, get_redis
 from app.db.session import SessionFactory, close_database
 from app.integrations.otp.factory import OtpProviderNotConfiguredError, build_otp_provider
 from app.integrations.price_intelligence.scheduler import run_price_intelligence_collection
+from app.modules.concierge.service import expire_stale_offers as expire_stale_concierge_offers
 from app.modules.notifications.service import deliver_pending_sms
 from app.modules.orders.shelf_life_exceptions import expire_stale_shelf_life_exceptions
 from app.modules.pet_knowledge.jobs import process_knowledge_review_lifecycle
@@ -61,6 +62,8 @@ async def run() -> None:
     if settings.replenishment_reservation_enabled:
         scheduler.register(lambda: _run_replenishment_scan_job())
         scheduler.register(lambda: _run_replenishment_expiry_job())
+    if settings.concierge_offers_enabled:
+        scheduler.register(lambda: _run_concierge_offer_expiry_job())
     redis = get_redis()
     stop = asyncio.Event()
     _install_stop_handlers(stop)
@@ -155,6 +158,15 @@ async def _run_replenishment_expiry_job() -> None:
     expired = await expire_stale_replenishment_reservations(SessionFactory)
     if expired:
         logger.info("expired %s stale replenishment reservations", expired)
+
+
+async def _run_concierge_offer_expiry_job() -> None:
+    settings = get_settings()
+    if not settings.concierge_offers_enabled:
+        return
+    expired = await expire_stale_concierge_offers(SessionFactory)
+    if expired:
+        logger.info("expired %s stale concierge offers", expired)
 
 
 async def _run_price_intelligence_job() -> None:

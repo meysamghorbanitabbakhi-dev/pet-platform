@@ -1240,6 +1240,728 @@
         "title": "CollectionRunResponse",
         "type": "object"
       },
+      "ConciergeOfferAcceptBody": {
+        "properties": {
+          "address_id": {
+            "format": "uuid",
+            "title": "Address Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address_id"
+        ],
+        "title": "ConciergeOfferAcceptBody",
+        "type": "object"
+      },
+      "ConciergeOfferDeclineBody": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "ConciergeOfferDeclineBody",
+        "type": "object"
+      },
+      "ConciergeOfferOperatorResponse": {
+        "description": "Operator-only full view, including internal landed-cost components\nand supplier identity. Never returned from a customer-facing route.",
+        "properties": {
+          "authenticity_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authenticity Basis"
+          },
+          "catalog_promoted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Promoted At"
+          },
+          "catalog_promotion_rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Promotion Rationale"
+          },
+          "customer_identity_id": {
+            "format": "uuid",
+            "title": "Customer Identity Id",
+            "type": "string"
+          },
+          "customs_clearance_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customs Clearance Irr"
+          },
+          "decline_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decline Reason"
+          },
+          "domestic_delivery_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domestic Delivery Irr"
+          },
+          "estimated_delivery_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Delivery Days"
+          },
+          "exchange_rate_basis_irr_per_unit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange Rate Basis Irr Per Unit"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "handling_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handling Irr"
+          },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "international_transport_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "International Transport Irr"
+          },
+          "minimum_shelf_life_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Shelf Life Months"
+          },
+          "payment_fees_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Fees Irr"
+          },
+          "platform_margin_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Margin Irr"
+          },
+          "presented_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presented At"
+          },
+          "price_explanation_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Explanation Fa"
+          },
+          "price_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Irr"
+          },
+          "pricing_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "reference_price_savings",
+                  "landed_cost_plus_margin"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pricing Mode"
+          },
+          "promoted_offer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promoted Offer Id"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "reference_price_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Price Irr"
+          },
+          "refreshed_from_offer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshed From Offer Id"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "responded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responded At"
+          },
+          "resulting_order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resulting Order Id"
+          },
+          "reviewing_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewing Started At"
+          },
+          "risk_reserve_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Reserve Irr"
+          },
+          "status": {
+            "enum": [
+              "reviewing",
+              "offer_presented",
+              "accepted",
+              "declined",
+              "expired",
+              "unavailable",
+              "refresh_requested"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supplier_cost_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier Cost Irr"
+          },
+          "supplier_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier Id"
+          },
+          "title_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Fa"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "unit_label_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Label Fa"
+          },
+          "validity_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validity Hours"
+          },
+          "verification_evidence_file_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Evidence File Id"
+          }
+        },
+        "required": [
+          "id",
+          "request_id",
+          "household_id",
+          "customer_identity_id",
+          "status",
+          "quantity"
+        ],
+        "title": "ConciergeOfferOperatorResponse",
+        "type": "object"
+      },
+      "ConciergeOfferPromoteBody": {
+        "properties": {
+          "rationale": {
+            "maxLength": 2000,
+            "minLength": 5,
+            "title": "Rationale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rationale"
+        ],
+        "title": "ConciergeOfferPromoteBody",
+        "type": "object"
+      },
+      "ConciergeOfferResponse": {
+        "description": "Customer-safe view: never includes supplier identity (only\ncountry) or any internal landed-cost component -- see\nConciergeOfferOperatorResponse for the operator-only full view.",
+        "properties": {
+          "authenticity_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authenticity Basis"
+          },
+          "auto_charged": {
+            "const": false,
+            "default": false,
+            "title": "Auto Charged",
+            "type": "boolean"
+          },
+          "decline_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decline Reason"
+          },
+          "estimated_delivery_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Delivery Days"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "minimum_shelf_life_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Shelf Life Months"
+          },
+          "presented_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presented At"
+          },
+          "price_explanation_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Explanation Fa"
+          },
+          "price_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Irr"
+          },
+          "pricing_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "reference_price_savings",
+                  "landed_cost_plus_margin"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pricing Mode"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "reference_price_irr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Price Irr"
+          },
+          "refreshed_from_offer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshed From Offer Id"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "responded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responded At"
+          },
+          "resulting_order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resulting Order Id"
+          },
+          "status": {
+            "enum": [
+              "reviewing",
+              "offer_presented",
+              "accepted",
+              "declined",
+              "expired",
+              "unavailable",
+              "refresh_requested"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supplier_country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier Country Code"
+          },
+          "title_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Fa"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "unit_label_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Label Fa"
+          }
+        },
+        "required": [
+          "id",
+          "request_id",
+          "status",
+          "quantity"
+        ],
+        "title": "ConciergeOfferResponse",
+        "type": "object"
+      },
+      "ConciergeOfferUnavailableBody": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ConciergeOfferUnavailableBody",
+        "type": "object"
+      },
       "ConsentBody": {
         "properties": {
           "policy_version": {
@@ -4958,6 +5680,219 @@
         "title": "OfferListItem",
         "type": "object"
       },
+      "OfferPresentationBody": {
+        "properties": {
+          "authenticity_basis": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Authenticity Basis",
+            "type": "string"
+          },
+          "customs_clearance_irr": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customs Clearance Irr"
+          },
+          "domestic_delivery_irr": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domestic Delivery Irr"
+          },
+          "estimated_delivery_days": {
+            "maximum": 180.0,
+            "minimum": 1.0,
+            "title": "Estimated Delivery Days",
+            "type": "integer"
+          },
+          "exchange_rate_basis_irr_per_unit": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange Rate Basis Irr Per Unit"
+          },
+          "handling_irr": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handling Irr"
+          },
+          "international_transport_irr": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "International Transport Irr"
+          },
+          "minimum_shelf_life_months": {
+            "maximum": 36.0,
+            "minimum": 1.0,
+            "title": "Minimum Shelf Life Months",
+            "type": "integer"
+          },
+          "payment_fees_irr": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Fees Irr"
+          },
+          "platform_margin_irr": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Margin Irr"
+          },
+          "price_explanation_fa": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Price Explanation Fa",
+            "type": "string"
+          },
+          "price_irr": {
+            "exclusiveMinimum": 0.0,
+            "title": "Price Irr",
+            "type": "integer"
+          },
+          "pricing_mode": {
+            "title": "Pricing Mode",
+            "type": "string"
+          },
+          "quantity": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "reference_price_irr": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Price Irr"
+          },
+          "risk_reserve_irr": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Reserve Irr"
+          },
+          "supplier_cost_irr": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier Cost Irr"
+          },
+          "supplier_id": {
+            "format": "uuid",
+            "title": "Supplier Id",
+            "type": "string"
+          },
+          "title_fa": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title Fa",
+            "type": "string"
+          },
+          "unit_label_fa": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Unit Label Fa",
+            "type": "string"
+          },
+          "validity_hours": {
+            "anyOf": [
+              {
+                "maximum": 48.0,
+                "minimum": 12.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validity Hours"
+          },
+          "verification_evidence_file_id": {
+            "format": "uuid",
+            "title": "Verification Evidence File Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title_fa",
+          "unit_label_fa",
+          "authenticity_basis",
+          "supplier_id",
+          "verification_evidence_file_id",
+          "minimum_shelf_life_months",
+          "estimated_delivery_days",
+          "pricing_mode",
+          "price_irr",
+          "price_explanation_fa"
+        ],
+        "title": "OfferPresentationBody",
+        "type": "object"
+      },
       "OfferSourcingConfigBody": {
         "properties": {
           "default_batch_threshold_quantity": {
@@ -5040,6 +5975,26 @@
           "page"
         ],
         "title": "OffsetPage[AvailabilitySubscriptionResponse]",
+        "type": "object"
+      },
+      "OffsetPage_ConciergeOfferOperatorResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConciergeOfferOperatorResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/OffsetPageMetadata"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "OffsetPage[ConciergeOfferOperatorResponse]",
         "type": "object"
       },
       "OffsetPage_CustomerRequestResponse_": {
@@ -7057,6 +8012,14 @@
             "title": "Care Journey Delivery Enabled",
             "type": "boolean"
           },
+          "concierge_offer_default_validity_hours": {
+            "title": "Concierge Offer Default Validity Hours",
+            "type": "integer"
+          },
+          "concierge_offers_enabled": {
+            "title": "Concierge Offers Enabled",
+            "type": "boolean"
+          },
           "concierge_requests_enabled": {
             "title": "Concierge Requests Enabled",
             "type": "boolean"
@@ -7211,6 +8174,8 @@
           "replenishment_reservation_enabled",
           "replenishment_reservation_lead_days",
           "replenishment_reservation_approval_window_hours",
+          "concierge_offers_enabled",
+          "concierge_offer_default_validity_hours",
           "customer_request_acknowledgement_fa",
           "pet_health_consent_policy_version",
           "storage_backend",
@@ -10735,6 +11700,218 @@
         ]
       }
     },
+    "/api/v1/concierge-offers/{offer_id}": {
+      "get": {
+        "operationId": "get_concierge_offer_api_v1_concierge_offers__offer_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConciergeOfferResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Concierge Offer",
+        "tags": [
+          "concierge-offers"
+        ]
+      }
+    },
+    "/api/v1/concierge-offers/{offer_id}/accept": {
+      "post": {
+        "operationId": "accept_concierge_offer_api_v1_concierge_offers__offer_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConciergeOfferAcceptBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConciergeOfferResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Concierge Offer",
+        "tags": [
+          "concierge-offers"
+        ]
+      }
+    },
+    "/api/v1/concierge-offers/{offer_id}/decline": {
+      "post": {
+        "operationId": "decline_concierge_offer_api_v1_concierge_offers__offer_id__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConciergeOfferDeclineBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConciergeOfferResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline Concierge Offer",
+        "tags": [
+          "concierge-offers"
+        ]
+      }
+    },
+    "/api/v1/concierge-offers/{offer_id}/refresh": {
+      "post": {
+        "operationId": "refresh_concierge_offer_api_v1_concierge_offers__offer_id__refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConciergeOfferResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Refresh Concierge Offer",
+        "tags": [
+          "concierge-offers"
+        ]
+      }
+    },
     "/api/v1/customer-requests": {
       "get": {
         "operationId": "list_customer_requests_api_v1_customer_requests_get",
@@ -10899,6 +12076,58 @@
         "summary": "Customer Request Detail",
         "tags": [
           "customer-requests"
+        ]
+      }
+    },
+    "/api/v1/customer-requests/{request_id}/concierge-offers": {
+      "get": {
+        "operationId": "list_concierge_offers_api_v1_customer_requests__request_id__concierge_offers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConciergeOfferResponse"
+                  },
+                  "title": "Response List Concierge Offers Api V1 Customer Requests  Request Id  Concierge Offers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Concierge Offers",
+        "tags": [
+          "concierge-offers"
         ]
       }
     },
@@ -11315,6 +12544,306 @@
         ]
       }
     },
+    "/api/v1/operator/concierge-offers": {
+      "get": {
+        "operationId": "operator_list_concierge_offers_api_v1_operator_concierge_offers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsetPage_ConciergeOfferOperatorResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operator List Concierge Offers",
+        "tags": [
+          "concierge-offers"
+        ]
+      }
+    },
+    "/api/v1/operator/concierge-offers/{offer_id}": {
+      "get": {
+        "operationId": "operator_get_concierge_offer_api_v1_operator_concierge_offers__offer_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConciergeOfferOperatorResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operator Get Concierge Offer",
+        "tags": [
+          "concierge-offers"
+        ]
+      }
+    },
+    "/api/v1/operator/concierge-offers/{offer_id}/present": {
+      "post": {
+        "operationId": "operator_present_offer_api_v1_operator_concierge_offers__offer_id__present_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfferPresentationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConciergeOfferOperatorResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operator Present Offer",
+        "tags": [
+          "concierge-offers"
+        ]
+      }
+    },
+    "/api/v1/operator/concierge-offers/{offer_id}/promote": {
+      "post": {
+        "operationId": "operator_promote_offer_api_v1_operator_concierge_offers__offer_id__promote_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConciergeOfferPromoteBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConciergeOfferOperatorResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operator Promote Offer",
+        "tags": [
+          "concierge-offers"
+        ]
+      }
+    },
+    "/api/v1/operator/concierge-offers/{offer_id}/unavailable": {
+      "post": {
+        "operationId": "operator_mark_unavailable_api_v1_operator_concierge_offers__offer_id__unavailable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConciergeOfferUnavailableBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConciergeOfferOperatorResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operator Mark Unavailable",
+        "tags": [
+          "concierge-offers"
+        ]
+      }
+    },
     "/api/v1/operator/customer-requests": {
       "get": {
         "operationId": "operator_customer_requests_api_v1_operator_customer_requests_get",
@@ -11374,6 +12903,54 @@
         "summary": "Operator Customer Requests",
         "tags": [
           "customer-requests"
+        ]
+      }
+    },
+    "/api/v1/operator/customer-requests/{request_id}/concierge-offers/start-review": {
+      "post": {
+        "operationId": "operator_start_review_api_v1_operator_customer_requests__request_id__concierge_offers_start_review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConciergeOfferOperatorResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Operator Start Review",
+        "tags": [
+          "concierge-offers"
         ]
       }
     },

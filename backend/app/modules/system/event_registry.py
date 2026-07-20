@@ -59,6 +59,21 @@ EVENT_REGISTRY: dict[str, EventDefinition] = {
         disposition="handler",
         description="Notifies the household owner their replenishment reservation window expired.",
     ),
+    "concierge.offer_presented": EventDefinition(
+        event_type="concierge.offer_presented",
+        disposition="handler",
+        description="Notifies the household owner a verified concierge offer is ready to review.",
+    ),
+    "concierge.offer_unavailable": EventDefinition(
+        event_type="concierge.offer_unavailable",
+        disposition="handler",
+        description="Notifies the household owner their concierge request could not be sourced.",
+    ),
+    "concierge.offer_expired": EventDefinition(
+        event_type="concierge.offer_expired",
+        disposition="handler",
+        description="Notifies the household owner their concierge offer's validity window expired.",
+    ),
 }
 
 

@@ -32,6 +32,8 @@ class LaunchPolicies:
     replenishment_reservation_enabled: bool
     replenishment_reservation_lead_days: int
     replenishment_reservation_approval_window_hours: int
+    concierge_offers_enabled: bool
+    concierge_offer_default_validity_hours: int
     customer_request_acknowledgement_fa: str
     pet_health_consent_policy_version: str
     storage_backend: str
@@ -71,6 +73,8 @@ class LaunchPolicies:
             replenishment_reservation_approval_window_hours=(
                 settings.replenishment_reservation_approval_window_hours
             ),
+            concierge_offers_enabled=settings.concierge_offers_enabled,
+            concierge_offer_default_validity_hours=settings.concierge_offer_default_validity_hours,
             customer_request_acknowledgement_fa=settings.customer_request_acknowledgement_fa,
             pet_health_consent_policy_version=settings.pet_health_consent_policy_version,
             storage_backend=settings.storage_backend,

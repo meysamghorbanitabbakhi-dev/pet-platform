@@ -74,6 +74,8 @@ class PolicyResponse(BaseModel):
     replenishment_reservation_enabled: bool
     replenishment_reservation_lead_days: int
     replenishment_reservation_approval_window_hours: int
+    concierge_offers_enabled: bool
+    concierge_offer_default_validity_hours: int
     customer_request_acknowledgement_fa: str
     pet_health_consent_policy_version: str
     storage_backend: Literal["filesystem"]
@@ -499,6 +501,91 @@ class ReplenishmentReservationResponse(BaseModel):
     invalidated_at: datetime | None = None
     resulting_order_id: UUID | None = None
     auto_charged: Literal[False] = False
+
+
+ConciergeOfferStatus = Literal[
+    "reviewing",
+    "offer_presented",
+    "accepted",
+    "declined",
+    "expired",
+    "unavailable",
+    "refresh_requested",
+]
+ConciergeOfferPricingMode = Literal["reference_price_savings", "landed_cost_plus_margin"]
+
+
+class ConciergeOfferResponse(BaseModel):
+    """Customer-safe view: never includes supplier identity (only
+    country) or any internal landed-cost component -- see
+    ConciergeOfferOperatorResponse for the operator-only full view."""
+
+    id: UUID
+    request_id: UUID
+    refreshed_from_offer_id: UUID | None = None
+    status: ConciergeOfferStatus
+    title_fa: str | None = None
+    unit_label_fa: str | None = None
+    quantity: int
+    authenticity_basis: str | None = None
+    supplier_country_code: str | None = None
+    minimum_shelf_life_months: int | None = None
+    estimated_delivery_days: int | None = None
+    pricing_mode: ConciergeOfferPricingMode | None = None
+    price_irr: int | None = None
+    reference_price_irr: int | None = None
+    price_explanation_fa: str | None = None
+    presented_at: datetime | None = None
+    expires_at: datetime | None = None
+    responded_at: datetime | None = None
+    decline_reason: str | None = None
+    unavailable_reason: str | None = None
+    resulting_order_id: UUID | None = None
+    auto_charged: Literal[False] = False
+
+
+class ConciergeOfferOperatorResponse(BaseModel):
+    """Operator-only full view, including internal landed-cost components
+    and supplier identity. Never returned from a customer-facing route."""
+
+    id: UUID
+    request_id: UUID
+    household_id: UUID
+    customer_identity_id: UUID
+    refreshed_from_offer_id: UUID | None = None
+    status: ConciergeOfferStatus
+    reviewing_started_at: datetime | None = None
+    title_fa: str | None = None
+    unit_label_fa: str | None = None
+    quantity: int
+    authenticity_basis: str | None = None
+    supplier_id: UUID | None = None
+    verification_evidence_file_id: UUID | None = None
+    minimum_shelf_life_months: int | None = None
+    estimated_delivery_days: int | None = None
+    pricing_mode: ConciergeOfferPricingMode | None = None
+    price_irr: int | None = None
+    reference_price_irr: int | None = None
+    price_explanation_fa: str | None = None
+    supplier_cost_irr: int | None = None
+    exchange_rate_basis_irr_per_unit: int | None = None
+    international_transport_irr: int | None = None
+    customs_clearance_irr: int | None = None
+    handling_irr: int | None = None
+    domestic_delivery_irr: int | None = None
+    payment_fees_irr: int | None = None
+    risk_reserve_irr: int | None = None
+    platform_margin_irr: int | None = None
+    presented_at: datetime | None = None
+    validity_hours: int | None = None
+    expires_at: datetime | None = None
+    responded_at: datetime | None = None
+    decline_reason: str | None = None
+    unavailable_reason: str | None = None
+    promoted_offer_id: UUID | None = None
+    resulting_order_id: UUID | None = None
+    catalog_promoted_at: datetime | None = None
+    catalog_promotion_rationale: str | None = None
 
 
 class PetSummary(BaseModel):

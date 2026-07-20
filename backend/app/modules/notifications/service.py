@@ -325,6 +325,99 @@ async def enqueue_replenishment_reservation_expired_notification(
         await session.commit()
 
 
+async def _enqueue_concierge_offer_notification(
+    session_factory: async_sessionmaker[AsyncSession],
+    payload: dict[str, Any],
+    *,
+    event_key: str,
+) -> None:
+    household_id = UUID(str(payload["household_id"]))
+    source_id = str(payload["concierge_offer_id"])
+    request_id = UUID(str(payload["request_id"]))
+    async with session_factory() as session:
+        owner = await session.scalar(
+            select(AuthIdentity)
+            .join(HouseholdMembership, HouseholdMembership.identity_id == AuthIdentity.id)
+            .where(
+                HouseholdMembership.household_id == household_id,
+                HouseholdMembership.role == "owner",
+                AuthIdentity.status == "active",
+            )
+            .order_by(HouseholdMembership.created_at)
+            .limit(1)
+        )
+        if owner is None:
+            raise RuntimeError("concierge offer household has no active owner")
+        preference = await session.scalar(
+            select(NotificationPreference).where(
+                NotificationPreference.identity_id == owner.id,
+                NotificationPreference.channel == "sms",
+                NotificationPreference.event_key == event_key,
+            )
+        )
+        for channel in ("in_app", "sms"):
+            existing = await session.scalar(
+                select(Notification).where(
+                    Notification.event_key == event_key,
+                    Notification.source_id == source_id,
+                    Notification.recipient_identity_id == owner.id,
+                    Notification.channel == channel,
+                )
+            )
+            if existing is not None:
+                continue
+            status = "sent" if channel == "in_app" else "queued"
+            if channel == "sms" and preference is not None and not preference.enabled:
+                status = "suppressed"
+            session.add(
+                Notification(
+                    recipient_identity_id=owner.id,
+                    event_key=event_key,
+                    source_id=source_id,
+                    channel=channel,
+                    payload=payload,
+                    status=status,
+                    destination_kind="customer_request",
+                    destination_id=request_id,
+                )
+            )
+        await session.commit()
+
+
+async def enqueue_concierge_offer_presented_notification(
+    session_factory: async_sessionmaker[AsyncSession],
+    payload: dict[str, Any],
+) -> None:
+    """Notify the household owner a verified concierge offer is ready to
+    review. Not gated behind a visibility flag, same reasoning as
+    enqueue_reservation_notification -- this is the customer's actual
+    approve/decline right, not an optional informational surface."""
+    await _enqueue_concierge_offer_notification(
+        session_factory, payload, event_key="concierge.offer_presented"
+    )
+
+
+async def enqueue_concierge_offer_unavailable_notification(
+    session_factory: async_sessionmaker[AsyncSession],
+    payload: dict[str, Any],
+) -> None:
+    await _enqueue_concierge_offer_notification(
+        session_factory, payload, event_key="concierge.offer_unavailable"
+    )
+
+
+async def enqueue_concierge_offer_expired_notification(
+    session_factory: async_sessionmaker[AsyncSession],
+    payload: dict[str, Any],
+) -> None:
+    """The one reminder sent when an unanswered concierge offer's
+    validity window lapses -- never resent, and never followed by an
+    automatic re-verification (Decision 0.36)."""
+    await _enqueue_concierge_offer_notification(
+        session_factory, payload, event_key="concierge.offer_expired"
+    )
+
+
 async def deliver_pending_sms(
     session_factory: async_sessionmaker[AsyncSession],
     provider: SmsProvider,

@@ -10,6 +10,8 @@ def test_metadata_contains_foundation_and_transactional_commerce_tables() -> Non
         "catalog_product_media",
         "catalog_products",
         "catalog_suppliers",
+        "concierge_offers",
+        "concierge_offer_events",
         "diary_entries",
         "food_estimation_estimates",
         "orders_fulfillment_events",
