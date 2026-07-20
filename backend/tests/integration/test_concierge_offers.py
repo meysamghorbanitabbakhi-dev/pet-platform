@@ -618,6 +618,34 @@ async def test_decline_offer_is_idempotent() -> None:
     assert first.responded_at == second.responded_at
 
 
+async def test_decline_offer_after_deadline_expires_instead() -> None:
+    """Mirrors test_accept_offer_after_deadline_expires_instead: discovering
+    the deadline has passed during a decline attempt must persist the
+    expiry transition just as reliably as discovering it during an accept
+    attempt, even though decline_offer itself raises rather than returning
+    normally (gap-closure fix -- this used to be silently rolled back)."""
+    seed = await _seed_request()
+    offer_id = await _presented_offer(seed)
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, offer_id, with_for_update=True)
+        assert offer is not None
+        offer.expires_at = utc_now() - timedelta(hours=1)
+        await session.commit()
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, offer_id, with_for_update=True)
+        assert offer is not None
+        with pytest.raises(ConciergeOfferError, match="offer_validity_expired"):
+            await decline_offer(
+                session,
+                offer=offer,
+                customer_identity_id=seed.customer_id,
+                reason="دیگر لازم نیست",
+            )
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, offer_id)
+    assert offer is not None and offer.status == "expired"
+
+
 # --- service-level: request_refresh ----------------------------------------
 
 
@@ -1088,6 +1116,54 @@ async def test_http_operator_queue_filters_by_status(
     statuses = {item["status"] for item in items}
     assert statuses <= {"offer_presented"}
     assert any(item["household_id"] == str(presented_seed.household_id) for item in items)
+
+
+async def test_http_operator_concierge_routes_require_operator_role(
+    concierge_offers_enabled: None,
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
+) -> None:
+    app, client = app_and_client
+    seed = await _seed_request()
+    offer_id = await _presented_offer(seed)
+    async with SessionFactory() as session:
+        customer = await session.get(AuthIdentity, seed.customer_id)
+    app.dependency_overrides[get_current_identity] = lambda: customer
+
+    listed = await client.get("/api/v1/operator/concierge-offers")
+    assert listed.status_code == 403
+    detail = await client.get(f"/api/v1/operator/concierge-offers/{offer_id}")
+    assert detail.status_code == 403
+    started = await client.post(
+        f"/api/v1/operator/customer-requests/{seed.request_id}/concierge-offers/start-review"
+    )
+    assert started.status_code == 403
+    presented = await client.post(
+        f"/api/v1/operator/concierge-offers/{offer_id}/present",
+        json={
+            "title_fa": "x",
+            "unit_label_fa": "x",
+            "authenticity_basis": "supplier_invoice_verified",
+            "supplier_id": str(seed.supplier_id),
+            "verification_evidence_file_id": str(seed.evidence_file_id),
+            "minimum_shelf_life_months": 6,
+            "estimated_delivery_days": 20,
+            "pricing_mode": "reference_price_savings",
+            "price_irr": 1_000_000,
+            "reference_price_irr": 1_200_000,
+            "price_explanation_fa": "x",
+        },
+    )
+    assert presented.status_code == 403
+    unavailable = await client.post(
+        f"/api/v1/operator/concierge-offers/{offer_id}/unavailable",
+        json={"reason": "a customer should never reach this"},
+    )
+    assert unavailable.status_code == 403
+    promoted = await client.post(
+        f"/api/v1/operator/concierge-offers/{offer_id}/promote",
+        json={"rationale": "a customer should never reach this"},
+    )
+    assert promoted.status_code == 403
 
 
 # --- catalog hiding ----------------------------------------------------------

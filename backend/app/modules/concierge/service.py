@@ -399,7 +399,12 @@ async def decline_offer(
         await _resolve_request(
             session, offer.request_id, operator_id=None, now=now, note="concierge offer expired"
         )
-        await session.flush()
+        # Mirrors accept_offer's self-commit on the same discovered-expiry
+        # path: the route never commits on an error response, so without
+        # this the expiry transition and its event would be silently
+        # rolled back when the session closes, leaving the offer stuck as
+        # offer_presented until the scheduler sweep catches it instead.
+        await session.commit()
         raise ConciergeOfferError("offer_validity_expired")
     offer.status = "declined"
     offer.responded_at = now
