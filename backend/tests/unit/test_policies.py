@@ -69,3 +69,33 @@ def test_production_requires_protected_metrics() -> None:
             otp_pepper="o" * 32,
             metrics_bearer_token=None,
         )
+
+
+def test_production_requires_hsts_enabled() -> None:
+    # otp_dev_console_fallback_enabled is pinned False here: it is read
+    # from the ambient environment too, and this test must isolate the
+    # HSTS check specifically regardless of what a dev container happens
+    # to have set for that unrelated flag.
+    with pytest.raises(ValidationError, match="security_hsts_enabled"):
+        Settings(
+            _env_file=None,
+            app_env="production",
+            jwt_secret="j" * 32,
+            webhook_secret="w" * 32,
+            otp_pepper="o" * 32,
+            metrics_bearer_token="m" * 32,
+            otp_dev_console_fallback_enabled=False,
+            security_hsts_enabled=False,
+        )
+    # Every other production-secrets requirement satisfied plus HSTS on
+    # succeeds -- proves the new check is additive, not a blanket failure.
+    Settings(
+        _env_file=None,
+        app_env="production",
+        jwt_secret="j" * 32,
+        webhook_secret="w" * 32,
+        otp_pepper="o" * 32,
+        metrics_bearer_token="m" * 32,
+        otp_dev_console_fallback_enabled=False,
+        security_hsts_enabled=True,
+    )

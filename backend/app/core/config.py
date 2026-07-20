@@ -130,6 +130,11 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "otp_dev_console_fallback_enabled must never be set in production"
                 )
+            if not self.security_hsts_enabled:
+                raise ValueError(
+                    "security_hsts_enabled must be true in production "
+                    "(the public URL is assumed to be HTTPS-only)"
+                )
         return self
 
 
