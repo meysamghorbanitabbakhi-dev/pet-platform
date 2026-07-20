@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -1074,54 +1075,92 @@ async def test_outbox_registry_retries_dead_letter_and_audit_only(
     assert {"order.awaiting_payment", "order.payment_verified", "catalog.offer_available"}.issubset(
         EVENT_REGISTRY
     )
+    # Query by the actual returned event_id, not (event_type, aggregate_id):
+    # a hardcoded aggregate_id like "audit"/"dead" is not actually unique
+    # across repeated runs against a shared, persistent database (this
+    # exact test has left over a hundred prior "audit"-tagged rows in one
+    # such database, all with no ORDER BY to guarantee session.scalar()
+    # picks the row this run just created rather than an unrelated
+    # historical one), and is not unique against a concurrently running
+    # background worker either (app/workers/outbox.py polls the same
+    # table and can legitimately claim this test's row before the test's
+    # own dispatcher loop gets to it -- claiming does not change `status`
+    # until dispatch actually completes, so a claimed-but-not-yet-
+    # published row is indistinguishable from a genuinely stuck one by
+    # event_type/aggregate_id alone). A fresh uuid4-based aggregate_id
+    # plus filtering by the precise event_id this call returned makes the
+    # assertion unambiguous regardless of either kind of contamination.
+    token = uuid.uuid4().hex[:12]
     async with SessionFactory() as session:
-        add_outbox_event(
+        audit_event_id = add_outbox_event(
             session,
             DomainEvent(
                 event_type="order.awaiting_payment",
                 aggregate_type="order",
-                aggregate_id="audit",
+                aggregate_id=f"audit-{token}",
                 payload={},
             ),
         )
-        add_outbox_event(
+        dead_event_id = add_outbox_event(
             session,
             DomainEvent(
                 event_type="unknown.event",
                 aggregate_type="unknown",
-                aggregate_id="dead",
+                aggregate_id=f"dead-{token}",
                 payload={},
             ),
         )
         await session.commit()
     dispatcher = OutboxDispatcher(SessionFactory, batch_size=10)
-    for _ in range(6):
+
+    async def _load() -> tuple[OutboxEvent | None, OutboxEvent | None]:
+        async with SessionFactory() as session:
+            audit = await session.scalar(
+                select(OutboxEvent).where(OutboxEvent.event_id == audit_event_id)
+            )
+            unknown = await session.scalar(
+                select(OutboxEvent).where(OutboxEvent.event_id == dead_event_id)
+            )
+            return audit, unknown
+
+    # Polls for the terminal state rather than assuming a fixed iteration
+    # count is always sufficient: `dead` genuinely needs 5 attempts (its
+    # own deterministic requirement, unaffected by anything external), but
+    # if a concurrently running background worker (app/workers/outbox.py,
+    # polling this same table -- a real process in any environment where
+    # one happens to be running against the same database, not a
+    # hypothetical) claims `audit` first, this test's own dispatch_batch()
+    # calls correctly skip it (skip_locked) and do no useful work that
+    # iteration; the row still reaches 'published' once that other
+    # dispatcher finishes with it, just not necessarily within this
+    # test's own Nth call. Bounded by wall-clock time, not an unbounded
+    # retry -- still fails informatively if genuinely stuck.
+    deadline = time.monotonic() + 10.0
+    audit = unknown = None
+    while time.monotonic() < deadline:
         await dispatcher.dispatch_batch()
         async with SessionFactory() as session:
             await session.execute(
                 text("update system_outbox_events set available_at = now() where status = 'failed'")
             )
             await session.commit()
-    async with SessionFactory() as session:
-        # Scope by aggregate_id, not just event_type: this shared dev
-        # database accumulates "order.awaiting_payment" rows from every
-        # other test that runs a real checkout, so an unqualified
-        # event_type filter can match an unrelated pending row instead of
-        # the one this test just created.
-        audit = await session.scalar(
-            select(OutboxEvent).where(
-                OutboxEvent.event_type == "order.awaiting_payment",
-                OutboxEvent.aggregate_id == "audit",
-            )
-        )
-        unknown = await session.scalar(
-            select(OutboxEvent).where(
-                OutboxEvent.event_type == "unknown.event",
-                OutboxEvent.aggregate_id == "dead",
-            )
-        )
-        assert audit is not None and audit.status == "published"
-        assert unknown is not None and unknown.status == "dead_letter"
+        audit, unknown = await _load()
+        if (
+            audit is not None
+            and audit.status == "published"
+            and unknown is not None
+            and unknown.status == "dead_letter"
+        ):
+            break
+        await asyncio.sleep(0.1)
+
+    assert audit is not None and audit.status == "published", (
+        f"audit event never reached published (last status: {audit.status if audit else None})"
+    )
+    assert unknown is not None and unknown.status == "dead_letter", (
+        f"dead-letter event never reached dead_letter (last status: "
+        f"{unknown.status if unknown else None})"
+    )
     await redis_client.set("pet-platform:test:heartbeat", "alive", ex=30)
     assert await redis_client.get("pet-platform:test:heartbeat") == "alive"
 
