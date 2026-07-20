@@ -1,10 +1,9 @@
-from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import ColumnElement, and_, delete, func, or_, select, tuple_
+from sqlalchemy import and_, delete, func, or_, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,6 +42,12 @@ from app.integrations.payment.factory import (
     build_payment_gateway,
 )
 from app.integrations.payment.zarinpal import ZarinpalError, callback_allows_verification
+from app.modules.catalog.eligibility import (
+    DETAIL_VIEWABLE_MODES,
+    catalog_modes,
+    evaluate_offer_eligibility,
+    orderable_offer_filters,
+)
 from app.modules.catalog.models import (
     CatalogAvailabilitySubscription,
     Offer,
@@ -134,32 +139,6 @@ def _order_item(order: Order) -> OrderListItem:
     )
 
 
-def _offer_availability_filters(
-    now: datetime, *, reserve_now_enabled: bool
-) -> tuple[ColumnElement[bool], ...]:
-    # A reserve-mode offer is only ever meant to be discovered through its
-    # own dedicated reserve-now flow (app.modules.reservations), which does
-    # not exist as a customer-facing discovery surface yet -- showing it in
-    # ordinary browse/search today would let a customer add it to cart and
-    # then have ordinary checkout reject it with no explanation. Excluded
-    # from general browse/search until reserve_now_enabled is true AND a
-    # real reserve-discovery UI exists to replace this gate with one that
-    # actually explains the workflow.
-    modes = ["full_payment"] if not reserve_now_enabled else ["full_payment", "reserve"]
-    return (
-        Offer.status == "active",
-        Offer.stock_posture == "sourced_after_payment",
-        Offer.sourcing_capacity_status == "open",
-        (Offer.available_from.is_(None)) | (Offer.available_from <= now),
-        (Offer.available_until.is_(None)) | (Offer.available_until > now),
-        # The one-off Offer/Product a concierge offer acceptance lazily
-        # creates (Workstream 4) is reachable by id for its own checkout
-        # but must never appear in ordinary browse/search -- only a
-        # deliberate operator promotion (Decision 0.37) changes the mode.
-        Offer.mode.in_(modes),
-    )
-
-
 def _offer_list_item(offer: Offer, supplier: Supplier) -> OfferListItem:
     return OfferListItem(
         id=offer.id,
@@ -187,13 +166,13 @@ async def list_offers(
     session: SessionDependency, settings: SettingsDependency
 ) -> list[OfferListItem]:
     now = utc_now()
+    modes = catalog_modes(reserve_now_enabled=settings.reserve_now_enabled)
     rows = (
         await session.execute(
             select(Offer, Supplier)
             .join(Supplier, Supplier.id == Offer.supplier_id)
-            .where(
-                *_offer_availability_filters(now, reserve_now_enabled=settings.reserve_now_enabled)
-            )
+            .join(Product, Product.id == Offer.product_id)
+            .where(*orderable_offer_filters(now, allowed_modes=modes))
             .order_by(Offer.title_fa)
         )
     ).all()
@@ -216,19 +195,27 @@ async def search_offers(
     normalized = normalize_persian_search(q)
     if not normalized:
         return page([], total=0, pagination=pagination)
-    availability = _offer_availability_filters(
-        now, reserve_now_enabled=settings.reserve_now_enabled
-    )
+    modes = catalog_modes(reserve_now_enabled=settings.reserve_now_enabled)
+    availability = orderable_offer_filters(now, allowed_modes=modes)
     term = _escape_like_term(normalized)
     match = or_(
         Offer.title_fa_search.like(term, escape="\\"),
         Offer.sku_search.like(term, escape="\\"),
     )
-    total = int(await session.scalar(select(func.count(Offer.id)).where(*availability, match)) or 0)
+    total = int(
+        await session.scalar(
+            select(func.count(Offer.id))
+            .join(Supplier, Supplier.id == Offer.supplier_id)
+            .join(Product, Product.id == Offer.product_id)
+            .where(*availability, match)
+        )
+        or 0
+    )
     rows = (
         await session.execute(
             select(Offer, Supplier)
             .join(Supplier, Supplier.id == Offer.supplier_id)
+            .join(Product, Product.id == Offer.product_id)
             .where(*availability, match)
             .order_by(Offer.title_fa, Offer.id)
             .limit(pagination.limit)
@@ -241,32 +228,32 @@ async def search_offers(
 
 @router.get("/catalog/offers/{offer_id}", response_model=OfferDetailResponse)
 async def offer_detail(offer_id: UUID, session: SessionDependency) -> OfferDetailResponse:
+    # This route is fully public/unauthenticated -- reachable by anyone
+    # who has or guesses the id, with no ownership check possible.
+    # evaluate_offer_eligibility's `viewable` tier, with
+    # DETAIL_VIEWABLE_MODES (see its docstring: unlike list/search, a
+    # reserve-mode offer's detail page stays visible even when
+    # reserve_now_enabled is false -- only 'concierge_only', bound to one
+    # specific customer/request, is excluded) -- but, unlike list/search,
+    # still shows a real detail page (not a 404) for an offer that's
+    # merely transiently out of capacity or outside its sale window, as
+    # "temporarily_unavailable".
     row = (
         await session.execute(
             select(Offer, Product, Supplier)
             .join(Product, Product.id == Offer.product_id)
             .join(Supplier, Supplier.id == Offer.supplier_id)
-            .where(
-                Offer.id == offer_id,
-                Offer.status.in_(("active", "unavailable")),
-                Product.status == "active",
-                # This route is fully public/unauthenticated -- reachable
-                # by anyone who has or guesses the id, with no ownership
-                # check possible. A concierge_only offer is priced and
-                # verified for one specific customer/request; it must
-                # never be disclosed here, matching the same exclusion
-                # already applied to list/search (_offer_availability_filters).
-                # The owning customer views it via the ownership-checked
-                # GET /concierge-offers/{offer_id} route instead, and their
-                # order detail already carries its own price/title
-                # snapshot independent of this route.
-                Offer.mode != "concierge_only",
-            )
+            .where(Offer.id == offer_id)
         )
     ).first()
     if row is None:
         raise HTTPException(status_code=404, detail="offer_not_found")
     offer, product, supplier = row
+    eligibility = evaluate_offer_eligibility(
+        offer, product, supplier, now=utc_now(), allowed_modes=DETAIL_VIEWABLE_MODES
+    )
+    if not eligibility.viewable:
+        raise HTTPException(status_code=404, detail="offer_not_found")
     media = list(
         (
             await session.scalars(
@@ -276,7 +263,12 @@ async def offer_detail(offer_id: UUID, session: SessionDependency) -> OfferDetai
             )
         ).all()
     )
-    unavailable = offer.status == "unavailable" or offer.stock_posture == "unavailable"
+    unavailable = not (
+        eligibility.orderable_status
+        and eligibility.stock_ready
+        and eligibility.capacity_open
+        and eligibility.within_sale_window
+    )
     saving_percent = None
     if offer.reference_price_irr is not None:
         saving_percent = max(
@@ -336,13 +328,15 @@ async def list_product_alternatives(
     if not alternatives:
         return []
     alternative_product_ids = {a.alternative_product_id for a in alternatives}
+    modes = catalog_modes(reserve_now_enabled=settings.reserve_now_enabled)
     rows = (
         await session.execute(
             select(Offer, Supplier)
             .join(Supplier, Supplier.id == Offer.supplier_id)
+            .join(Product, Product.id == Offer.product_id)
             .where(
                 Offer.product_id.in_(alternative_product_ids),
-                *_offer_availability_filters(now, reserve_now_enabled=settings.reserve_now_enabled),
+                *orderable_offer_filters(now, allowed_modes=modes),
             )
             .order_by(Offer.product_id, Offer.price_irr, Offer.id)
         )
@@ -385,8 +379,34 @@ async def subscribe_offer_availability(
 ) -> AvailabilitySubscriptionResponse:
     if not settings.availability_subscriptions_enabled:
         raise HTTPException(status_code=409, detail="availability_subscriptions_disabled")
-    offer = await session.get(Offer, offer_id)
-    if offer is None or offer.status == "retired":
+    row = (
+        await session.execute(
+            select(Offer, Product, Supplier)
+            .join(Product, Product.id == Offer.product_id)
+            .join(Supplier, Supplier.id == Offer.supplier_id)
+            .where(Offer.id == offer_id)
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="offer_not_found")
+    offer, product, supplier = row
+    # A subscription is a promise to notify once this offer becomes
+    # orderable -- so transient capacity/stock/sale-window unavailability
+    # is exactly what it exists to wait out (subscribable, not orderable,
+    # is the right tier here). But an offer this surface was never meant
+    # to expose at all (concierge_only, reserve when disabled, an
+    # inactive product/supplier, retired) must still be rejected here,
+    # matching list/search/detail -- otherwise subscribing becomes an
+    # alternate way to discover, and be notified the instant it
+    # activates, an offer those surfaces correctly hide.
+    eligibility = evaluate_offer_eligibility(
+        offer,
+        product,
+        supplier,
+        now=utc_now(),
+        allowed_modes=catalog_modes(reserve_now_enabled=settings.reserve_now_enabled),
+    )
+    if not eligibility.subscribable:
         raise HTTPException(status_code=404, detail="offer_not_found")
     existing = await session.scalar(
         select(CatalogAvailabilitySubscription).where(

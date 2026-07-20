@@ -8,7 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.common.time import utc_now
-from app.modules.catalog.models import Offer
+from app.modules.catalog.eligibility import ORDINARY_MODES, orderable_offer_filters
+from app.modules.catalog.models import Offer, Product, Supplier
 from app.modules.checkout.service import CheckoutError, CheckoutItem, CheckoutService
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.inventory.models import InventoryUnit
@@ -45,23 +46,26 @@ def _event(
 
 
 async def _find_available_offer(session: AsyncSession, *, product_id: UUID) -> Offer | None:
-    """Same 'reorderable' definition as _reorder_options in pet_life.py
-    (mode=full_payment, status=active, stock_posture=sourced_after_payment,
-    sourcing_capacity_status=open) -- deliberately not a second,
-    subtly-different notion of availability. mode=full_payment excludes
-    'reserve' (needs its own operator reconfirmation workflow) and
-    'concierge_only' (bound to one specific customer/request) offers --
-    an automatic recommendation must never point at either, since
-    approval here converts straight into a real order via CheckoutService,
-    which itself now rejects both modes."""
+    """Uses app.modules.catalog.eligibility's shared orderable-offer
+    definition (mode=full_payment only, active product/supplier/offer,
+    stock/capacity/sale-window all currently open) -- deliberately not a
+    second, subtly-different notion of availability
+    (app.api.routes.pet_life._reorder_options uses the same module).
+    mode=full_payment excludes 'reserve' (needs its own operator
+    reconfirmation workflow) and 'concierge_only' (bound to one specific
+    customer/request) offers -- an automatic recommendation must never
+    point at either, since approval here converts straight into a real
+    order via CheckoutService, which itself now rejects both modes.
+    CheckoutService.create_order_uncommitted independently re-validates
+    all of this again at approval time (approve_reservation below), so
+    this selection is a recommendation, not the sole safety net."""
     offer = await session.scalar(
         select(Offer)
+        .join(Product, Product.id == Offer.product_id)
+        .join(Supplier, Supplier.id == Offer.supplier_id)
         .where(
             Offer.product_id == product_id,
-            Offer.mode == "full_payment",
-            Offer.status == "active",
-            Offer.stock_posture == "sourced_after_payment",
-            Offer.sourcing_capacity_status == "open",
+            *orderable_offer_filters(utc_now(), allowed_modes=ORDINARY_MODES),
         )
         .order_by(Offer.created_at, Offer.id)
         .limit(1)
@@ -303,9 +307,7 @@ async def operator_invalidate_reservation(
     if reservation.status == "invalidated":
         return reservation
     if reservation.status != "pending_approval":
-        raise ReplenishmentReservationError(
-            f"reservation_not_invalidatable:{reservation.status}"
-        )
+        raise ReplenishmentReservationError(f"reservation_not_invalidatable:{reservation.status}")
     now = utc_now()
     reservation.status = "invalidated"
     reservation.invalidated_at = now

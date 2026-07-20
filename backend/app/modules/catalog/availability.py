@@ -14,6 +14,12 @@ async def notify_available_subscribers(session: AsyncSession, offer: Offer) -> i
         offer.status != "active"
         or offer.stock_posture != "sourced_after_payment"
         or offer.sourcing_capacity_status != "open"
+        # concierge_only offers are bound to one specific customer/request
+        # and must never be discovered through the generic availability-
+        # subscription path regardless of state -- matches the same
+        # exclusion list/search/detail/subscribe all apply
+        # (app.modules.catalog.eligibility).
+        or offer.mode == "concierge_only"
     ):
         return 0
     now = utc_now()

@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.time import utc_now
-from app.modules.catalog.models import Offer, Supplier
+from app.modules.catalog.models import Offer, Product, Supplier
 from app.modules.households.models import HouseholdAddress
 from app.modules.orders.models import Order, OrderLine
 from app.modules.system.idempotency import canonical_request_hash
@@ -138,13 +138,14 @@ class CheckoutService:
         offer_ids = {item.offer_id for item in items}
         rows = (
             await session.execute(
-                select(Offer, Supplier)
+                select(Offer, Product, Supplier)
+                .join(Product, Product.id == Offer.product_id)
                 .join(Supplier, Supplier.id == Offer.supplier_id)
                 .where(Offer.id.in_(offer_ids))
                 .with_for_update(of=Offer)
             )
         ).all()
-        offers = {offer.id: (offer, supplier) for offer, supplier in rows}
+        offers = {offer.id: (offer, product, supplier) for offer, product, supplier in rows}
         if len(offers) != len(offer_ids):
             raise CheckoutError("one or more offers do not exist")
 
@@ -196,7 +197,7 @@ class CheckoutService:
                 return replay
             raise CheckoutError("idempotency key was already used for another request") from exc
         for item in items:
-            offer, supplier = offers[item.offer_id]
+            offer, product, supplier = offers[item.offer_id]
             # Ordinary checkout (the default allowed_modes) is the
             # full_payment path only. 'reserve' offers must go through
             # app.modules.reservations (operator price/availability
@@ -212,6 +213,8 @@ class CheckoutService:
             # verification and pricing entirely.
             if offer.mode not in allowed_modes:
                 raise CheckoutError(f"offer {offer.id} is not eligible for this checkout path")
+            if product.status != "active" or not supplier.active:
+                raise CheckoutError(f"offer {offer.id} is unavailable")
             if offer.status != "active" or offer.stock_posture != "sourced_after_payment":
                 raise CheckoutError(f"offer {offer.id} is unavailable")
             if offer.sourcing_capacity_status != "open":

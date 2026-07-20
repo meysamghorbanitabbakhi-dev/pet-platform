@@ -11,13 +11,20 @@ import pytest
 from app.api.dependencies import get_current_identity
 from app.db.session import SessionFactory, close_database
 from app.main import create_app
-from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.catalog.availability import notify_available_subscribers
+from app.modules.catalog.models import (
+    CatalogAvailabilitySubscription,
+    Offer,
+    Product,
+    Supplier,
+)
 from app.modules.households.models import Household, HouseholdAddress, HouseholdMembership
 from app.modules.identity.models import AuthIdentity
 from app.modules.inventory.models import InventoryUnit
+from app.modules.notifications.models import Notification
 from app.modules.replenishment.reservations import _find_available_offer
 from fastapi import FastAPI
-from sqlalchemy import update
+from sqlalchemy import select, update
 
 pytestmark = pytest.mark.skipif(
     os.getenv("K10_RUNTIME_TESTS") != "1",
@@ -45,9 +52,7 @@ def _release_concierge_only_offers_after_module() -> Iterator[None]:
     async def _cleanup() -> None:
         async with SessionFactory() as session:
             await session.execute(
-                update(Offer)
-                .where(Offer.mode == "concierge_only")
-                .values(mode="full_payment")
+                update(Offer).where(Offer.mode == "concierge_only").values(mode="full_payment")
             )
             await session.commit()
         await close_database()
@@ -74,9 +79,7 @@ async def mode_seed() -> ModeSeed:
         identity = AuthIdentity(
             identity_type="customer", mobile_e164=f"+98927{token[:7]}", status="active"
         )
-        supplier = Supplier(
-            internal_name=f"mode-supplier-{token}", country_code="IR", active=True
-        )
+        supplier = Supplier(internal_name=f"mode-supplier-{token}", country_code="IR", active=True)
         product = Product(name_fa=f"mode-product-{token}", status="active")
         household = Household(name=f"mode-hh-{token}")
         session.add_all([identity, supplier, product, household])
@@ -265,3 +268,112 @@ async def test_reorder_options_exclude_reserve_and_concierge_only(
     assert str(mode_seed.full_payment_offer_id) in option_ids
     assert str(mode_seed.reserve_offer_id) not in option_ids
     assert str(mode_seed.concierge_only_offer_id) not in option_ids
+
+
+# --- availability subscriptions: the same exclusions must apply here too ----
+# (app.modules.catalog.eligibility) -- a hidden offer must not become
+# discoverable, or trigger a real notification the instant it activates,
+# through this alternate endpoint.
+
+
+async def test_subscribe_rejects_a_concierge_only_offer(
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], mode_seed: ModeSeed
+) -> None:
+    app, client = app_and_client
+    app.dependency_overrides[get_current_identity] = lambda: mode_seed.identity
+
+    response = await client.post(
+        f"/api/v1/catalog/offers/{mode_seed.concierge_only_offer_id}/availability-subscriptions"
+    )
+    assert response.status_code == 404
+
+
+async def test_subscribe_rejects_a_reserve_offer_when_reserve_now_is_disabled(
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], mode_seed: ModeSeed
+) -> None:
+    app, client = app_and_client
+    app.dependency_overrides[get_current_identity] = lambda: mode_seed.identity
+
+    response = await client.post(
+        f"/api/v1/catalog/offers/{mode_seed.reserve_offer_id}/availability-subscriptions"
+    )
+    assert response.status_code == 404
+
+
+async def test_subscribe_succeeds_for_a_capacity_paused_full_payment_offer(
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], mode_seed: ModeSeed
+) -> None:
+    """A subscription exists specifically to wait out transient
+    unavailability (capacity paused, outside sale window) -- unlike
+    concierge_only/disabled-reserve, this must still succeed."""
+    app, client = app_and_client
+    app.dependency_overrides[get_current_identity] = lambda: mode_seed.identity
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, mode_seed.full_payment_offer_id)
+        assert offer is not None
+        offer.sourcing_capacity_status = "paused"
+        await session.commit()
+
+    response = await client.post(
+        f"/api/v1/catalog/offers/{mode_seed.full_payment_offer_id}/availability-subscriptions"
+    )
+    assert response.status_code == 200
+
+
+async def test_offer_detail_reflects_capacity_paused_as_temporarily_unavailable(
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], mode_seed: ModeSeed
+) -> None:
+    """Before this fix, offer_detail only reflected offer.status ==
+    'unavailable' or stock_posture == 'unavailable' in its `availability`
+    field -- a capacity-paused or outside-sale-window offer rendered as
+    fully "available" with no indication it cannot actually be bought."""
+    app, client = app_and_client
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, mode_seed.full_payment_offer_id)
+        assert offer is not None
+        offer.sourcing_capacity_status = "paused"
+        await session.commit()
+
+    response = await client.get(f"/api/v1/catalog/offers/{mode_seed.full_payment_offer_id}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["availability"] == "temporarily_unavailable"
+    assert body["availability_reason_key"] == "temporarily_unavailable"
+
+
+async def test_notify_available_subscribers_skips_concierge_only_offers(
+    mode_seed: ModeSeed,
+) -> None:
+    """Even a pre-existing subscription row against a concierge_only
+    offer (which subscribe_offer_availability itself now rejects, but a
+    row could already exist from before that fix, or from direct data
+    entry) must never trigger a real "it's available" notification --
+    that would leak the offer's activation to someone with no ownership
+    standing over it."""
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, mode_seed.concierge_only_offer_id)
+        assert offer is not None
+        subscription = CatalogAvailabilitySubscription(
+            identity_id=mode_seed.identity.id,
+            household_id=mode_seed.household_id,
+            offer_id=offer.id,
+            status="active",
+            activation_cycle=0,
+        )
+        session.add(subscription)
+        await session.commit()
+        sent = await notify_available_subscribers(session, offer)
+        await session.commit()
+        subscription_id = subscription.id
+
+    assert sent == 0
+    async with SessionFactory() as session:
+        refreshed = await session.get(CatalogAvailabilitySubscription, subscription_id)
+        assert refreshed is not None and refreshed.status == "active"
+        notified = await session.scalar(
+            select(Notification).where(
+                Notification.event_key == "catalog.offer_available",
+                Notification.recipient_identity_id == mode_seed.identity.id,
+            )
+        )
+        assert notified is None
