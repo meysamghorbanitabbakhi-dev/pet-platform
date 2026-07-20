@@ -187,3 +187,17 @@ endpoint below returns `409 concierge_offers_disabled` while the flag is off —
 |---|---|---|
 | GET | `/operator/outbox/events` | Paginated list of outbox events filtered by `status` (defaults to `dead_letter`) |
 | POST | `/operator/outbox/events/{event_id}/replay` | Resets a `failed`/`dead_letter` event to `pending` (clears attempts/claim/last_error) so the outbox worker's normal poll loop redelivers it; `409` if the event isn't in a replayable state |
+
+## KPI reporting (2026-07-20, Workstream 6)
+
+19 versioned KPI definitions (`app/modules/reporting/kpi.py`), each documenting numerator,
+denominator, window, timezone, currency, status inclusion, late-event handling, version, and a
+raw-SQL validation query. Computation is read-only (`app/modules/reporting/service.py`), never
+overloaded onto a transactional endpoint. `margin` is registered but `computable=false`: no
+supplier cost field exists anywhere in the regular commerce schema. Minimal dashboard at
+`/operator/kpis` on the frontend.
+
+| Method | Endpoint | Capability |
+|---|---|---|
+| GET | `/operator/kpis` | All 19 KPIs computed for `window_start`/`window_end` (UTC, required query params); `422` if the window is inverted |
+| GET | `/operator/kpis/{key}` | A single KPI by registry key; `404` for an unknown key |
