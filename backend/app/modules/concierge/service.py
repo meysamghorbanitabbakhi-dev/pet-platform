@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.common.time import utc_now
@@ -342,7 +343,7 @@ async def accept_offer(
     session.add(catalog_offer)
     await session.flush()
     try:
-        order = await CheckoutService().create_order(
+        order = await CheckoutService().create_order_uncommitted(
             session,
             customer_identity_id=customer_identity_id,
             household_id=offer.household_id,
@@ -368,7 +369,15 @@ async def accept_offer(
     await _resolve_request(
         session, offer.request_id, operator_id=None, now=now, note="concierge offer accepted"
     )
-    await session.commit()
+    # The one-off product/offer, the order and its lines, and this
+    # offer's acceptance all commit together -- if the process crashes
+    # before this line, NOTHING persists, never a real order left behind
+    # with no accepted offer to show for it.
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise ConciergeOfferError("acceptance_conflict_retry") from exc
     return offer, order
 
 

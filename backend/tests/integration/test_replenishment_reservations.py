@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.db.session import SessionFactory, close_database
 from app.main import create_app
 from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.checkout.service import CheckoutItem, CheckoutService
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.households.models import Household, HouseholdAddress, HouseholdMembership
 from app.modules.identity.models import AuthIdentity
@@ -308,6 +309,67 @@ async def test_approve_creates_a_real_order_at_the_live_offer_price() -> None:
     assert reservation.status == "approved"
     assert reservation.resulting_order_id == order.id
     assert reservation.approved_at is not None
+
+
+async def test_crash_between_order_creation_and_reservation_approval_leaves_no_orphan() -> None:
+    """Fault injection (Workstream 2): simulates a process crash after the
+    order is constructed but before approve_reservation's own atomic
+    commit -- create_order_uncommitted must leave nothing persisted when
+    the caller never reaches its own commit, and a subsequent real
+    approval attempt must succeed cleanly from scratch rather than
+    tripping over an orphaned half-written order."""
+    seed = await _seed_unit_with_estimate(low_days=5)
+    reservation_id = await _create(seed)
+    assert reservation_id is not None
+    idempotency_key = f"replenishment:{reservation_id}"
+
+    async with SessionFactory() as session:
+        reservation = await session.get(
+            ReplenishmentReservation, reservation_id, with_for_update=True
+        )
+        assert reservation is not None
+        # Exactly what approve_reservation does internally, up to (but not
+        # including) mutating reservation.status and committing -- then we
+        # deliberately stop here, simulating the process dying right at
+        # that point, instead of continuing to the atomic commit.
+        await CheckoutService().create_order_uncommitted(
+            session,
+            customer_identity_id=seed.customer_id,
+            household_id=seed.household_id,
+            address_id=seed.address_id,
+            items=[CheckoutItem(seed.offer_id, 1)],
+            idempotency_key=idempotency_key,
+            allowed_modes=frozenset({"full_payment"}),
+        )
+        await session.rollback()
+
+    async with SessionFactory() as session:
+        orphan = await session.scalar(
+            select(Order).where(
+                Order.customer_identity_id == seed.customer_id,
+                Order.checkout_idempotency_key == idempotency_key,
+            )
+        )
+        assert orphan is None
+        untouched = await session.get(ReplenishmentReservation, reservation_id)
+        assert untouched is not None and untouched.status == "pending_approval"
+
+    # A real, subsequent approval attempt (the customer retrying, or the
+    # same request replayed) must succeed cleanly -- no leftover state
+    # from the simulated crash blocks it.
+    async with SessionFactory() as session:
+        reservation = await session.get(
+            ReplenishmentReservation, reservation_id, with_for_update=True
+        )
+        assert reservation is not None
+        reservation, order = await approve_reservation(
+            session,
+            reservation=reservation,
+            customer_identity_id=seed.customer_id,
+            address_id=seed.address_id,
+        )
+    assert reservation.status == "approved"
+    assert order.checkout_idempotency_key == idempotency_key
 
 
 async def test_approve_does_not_auto_charge() -> None:

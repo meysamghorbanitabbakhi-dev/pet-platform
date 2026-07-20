@@ -14,7 +14,8 @@ from app.common.time import utc_now
 from app.core.config import get_settings
 from app.db.session import SessionFactory, close_database
 from app.main import create_app
-from app.modules.catalog.models import Offer, Supplier
+from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.checkout.service import CheckoutItem, CheckoutService
 from app.modules.concierge.models import ConciergeOffer
 from app.modules.concierge.service import (
     ConciergeOfferError,
@@ -419,6 +420,83 @@ async def test_accept_offer_creates_a_hidden_one_off_catalog_offer_and_order() -
     assert catalog_offer.sourcing_route == "individual"
     assert catalog_offer.max_pending_quantity == 1
     assert request is not None and request.status == "resolved"
+
+
+async def test_crash_between_order_creation_and_offer_acceptance_leaves_no_orphan() -> None:
+    """Fault injection (Workstream 2): replicates accept_offer's own
+    sequence (create the one-off product/offer, then construct the order)
+    up to but not including its atomic commit, then simulates a crash by
+    rolling back instead of continuing to mutate offer.status. Nothing
+    from either step may survive, and a subsequent real accept_offer call
+    must still succeed cleanly."""
+    seed = await _seed_request()
+    offer_id = await _presented_offer(seed)
+    idempotency_key = f"concierge:{offer_id}"
+
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, offer_id, with_for_update=True)
+        assert offer is not None
+        assert offer.supplier_id is not None and offer.title_fa is not None
+        product = Product(name_fa=offer.title_fa, status="active")
+        session.add(product)
+        await session.flush()
+        catalog_offer = Offer(
+            product_id=product.id,
+            supplier_id=offer.supplier_id,
+            sku=f"CONCIERGE-{offer.id}",
+            title_fa=offer.title_fa,
+            unit_label_fa=offer.unit_label_fa or "عدد",
+            price_irr=offer.price_irr,
+            status="active",
+            stock_posture="sourced_after_payment",
+            sourcing_capacity_status="open",
+            minimum_shelf_life_months=offer.minimum_shelf_life_months,
+            mode="concierge_only",
+            sourcing_route="individual",
+            max_pending_quantity=offer.quantity,
+        )
+        session.add(catalog_offer)
+        await session.flush()
+        await CheckoutService().create_order_uncommitted(
+            session,
+            customer_identity_id=seed.customer_id,
+            household_id=offer.household_id,
+            address_id=seed.address_id,
+            items=[CheckoutItem(catalog_offer.id, offer.quantity)],
+            idempotency_key=idempotency_key,
+            allowed_modes=frozenset({"concierge_only"}),
+        )
+        # Simulated crash: never reach offer.status = "accepted" or commit.
+        await session.rollback()
+
+    async with SessionFactory() as session:
+        orphan_order = await session.scalar(
+            select(Order).where(
+                Order.customer_identity_id == seed.customer_id,
+                Order.checkout_idempotency_key == idempotency_key,
+            )
+        )
+        assert orphan_order is None
+        orphan_offer = await session.scalar(
+            select(Offer).where(Offer.sku == f"CONCIERGE-{offer_id}")
+        )
+        assert orphan_offer is None
+        untouched = await session.get(ConciergeOffer, offer_id)
+        assert untouched is not None and untouched.status == "offer_presented"
+
+    # A real, subsequent accept_offer call must succeed cleanly -- no
+    # leftover state from the simulated crash blocks it.
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, offer_id, with_for_update=True)
+        assert offer is not None
+        offer, order = await accept_offer(
+            session,
+            offer=offer,
+            customer_identity_id=seed.customer_id,
+            address_id=seed.address_id,
+        )
+    assert offer.status == "accepted"
+    assert order.checkout_idempotency_key == idempotency_key
 
 
 async def test_accept_offer_does_not_auto_charge() -> None:

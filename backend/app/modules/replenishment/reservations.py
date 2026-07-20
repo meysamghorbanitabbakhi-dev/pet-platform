@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.common.time import utc_now
@@ -199,14 +200,20 @@ async def approve_reservation(
         session.add(_event(reservation.id, "expired", now))
         await session.commit()
         raise ReplenishmentReservationError("reservation_response_window_expired")
+    idempotency_key = f"replenishment:{reservation.id}"
     try:
-        order = await CheckoutService().create_order(
+        order = await CheckoutService().create_order_uncommitted(
             session,
             customer_identity_id=customer_identity_id,
             household_id=reservation.household_id,
             address_id=address_id,
             items=[CheckoutItem(reservation.offer_id, reservation.quantity)],
-            idempotency_key=f"replenishment:{reservation.id}",
+            idempotency_key=idempotency_key,
+            # _find_available_offer already restricts selection to
+            # mode=full_payment offers -- explicit here so this call site
+            # states what it trusts, not because a wider offer could
+            # actually reach this point.
+            allowed_modes=frozenset({"full_payment"}),
         )
     except CheckoutError as exc:
         raise ReplenishmentReservationError(f"checkout_failed:{exc}") from exc
@@ -214,7 +221,14 @@ async def approve_reservation(
     reservation.approved_at = now
     reservation.resulting_order_id = order.id
     session.add(_event(reservation.id, "approved", now, identity_id=customer_identity_id))
-    await session.commit()
+    # Order, its lines, and this reservation's approval commit together --
+    # if the process crashes before this line, NOTHING persists (no order
+    # left behind with a reservation that never shows it was used).
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise ReplenishmentReservationError("approval_conflict_retry") from exc
     return reservation, order
 
 

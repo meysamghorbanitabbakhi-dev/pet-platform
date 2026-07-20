@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -29,6 +28,19 @@ class CheckoutItem:
 _ORDINARY_CHECKOUT_MODES = frozenset({"full_payment"})
 
 
+def _checkout_request_payload(
+    household_id: UUID, address_id: UUID, items: list[CheckoutItem]
+) -> dict[str, object]:
+    return {
+        "household_id": str(household_id),
+        "address_id": str(address_id),
+        "items": [
+            {"offer_id": str(item.offer_id), "quantity": item.quantity}
+            for item in sorted(items, key=lambda item: str(item.offer_id))
+        ],
+    }
+
+
 class CheckoutService:
     async def create_order(
         self,
@@ -41,26 +53,71 @@ class CheckoutService:
         idempotency_key: str,
         allowed_modes: frozenset[str] = _ORDINARY_CHECKOUT_MODES,
     ) -> Order:
-        """allowed_modes defaults to the ordinary, customer-initiated
-        full_payment checkout path -- every route that lets a customer
-        submit an arbitrary offer_id must use that default. A caller may
-        pass a different, narrower frozenset ONLY when it is itself a
-        trusted internal conversion command that has already validated
-        the offer through its own domain rules and is converting exactly
-        the mode it expects (e.g. concierge acceptance converting the
-        concierge_only offer it just created for that exact request) --
-        never a blanket bypass. See ADR on offer-mode checkout eligibility."""
+        """Ordinary, customer-initiated checkout: constructs the order and
+        commits it as the sole content of this transaction. Every route
+        that lets a customer submit an arbitrary offer_id must use this
+        method (its allowed_modes default), not create_order_uncommitted.
+        """
+        order = await self.create_order_uncommitted(
+            session,
+            customer_identity_id=customer_identity_id,
+            household_id=household_id,
+            address_id=address_id,
+            items=items,
+            idempotency_key=idempotency_key,
+            allowed_modes=allowed_modes,
+        )
+        try:
+            await session.commit()
+        except IntegrityError as exc:
+            await session.rollback()
+            replay = await session.scalar(
+                select(Order).where(
+                    Order.customer_identity_id == customer_identity_id,
+                    Order.checkout_idempotency_key == idempotency_key,
+                )
+            )
+            request_hash = canonical_request_hash(
+                _checkout_request_payload(household_id, address_id, items)
+            )
+            if replay is not None and replay.checkout_request_hash in (None, request_hash):
+                return replay
+            raise CheckoutError("idempotency key was already used for another request") from exc
+        return order
+
+    async def create_order_uncommitted(
+        self,
+        session: AsyncSession,
+        *,
+        customer_identity_id: UUID,
+        household_id: UUID,
+        address_id: UUID,
+        items: list[CheckoutItem],
+        idempotency_key: str,
+        allowed_modes: frozenset[str],
+    ) -> Order:
+        """No-commit order construction: participates in the caller's own
+        transaction rather than owning commit/rollback itself. For a
+        trusted internal conversion (reserve/replenishment/concierge
+        acceptance) that must persist the order, its own workflow state
+        transition (approved/accepted), and any audit/outbox rows
+        atomically -- if the process crashes before the caller's own
+        commit, NOTHING persists, including this order, rather than
+        leaving a real order behind with no corresponding workflow-state
+        update to show for it. The caller is responsible for its own
+        final `await session.commit()` (and should wrap it in the same
+        IntegrityError-replay pattern create_order uses above if it
+        wants equivalent replay safety across the whole workflow, not
+        just the order in isolation) and for choosing a narrower
+        allowed_modes only when it has already independently validated
+        the offer through its own domain rules (e.g. concierge acceptance
+        converting the concierge_only offer it just created for that
+        exact request) -- never a blanket bypass. See ADR-012.
+        """
         if not items or any(item.quantity <= 0 for item in items):
             raise CheckoutError("checkout requires positive quantities")
         request_hash = canonical_request_hash(
-            {
-                "household_id": str(household_id),
-                "address_id": str(address_id),
-                "items": [
-                    {"offer_id": str(item.offer_id), "quantity": item.quantity}
-                    for item in sorted(items, key=lambda item: str(item.offer_id))
-                ],
-            }
+            _checkout_request_payload(household_id, address_id, items)
         )
 
         existing = await session.scalar(
@@ -188,17 +245,8 @@ class CheckoutService:
                 payload={"order_id": str(order.id), "amount_irr": total, "currency": "IRR"},
             ),
         )
-        try:
-            await session.commit()
-        except IntegrityError as exc:
-            await session.rollback()
-            replay = await session.scalar(
-                select(Order).where(
-                    Order.customer_identity_id == customer_identity_id,
-                    Order.checkout_idempotency_key == idempotency_key,
-                )
-            )
-            if replay is not None and replay.checkout_request_hash in (None, request_hash):
-                return cast(Order, replay)
-            raise CheckoutError("idempotency key was already used for another request") from exc
+        # No commit here -- the caller owns the transaction. flush so the
+        # order/lines are visible (with real ids/FKs) to whatever the
+        # caller does next in the same transaction, without finalizing it.
+        await session.flush()
         return order
