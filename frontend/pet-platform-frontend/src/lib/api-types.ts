@@ -127,3 +127,4 @@ export type BreedSelectionHistoryItem = Schema<"BreedSelectionHistoryItem">;
 export type ProfileCompletenessResponse = Schema<"ProfileCompletenessResponse">;
 export type ReferenceComparisonResponse = Schema<"ReferenceComparisonResponse">;
 export type ReminderMutationResponse = Schema<"ReminderMutationResponse">;
+export type KpiResultResponse = Schema<"KPIResultResponse">;

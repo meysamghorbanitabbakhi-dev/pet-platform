@@ -52,6 +52,7 @@ import type {
   JourneyDetailResponse,
   JourneyStartBody,
   JourneyStopBody,
+  KpiResultResponse,
   OtpVerifyBody,
   OtpVerifyResponse,
   PaymentCallbackResponse,
@@ -1532,6 +1533,21 @@ export async function replaceOrderPetPlanBackend(
       params: { path: { order_id: orderId } },
       body,
       headers,
+    }),
+  );
+}
+
+// Operator-only; no dev-fixture mock exists yet for this first
+// operator-facing page (fixtures so far only cover customer scenarios).
+export async function listOperatorKpisBackend(
+  windowStart: string,
+  windowEnd: string,
+): Promise<KpiResultResponse[]> {
+  return withAuth((headers) =>
+    backendClient.GET("/api/v1/operator/kpis", {
+      params: { query: { window_start: windowStart, window_end: windowEnd } },
+      headers,
+      cache: "no-store",
     }),
   );
 }

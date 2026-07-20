@@ -40,6 +40,7 @@ import type {
   JourneyOfferResponse,
   JourneyStartBody,
   JourneyStopBody,
+  KpiResultResponse,
   MeasurementBody,
   MeasurementItem,
   MeContextResponse,
@@ -711,5 +712,15 @@ export function setGuidancePreference(
   return bff<void>(
     `/api/bff/pets/${petId}/care-guidance/${guidanceId}/preference`,
     { method: "PUT", body },
+  );
+}
+
+export function listOperatorKpis(windowStart: string, windowEnd: string) {
+  const params = new URLSearchParams({
+    window_start: windowStart,
+    window_end: windowEnd,
+  });
+  return bff<KpiResultResponse[]>(
+    `/api/bff/operator/kpis?${params.toString()}`,
   );
 }
