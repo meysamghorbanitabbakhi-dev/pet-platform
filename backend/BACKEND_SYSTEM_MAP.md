@@ -82,3 +82,16 @@ Garden rewards are meaningful server milestones only. There is no XP, streak, de
 ## 7. Verification posture
 
 K9.4 verifies static/type/test/OpenAPI/Alembic/archive consistency and records environment-blocked PostgreSQL/Compose checks when no safe runtime is available. Live provider certification, load, backup/restore and production launch rehearsal remain outside K9.
+
+## 8. Frontend verification posture (Workstream 7, 2026-07-20)
+
+An audit of the frontend against the K9 contract's hardening requirements (BFF-only browser calls, HTTP-only tokens, CSRF on every mutation, RTL, reduced-motion, focus management, mobile viewport, no internal-field leakage) found the infrastructure already correctly in place from prior K9/K10 work, with no gaps requiring a fix:
+
+- **BFF-only**: no client component references `backendClient`, a backend env var, or an absolute-URL `fetch` anywhere — every backend call goes through `src/lib/api/backend.ts` (`import "server-only"`) and a `/api/bff/*` route.
+- **HTTP-only tokens**: access/refresh cookies are `httpOnly: true`, `secure` in production, `sameSite: lax`, and `__Host-`-prefixed in production (`src/lib/session/server.ts`). The CSRF cookie is deliberately `httpOnly: false` (required for the double-submit pattern) but otherwise carries the same hardening.
+- **CSRF**: every BFF route with a POST/PUT/PATCH/DELETE handler calls `requireCsrf` except `auth/otp/request` and `auth/otp/verify` — the pre-session login flow, where no session exists yet to have issued a token from (the standard, correct exemption).
+- **No internal-field leakage**: no customer-facing frontend file references `supplier_id`, `supplier_cost`, `platform_margin`, `operator_note`, or `internal_name` anywhere.
+- **RTL/reduced-motion/focus/viewport**: `<html lang="fa-IR" dir="rtl">` is set globally; `globals.css` has a `prefers-reduced-motion: reduce` rule and a `max-width: 360px` breakpoint; `Dialog`/`Sheet` share a `useFocusTrap` hook; `EmptyState`/`ErrorState` use `aria-live`/`role="alert"`.
+- **Policy-hidden gating**: all three flag-gated features (reserve-now, replenishment reservations, concierge offers) gate their frontend queries behind the corresponding `policy.*_enabled` value rather than querying and showing a broken/error state when off.
+
+**Not independently re-verified in this pass** (no visual browser access in this environment): actual keyboard-only tab-through, live screen-reader behavior, and visual rendering at 320-360px. Playwright + axe-core infrastructure exists (`tests/e2e/`, `chromium-320`/`390`/`768`/`1024` projects) but currently covers only 2 of the 11 customer journeys and uses a dev-fixture auth mode (`GATE_FIXTURE_MODE`) rather than a real backend — closing that out to "real-backend Playwright for all 11 journeys" plus axe-core/keyboard-flow tests for each is Workstream 8 scope, not yet done. The new `/operator/kpis` page (Workstream 6) was verified via typecheck, lint, production build, and backend integration tests proving its API is correct, but was not clicked through in a live browser and has no dev-fixture mock or E2E coverage yet -- said so explicitly here rather than claiming a browser check that did not happen.
