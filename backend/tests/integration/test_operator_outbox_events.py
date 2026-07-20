@@ -13,6 +13,7 @@ from app.main import create_app
 from app.modules.identity.models import AuthIdentity
 from app.modules.system.models import OperatorAuditLog, OutboxEvent
 from app.modules.system.outbox import DomainEvent, add_outbox_event
+from fastapi import FastAPI
 from sqlalchemy import func, select
 
 pytestmark = pytest.mark.skipif(
@@ -49,7 +50,7 @@ async def outbox_seed() -> OutboxSeed:
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -91,7 +92,7 @@ async def _audit_count(action: str, resource_id: str) -> int:
 
 
 async def test_list_outbox_events_defaults_to_dead_letter_status(
-    app_and_client: tuple[object, httpx.AsyncClient], outbox_seed: OutboxSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], outbox_seed: OutboxSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: outbox_seed.operator
@@ -111,7 +112,7 @@ async def test_list_outbox_events_defaults_to_dead_letter_status(
 
 
 async def test_list_outbox_events_rejects_unknown_status(
-    app_and_client: tuple[object, httpx.AsyncClient], outbox_seed: OutboxSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], outbox_seed: OutboxSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: outbox_seed.operator
@@ -123,7 +124,7 @@ async def test_list_outbox_events_rejects_unknown_status(
 
 
 async def test_list_outbox_events_requires_operator_role(
-    app_and_client: tuple[object, httpx.AsyncClient], outbox_seed: OutboxSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], outbox_seed: OutboxSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: outbox_seed.customer
@@ -133,7 +134,7 @@ async def test_list_outbox_events_requires_operator_role(
 
 
 async def test_replay_dead_letter_event_resets_it_to_pending(
-    app_and_client: tuple[object, httpx.AsyncClient], outbox_seed: OutboxSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], outbox_seed: OutboxSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: outbox_seed.operator
@@ -158,7 +159,7 @@ async def test_replay_dead_letter_event_resets_it_to_pending(
 
 
 async def test_replay_rejects_event_that_is_not_failed_or_dead_letter(
-    app_and_client: tuple[object, httpx.AsyncClient], outbox_seed: OutboxSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], outbox_seed: OutboxSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: outbox_seed.operator
@@ -187,7 +188,7 @@ async def test_replay_rejects_event_that_is_not_failed_or_dead_letter(
 
 
 async def test_replay_unknown_event_is_404(
-    app_and_client: tuple[object, httpx.AsyncClient], outbox_seed: OutboxSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], outbox_seed: OutboxSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: outbox_seed.operator
@@ -200,7 +201,7 @@ async def test_replay_unknown_event_is_404(
 
 
 async def test_replay_requires_operator_role(
-    app_and_client: tuple[object, httpx.AsyncClient], outbox_seed: OutboxSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], outbox_seed: OutboxSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: outbox_seed.customer

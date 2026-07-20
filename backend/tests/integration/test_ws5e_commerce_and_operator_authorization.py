@@ -23,6 +23,7 @@ from app.modules.households.models import Household, HouseholdAddress, Household
 from app.modules.identity.models import AuthIdentity
 from app.modules.orders.models import Order
 from app.modules.pets.models import Pet
+from fastapi import FastAPI
 
 pytestmark = pytest.mark.skipif(
     os.getenv("K10_RUNTIME_TESTS") != "1",
@@ -179,7 +180,7 @@ async def auth_seed() -> AuthSeed:
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -188,7 +189,7 @@ async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
 
 
 async def test_checkout_rejects_a_foreign_household_id(
-    app_and_client: tuple[object, httpx.AsyncClient], auth_seed: AuthSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], auth_seed: AuthSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: auth_seed.identity
@@ -207,7 +208,7 @@ async def test_checkout_rejects_a_foreign_household_id(
 
 
 async def test_reservation_creation_rejects_a_foreign_household_id(
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
     auth_seed: AuthSeed,
     reserve_now_enabled: None,
 ) -> None:
@@ -228,7 +229,7 @@ async def test_reservation_creation_rejects_a_foreign_household_id(
 
 
 async def test_order_subroutes_are_non_enumerating_for_a_foreign_order(
-    app_and_client: tuple[object, httpx.AsyncClient], auth_seed: AuthSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], auth_seed: AuthSeed
 ) -> None:
     """auth_seed.order_id belongs to other_identity/other_household; identity
     must get an identical 404 from every order sub-route, never someone
@@ -266,7 +267,7 @@ async def test_order_subroutes_are_non_enumerating_for_a_foreign_order(
 
 
 async def test_payment_initiation_is_non_enumerating_for_a_foreign_order(
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
     auth_seed: AuthSeed,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -299,7 +300,7 @@ async def test_payment_initiation_is_non_enumerating_for_a_foreign_order(
 
 
 async def test_knowledge_pet_detail_is_non_enumerating_for_a_foreign_household(
-    app_and_client: tuple[object, httpx.AsyncClient], auth_seed: AuthSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], auth_seed: AuthSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: auth_seed.identity
@@ -309,7 +310,7 @@ async def test_knowledge_pet_detail_is_non_enumerating_for_a_foreign_household(
 
 
 async def test_customer_request_creation_rejects_foreign_household_and_mismatched_order(
-    app_and_client: tuple[object, httpx.AsyncClient], auth_seed: AuthSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], auth_seed: AuthSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: auth_seed.identity
@@ -345,7 +346,7 @@ async def test_customer_request_creation_rejects_foreign_household_and_mismatche
 
 
 async def test_operator_routes_reject_a_customer_identity(
-    app_and_client: tuple[object, httpx.AsyncClient], auth_seed: AuthSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], auth_seed: AuthSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: auth_seed.identity

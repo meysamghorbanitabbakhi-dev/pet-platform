@@ -30,6 +30,7 @@ from app.modules.orders.shelf_life_exceptions import (
 from app.modules.system.models import OperatorAuditLog
 from app.modules.trust.files import EvidenceFile
 from app.modules.trust.models import SourcedUnitEvidence, SupplierAssurance
+from fastapi import FastAPI
 from sqlalchemy import func, select
 
 pytestmark = pytest.mark.skipif(
@@ -766,7 +767,7 @@ async def test_concurrent_accept_and_decline_never_both_succeed() -> None:
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -787,7 +788,7 @@ async def _audit_count(action: str, resource_id: str) -> int:
 
 
 async def test_http_hard_block_rejects_an_expiry_shorter_than_the_guarantee(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unsourced_line(minimum_shelf_life_months=6)
@@ -813,7 +814,7 @@ async def test_http_hard_block_rejects_an_expiry_shorter_than_the_guarantee(
 
 
 async def test_http_operator_propose_and_customer_accept_flow(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unsourced_line()
@@ -859,7 +860,7 @@ async def test_http_operator_propose_and_customer_accept_flow(
 
 
 async def test_http_decline_is_non_enumerating_for_foreign_order(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unsourced_line()
@@ -888,7 +889,7 @@ async def test_http_decline_is_non_enumerating_for_foreign_order(
 
 
 async def test_http_accept_and_list_are_non_enumerating_for_foreign_order(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unsourced_line()
@@ -928,7 +929,7 @@ async def test_http_accept_and_list_are_non_enumerating_for_foreign_order(
 
 
 async def test_http_operator_attests_refund_for_a_declined_exception(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unsourced_line()

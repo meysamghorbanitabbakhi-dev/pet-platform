@@ -25,6 +25,7 @@ from app.modules.wallet.models import (
     WalletDebit,
     WalletDebitAllocation,
 )
+from fastapi import FastAPI
 
 pytestmark = pytest.mark.skipif(
     os.getenv("K10_RUNTIME_TESTS") != "1",
@@ -304,7 +305,7 @@ async def test_compute_all_kpis_returns_every_registered_key(
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -313,7 +314,7 @@ async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
 
 
 async def test_http_operator_kpis_endpoint_returns_every_kpi(
-    app_and_client: tuple[object, httpx.AsyncClient], reporting_seed: ReportingSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], reporting_seed: ReportingSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: reporting_seed.operator
@@ -336,7 +337,7 @@ async def test_http_operator_kpis_endpoint_returns_every_kpi(
 
 
 async def test_http_operator_kpis_rejects_inverted_window(
-    app_and_client: tuple[object, httpx.AsyncClient], reporting_seed: ReportingSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], reporting_seed: ReportingSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: reporting_seed.operator
@@ -352,7 +353,7 @@ async def test_http_operator_kpis_rejects_inverted_window(
 
 
 async def test_http_operator_kpis_requires_operator_role(
-    app_and_client: tuple[object, httpx.AsyncClient], reporting_seed: ReportingSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], reporting_seed: ReportingSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: reporting_seed.customer

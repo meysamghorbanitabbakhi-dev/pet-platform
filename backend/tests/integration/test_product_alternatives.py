@@ -13,6 +13,7 @@ from app.main import create_app
 from app.modules.catalog.models import Offer, Product, ProductAlternative, Supplier
 from app.modules.identity.models import AuthIdentity
 from app.modules.system.models import OperatorAuditLog
+from fastapi import FastAPI
 from sqlalchemy import func, select
 
 pytestmark = pytest.mark.skipif(
@@ -95,7 +96,7 @@ async def alt_seed() -> AltSeed:
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -116,7 +117,7 @@ async def _audit_count(action: str, resource_id: str) -> int:
 
 
 async def test_operator_can_create_and_approve_an_alternative(
-    app_and_client: tuple[object, httpx.AsyncClient], alt_seed: AltSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], alt_seed: AltSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: alt_seed.operator
@@ -157,7 +158,7 @@ async def test_operator_can_create_and_approve_an_alternative(
 
 
 async def test_self_reference_is_rejected(
-    app_and_client: tuple[object, httpx.AsyncClient], alt_seed: AltSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], alt_seed: AltSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: alt_seed.operator
@@ -175,7 +176,7 @@ async def test_self_reference_is_rejected(
 
 
 async def test_duplicate_pair_is_rejected(
-    app_and_client: tuple[object, httpx.AsyncClient], alt_seed: AltSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], alt_seed: AltSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: alt_seed.operator
@@ -192,7 +193,7 @@ async def test_duplicate_pair_is_rejected(
 
 
 async def test_non_operator_identity_is_forbidden(
-    app_and_client: tuple[object, httpx.AsyncClient], alt_seed: AltSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], alt_seed: AltSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: alt_seed.customer
@@ -210,7 +211,7 @@ async def test_non_operator_identity_is_forbidden(
 
 
 async def test_public_endpoint_returns_only_approved_alternatives_with_live_offers(
-    app_and_client: tuple[object, httpx.AsyncClient], alt_seed: AltSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], alt_seed: AltSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: alt_seed.operator
@@ -273,7 +274,7 @@ async def test_public_endpoint_returns_only_approved_alternatives_with_live_offe
 
 
 async def test_update_is_blocked_once_retired(
-    app_and_client: tuple[object, httpx.AsyncClient], alt_seed: AltSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], alt_seed: AltSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: alt_seed.operator
@@ -312,7 +313,7 @@ async def test_update_is_blocked_once_retired(
 
 
 async def test_unknown_alternative_id_is_404_not_found(
-    app_and_client: tuple[object, httpx.AsyncClient], alt_seed: AltSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], alt_seed: AltSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: alt_seed.operator

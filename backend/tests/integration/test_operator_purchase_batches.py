@@ -18,6 +18,7 @@ from app.modules.orders.models import Order, OrderLine
 from app.modules.purchasing.service import allocate_order_line_to_batch
 from app.modules.system.models import OperatorAuditLog
 from app.modules.trust.files import EvidenceFile
+from fastapi import FastAPI
 from sqlalchemy import func, select
 
 pytestmark = pytest.mark.skipif(
@@ -107,7 +108,7 @@ async def batch_seed() -> BatchSeed:
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -160,7 +161,7 @@ async def _evidence_file(operator_id: uuid.UUID) -> str:
 
 
 async def test_sourcing_config_update_changes_route_and_threshold(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -184,7 +185,7 @@ async def test_sourcing_config_update_changes_route_and_threshold(
 
 
 async def test_sourcing_config_rejects_invalid_route(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -197,7 +198,7 @@ async def test_sourcing_config_rejects_invalid_route(
 
 
 async def test_list_and_detail_reflect_allocation_state(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -226,7 +227,7 @@ async def test_list_and_detail_reflect_allocation_state(
 
 
 async def test_list_rejects_invalid_status_filter(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -238,7 +239,7 @@ async def test_list_rejects_invalid_status_filter(
 
 
 async def test_detail_unknown_batch_is_404(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -248,7 +249,7 @@ async def test_detail_unknown_batch_is_404(
 
 
 async def test_adjust_lowering_threshold_below_allocated_retroactively_reaches_it(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -276,7 +277,7 @@ async def test_adjust_lowering_threshold_below_allocated_retroactively_reaches_i
 
 
 async def test_adjust_raising_threshold_does_not_unset_already_reached(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -304,7 +305,7 @@ async def test_adjust_raising_threshold_does_not_unset_already_reached(
 
 
 async def test_adjust_is_blocked_once_committed(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -326,7 +327,7 @@ async def test_adjust_is_blocked_once_committed(
 
 
 async def test_commit_is_idempotent_and_audits_once(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -359,7 +360,7 @@ async def test_commit_is_idempotent_and_audits_once(
 
 
 async def test_commit_unknown_evidence_file_is_404(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -373,7 +374,7 @@ async def test_commit_unknown_evidence_file_is_404(
 
 
 async def test_commit_unknown_batch_is_404(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
@@ -387,7 +388,7 @@ async def test_commit_unknown_batch_is_404(
 
 
 async def test_non_operator_identity_is_forbidden(
-    app_and_client: tuple[object, httpx.AsyncClient], batch_seed: BatchSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: batch_seed.customer

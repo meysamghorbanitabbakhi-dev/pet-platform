@@ -31,6 +31,7 @@ from app.modules.replenishment.reservations import (
     invalidate_reservation_for_unit,
     scan_and_create_due_reservations,
 )
+from fastapi import FastAPI
 from sqlalchemy import select
 
 pytestmark = pytest.mark.skipif(
@@ -663,7 +664,7 @@ async def test_concurrent_approve_and_decline_never_both_succeed() -> None:
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -672,7 +673,7 @@ async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
 
 
 async def test_http_replenishment_reservation_endpoints_are_disabled_by_default(
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unit_with_estimate(low_days=5)
@@ -700,7 +701,7 @@ async def test_http_replenishment_reservation_endpoints_are_disabled_by_default(
 
 async def test_http_full_replenishment_reservation_lifecycle(
     replenishment_reservation_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unit_with_estimate(low_days=5, offer_price_irr=1_500_000)
@@ -740,7 +741,7 @@ async def test_http_full_replenishment_reservation_lifecycle(
 
 async def test_http_decline_replenishment_reservation(
     replenishment_reservation_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unit_with_estimate(low_days=5)
@@ -760,7 +761,7 @@ async def test_http_decline_replenishment_reservation(
 
 async def test_http_replenishment_reservation_is_non_enumerating_for_a_foreign_household(
     replenishment_reservation_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unit_with_estimate(low_days=5)
@@ -792,7 +793,7 @@ async def test_http_replenishment_reservation_is_non_enumerating_for_a_foreign_h
 
 async def test_http_correct_estimate_refreshes_pending_reservation(
     replenishment_reservation_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unit_with_estimate(low_days=10, high_days=12)
@@ -818,7 +819,7 @@ async def test_http_correct_estimate_refreshes_pending_reservation(
 
 async def test_http_exhaust_inventory_invalidates_pending_reservation(
     replenishment_reservation_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unit_with_estimate(low_days=5)

@@ -34,6 +34,7 @@ from app.modules.orders.models import Order
 from app.modules.payments.models import PaymentAttempt
 from app.modules.support.models import CustomerRequest
 from app.modules.trust.files import EvidenceFile
+from fastapi import FastAPI
 from sqlalchemy import select, update
 
 pytestmark = pytest.mark.skipif(
@@ -781,7 +782,7 @@ async def test_concurrent_accept_and_decline_never_both_succeed() -> None:
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -790,7 +791,7 @@ async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
 
 
 async def test_http_concierge_offer_endpoints_are_disabled_by_default(
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_request()
@@ -810,7 +811,7 @@ async def test_http_concierge_offer_endpoints_are_disabled_by_default(
 
 async def test_http_full_concierge_offer_lifecycle(
     concierge_offers_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_request()
@@ -876,7 +877,7 @@ async def test_http_full_concierge_offer_lifecycle(
 
 async def test_http_decline_concierge_offer(
     concierge_offers_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_request()
@@ -895,7 +896,7 @@ async def test_http_decline_concierge_offer(
 
 async def test_http_refresh_concierge_offer(
     concierge_offers_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_request()
@@ -917,7 +918,7 @@ async def test_http_refresh_concierge_offer(
 
 async def test_http_concierge_offer_is_non_enumerating_for_a_foreign_customer(
     concierge_offers_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_request()
@@ -941,7 +942,7 @@ async def test_http_concierge_offer_is_non_enumerating_for_a_foreign_customer(
 
 async def test_concierge_offer_mutations_are_non_enumerating_for_a_foreign_customer(
     concierge_offers_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     accept_seed = await _seed_request()
@@ -990,7 +991,7 @@ async def test_concierge_offer_mutations_are_non_enumerating_for_a_foreign_custo
 
 async def test_http_operator_queue_filters_by_status(
     concierge_offers_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     reviewing_seed = await _seed_request()
@@ -1016,7 +1017,7 @@ async def test_http_operator_queue_filters_by_status(
 
 async def test_accepted_concierge_offer_is_hidden_from_browse_and_search_but_reachable_by_id(
     concierge_offers_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_request()

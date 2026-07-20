@@ -28,6 +28,7 @@ from app.modules.reservations.service import (
     reconfirm_and_propose_reservation,
     request_reservation,
 )
+from fastapi import FastAPI
 from sqlalchemy import select
 
 pytestmark = pytest.mark.skipif(
@@ -612,7 +613,7 @@ async def test_concurrent_approve_and_decline_never_both_succeed() -> None:
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -621,7 +622,7 @@ async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
 
 
 async def test_http_reserve_now_endpoints_are_disabled_by_default(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     seed = await _seed_reservable_offer()
@@ -652,7 +653,7 @@ async def test_http_reserve_now_endpoints_are_disabled_by_default(
 
 async def test_http_full_reserve_now_lifecycle(
     reserve_now_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_reservable_offer(offer_price_irr=8_000_000)
@@ -701,7 +702,7 @@ async def test_http_full_reserve_now_lifecycle(
 
 async def test_http_reservation_is_non_enumerating_for_a_foreign_customer(
     reserve_now_enabled: None,
-    app_and_client: tuple[object, httpx.AsyncClient],
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_reservable_offer()

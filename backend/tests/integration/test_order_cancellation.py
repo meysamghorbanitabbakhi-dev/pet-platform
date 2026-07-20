@@ -26,6 +26,7 @@ from app.modules.purchasing.models import PurchaseBatch, PurchaseBatchAllocation
 from app.modules.purchasing.service import allocate_order_line_to_batch, commit_batch
 from app.modules.system.models import OperatorAuditLog
 from app.modules.trust.files import EvidenceFile
+from fastapi import FastAPI
 from sqlalchemy import func, select
 
 pytestmark = pytest.mark.skipif(
@@ -485,7 +486,7 @@ async def test_concurrent_cancellation_never_wins_after_commitment_locks_the_bat
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -494,7 +495,7 @@ async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
 
 
 async def test_http_cancel_happy_path_and_replay(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     offer_seed = await _seed_offer()
@@ -535,7 +536,7 @@ async def test_http_cancel_happy_path_and_replay(
 
 
 async def test_http_cancel_after_commitment_is_conflict(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     offer_seed = await _seed_offer()
@@ -560,7 +561,7 @@ async def test_http_cancel_after_commitment_is_conflict(
 
 
 async def test_http_cancel_is_non_enumerating_for_missing_and_foreign_orders(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     offer_seed = await _seed_offer()
@@ -598,7 +599,7 @@ async def _audit_count(action: str, resource_id: str) -> int:
 
 
 async def test_http_operator_attests_cancellation_refund_and_is_idempotent(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     offer_seed = await _seed_offer()
@@ -652,7 +653,7 @@ async def test_http_operator_attests_cancellation_refund_and_is_idempotent(
 
 
 async def test_http_operator_attest_refund_unknown_cancellation_is_404(
-    app_and_client: tuple[object, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient]
 ) -> None:
     app, client = app_and_client
     offer_seed = await _seed_offer()

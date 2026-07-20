@@ -15,6 +15,7 @@ from app.modules.households.models import Household, HouseholdMembership
 from app.modules.identity.models import AuthIdentity
 from app.modules.inventory.models import InventoryUnit
 from app.modules.pets.models import Pet
+from fastapi import FastAPI
 
 pytestmark = pytest.mark.skipif(
     os.getenv("K10_RUNTIME_TESTS") != "1",
@@ -89,7 +90,7 @@ async def pet_auth_seed() -> PetAuthSeed:
 
 
 @pytest.fixture()
-async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
+async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -98,7 +99,7 @@ async def app_and_client() -> AsyncIterator[tuple[object, httpx.AsyncClient]]:
 
 
 async def test_pet_health_routes_are_non_enumerating_for_a_foreign_pet(
-    app_and_client: tuple[object, httpx.AsyncClient], pet_auth_seed: PetAuthSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], pet_auth_seed: PetAuthSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: pet_auth_seed.identity
@@ -130,7 +131,7 @@ async def test_pet_health_routes_are_non_enumerating_for_a_foreign_pet(
 
 
 async def test_pet_assets_routes_are_non_enumerating_for_a_foreign_pet(
-    app_and_client: tuple[object, httpx.AsyncClient], pet_auth_seed: PetAuthSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], pet_auth_seed: PetAuthSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: pet_auth_seed.identity
@@ -158,7 +159,7 @@ async def test_pet_assets_routes_are_non_enumerating_for_a_foreign_pet(
 
 
 async def test_inventory_routes_are_non_enumerating_for_a_foreign_household(
-    app_and_client: tuple[object, httpx.AsyncClient], pet_auth_seed: PetAuthSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], pet_auth_seed: PetAuthSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: pet_auth_seed.identity
@@ -189,7 +190,7 @@ async def test_inventory_routes_are_non_enumerating_for_a_foreign_household(
 
 
 async def test_diary_and_garden_routes_are_non_enumerating_for_a_foreign_pet(
-    app_and_client: tuple[object, httpx.AsyncClient], pet_auth_seed: PetAuthSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], pet_auth_seed: PetAuthSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: pet_auth_seed.identity
@@ -203,7 +204,7 @@ async def test_diary_and_garden_routes_are_non_enumerating_for_a_foreign_pet(
 
 
 async def test_household_listing_routes_are_non_enumerating_for_a_foreign_household(
-    app_and_client: tuple[object, httpx.AsyncClient], pet_auth_seed: PetAuthSeed
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], pet_auth_seed: PetAuthSeed
 ) -> None:
     app, client = app_and_client
     app.dependency_overrides[get_current_identity] = lambda: pet_auth_seed.identity
