@@ -51,3 +51,29 @@ meaningful, and no second environment to stand an API instance up against the re
 Genuine confidence in a full recovery still requires performing steps 3, 5, and 6 for real, ideally
 against a copy of production-scale data, before relying on this runbook operationally.
 
+## Rehearsal evidence (2026-07-20, gap-closure program Workstream 12)
+
+Re-rehearsed steps 1-4 against the current schema (Alembic head `20260720_0042`, which added
+row-level security -- see ADR-011's amendment -- since the prior rehearsal above at `20260720_0037`):
+`pg_dump --format=custom` (88 tables) restored via `pg_restore --no-owner` into a fresh disposable
+database in the same Postgres cluster. Table count (88), `orders_orders` row count (9,800), and
+`alembic_version` all matched the source exactly, same as before. Additionally verified the parts
+of this schema RLS added specifically: all 18 policies, all 3 helper functions
+(`app_is_operator`/`app_household_ids`/`app_identity_id`), and both `relrowsecurity` and
+`relforcerowsecurity` on a sample table (`orders_orders`) restored correctly and identically to the
+source -- these are ordinary per-database schema objects, so a same-cluster `pg_dump`/`pg_restore`
+carries them with no special handling needed.
+
+**A genuine gap this surfaced, not present before Workstream 9**: the row-level-security feature
+depends on a *role* (`database_app_url`'s `pet_platform_app`, created by migration `20260720_0040`)
+that request traffic connects as. Roles are cluster-level objects in Postgres, never part of a
+single database's `pg_dump` -- confirmed directly (`pg_restore -l`'s table of contents contains no
+`CREATE ROLE`/role-grant entries at all). This rehearsal's restore worked because it ran against
+the *same* Postgres cluster, where `pet_platform_app` already existed. **Restoring into a genuinely
+fresh cluster (the real host-loss/disaster-recovery scenario, still not rehearsed here) requires
+running `alembic upgrade head` far enough to recreate this role -- or an equivalent manual
+`CREATE ROLE`/`GRANT` step -- before or immediately after the database restore, or the application
+will be unable to authenticate to its own restored database at all.** This is now a required,
+explicit step in any real disaster-recovery procedure for this platform, not an implicit assumption
+the schema restore alone satisfies.
+
