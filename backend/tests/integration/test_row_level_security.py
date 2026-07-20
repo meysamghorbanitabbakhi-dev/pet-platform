@@ -11,9 +11,11 @@ from app.api.dependencies import get_current_identity
 from app.common.time import utc_now
 from app.db.session import AppSessionFactory, SessionFactory, app_engine, close_database
 from app.main import create_app
-from app.modules.households.models import Household, HouseholdMembership
+from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.households.models import Household, HouseholdAddress, HouseholdMembership
 from app.modules.identity.models import AuthIdentity
-from app.modules.orders.models import Order
+from app.modules.orders.models import Order, OrderLine
+from app.modules.payments.models import PaymentAttempt
 from fastapi import FastAPI
 from sqlalchemy import select, text
 
@@ -113,9 +115,7 @@ async def test_household_scoped_table_is_invisible_with_no_rls_context() -> None
     async with AppSessionFactory() as session:
         rows = list(
             (
-                await session.scalars(
-                    select(Household).where(Household.id == seed.household_a_id)
-                )
+                await session.scalars(select(Household).where(Household.id == seed.household_a_id))
             ).all()
         )
     assert rows == []
@@ -137,16 +137,12 @@ async def test_household_scoped_table_is_invisible_to_an_unrelated_household() -
         )
         invisible = list(
             (
-                await session.scalars(
-                    select(Household).where(Household.id == seed.household_a_id)
-                )
+                await session.scalars(select(Household).where(Household.id == seed.household_a_id))
             ).all()
         )
         visible = list(
             (
-                await session.scalars(
-                    select(Household).where(Household.id == seed.household_b_id)
-                )
+                await session.scalars(select(Household).where(Household.id == seed.household_b_id))
             ).all()
         )
     assert invisible == []
@@ -236,9 +232,7 @@ async def test_household_context_does_not_leak_across_transactions_within_a_sess
         )
         visible = list(
             (
-                await session.scalars(
-                    select(Household).where(Household.id == seed.household_a_id)
-                )
+                await session.scalars(select(Household).where(Household.id == seed.household_a_id))
             ).all()
         )
         assert len(visible) == 1
@@ -246,9 +240,7 @@ async def test_household_context_does_not_leak_across_transactions_within_a_sess
 
         invisible = list(
             (
-                await session.scalars(
-                    select(Household).where(Household.id == seed.household_a_id)
-                )
+                await session.scalars(select(Household).where(Household.id == seed.household_a_id))
             ).all()
         )
     assert invisible == []
@@ -366,6 +358,228 @@ async def test_bootstrap_household_creation_still_works_under_rls(
     assert membership is not None
 
 
+# --- 20260720_0044: household self-enrollment hardening ---------------------
+
+
+async def test_self_enrollment_into_an_unrelated_household_is_rejected() -> None:
+    """The households_memberships INSERT policy's bootstrap fallback
+    (identity_id = app_identity_id()) previously allowed self-insertion
+    into ANY household_id, with no relationship to that household
+    required. A raw INSERT attempt -- as if a future route regressed and
+    let a customer choose an arbitrary household_id -- must now be
+    rejected by the database itself, not merely by application code that
+    doesn't currently expose this path."""
+    token = uuid.uuid4().hex[:10]
+    async with SessionFactory() as session:
+        attacker = AuthIdentity(
+            identity_type="customer", mobile_e164=f"+98917{token[:7]}", status="active"
+        )
+        victim_household = Household(name=f"victim-hh-{token}")
+        session.add_all([attacker, victim_household])
+        await session.commit()
+        attacker_id = attacker.id
+        household_id = victim_household.id
+
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.identity_id', :v, true)"), {"v": str(attacker_id)}
+        )
+        await session.execute(text("SELECT set_config('app.household_ids', '', true)"))
+        with pytest.raises(Exception, match="row-level security"):
+            await session.execute(
+                text(
+                    "INSERT INTO households_memberships"
+                    " (id, household_id, identity_id, role, created_at, updated_at)"
+                    " VALUES (gen_random_uuid(), :h, :i, 'owner', now(), now())"
+                ),
+                {"h": str(household_id), "i": str(attacker_id)},
+            )
+        await session.rollback()
+
+    async with SessionFactory() as session:
+        leaked = await session.scalar(
+            select(HouseholdMembership).where(
+                HouseholdMembership.household_id == household_id,
+                HouseholdMembership.identity_id == attacker_id,
+            )
+        )
+    assert leaked is None
+
+
+async def test_self_enrollment_is_rejected_once_a_household_has_any_member() -> None:
+    """Closes the "creator revoked, re-enrolls later" gap: even for the
+    identity that actually created the household, self-insertion is only
+    allowed while no membership row exists yet for it at all (true
+    first-membership bootstrap). Once any membership row exists --
+    someone else already joined, or the creator's own original
+    membership was later removed -- the creator can no longer use this
+    fallback to insert themselves back in."""
+    token = uuid.uuid4().hex[:10]
+    async with SessionFactory() as session:
+        creator = AuthIdentity(
+            identity_type="customer", mobile_e164=f"+98918{token[:7]}", status="active"
+        )
+        other_member = AuthIdentity(
+            identity_type="customer", mobile_e164=f"+98919{token[:7]}", status="active"
+        )
+        household = Household(name=f"abandoned-hh-{token}", created_by_identity_id=None)
+        session.add_all([creator, other_member, household])
+        await session.flush()
+        household.created_by_identity_id = creator.id
+        session.add(
+            HouseholdMembership(
+                household_id=household.id, identity_id=other_member.id, role="member"
+            )
+        )
+        await session.commit()
+        creator_id = creator.id
+        household_id = household.id
+
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.identity_id', :v, true)"), {"v": str(creator_id)}
+        )
+        await session.execute(text("SELECT set_config('app.household_ids', '', true)"))
+        with pytest.raises(Exception, match="row-level security"):
+            await session.execute(
+                text(
+                    "INSERT INTO households_memberships"
+                    " (id, household_id, identity_id, role, created_at, updated_at)"
+                    " VALUES (gen_random_uuid(), :h, :i, 'owner', now(), now())"
+                ),
+                {"h": str(household_id), "i": str(creator_id)},
+            )
+        await session.rollback()
+
+    async with SessionFactory() as session:
+        leaked = await session.scalar(
+            select(HouseholdMembership).where(
+                HouseholdMembership.household_id == household_id,
+                HouseholdMembership.identity_id == creator_id,
+            )
+        )
+    assert leaked is None
+
+
+async def test_households_addresses_is_invisible_to_an_unrelated_household() -> None:
+    seed = await _seed_two_households()
+    async with SessionFactory() as session:
+        address = HouseholdAddress(
+            household_id=seed.household_a_id,
+            label="خانه",
+            recipient_name="x",
+            recipient_mobile_e164="+989120000000",
+            province="Tehran",
+            city="Tehran",
+            address_line="x",
+            postal_code=None,
+            active=True,
+        )
+        session.add(address)
+        await session.commit()
+        address_id = address.id
+
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.household_ids', :v, true)"),
+            {"v": str(seed.household_b_id)},
+        )
+        invisible = list(
+            (
+                await session.scalars(
+                    select(HouseholdAddress).where(HouseholdAddress.id == address_id)
+                )
+            ).all()
+        )
+    assert invisible == []
+
+
+async def test_order_lines_and_payment_attempts_are_invisible_to_an_unrelated_customer() -> None:
+    """orders_order_lines/payments_attempts have no customer_identity_id
+    of their own -- their new policies reach it via an EXISTS against
+    orders_orders, which is already customer_identity_id-scoped."""
+    seed = await _seed_two_households()
+    token = uuid.uuid4().hex[:10]
+    async with SessionFactory() as session:
+        supplier = Supplier(internal_name=f"rls-supplier-{token}", country_code="IR", active=True)
+        product = Product(name_fa=f"rls-product-{token}", status="active")
+        session.add_all([supplier, product])
+        await session.flush()
+        offer = Offer(
+            product_id=product.id,
+            supplier_id=supplier.id,
+            sku=f"RLS-{token}",
+            title_fa="x",
+            unit_label_fa="x",
+            price_irr=1000,
+            status="active",
+            stock_posture="sourced_after_payment",
+            minimum_shelf_life_months=6,
+        )
+        session.add(offer)
+        await session.flush()
+        line = OrderLine(
+            order_id=seed.order_a_id,
+            offer_id=offer.id,
+            sku_snapshot="x",
+            title_fa_snapshot="x",
+            unit_label_fa_snapshot="x",
+            supplier_country_snapshot="IR",
+            quantity=1,
+            unit_price_irr=1000,
+            line_total_irr=1000,
+            created_at=utc_now(),
+        )
+        attempt = PaymentAttempt(
+            order_id=seed.order_a_id,
+            provider="zarinpal",
+            status="verified",
+            amount_irr=1000,
+            currency="IRR",
+            idempotency_key=f"rls-payment-{uuid.uuid4().hex}",
+        )
+        session.add_all([line, attempt])
+        await session.commit()
+        line_id, attempt_id = line.id, attempt.id
+
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.identity_id', :v, true)"), {"v": str(seed.customer_b.id)}
+        )
+        await session.execute(
+            text("SELECT set_config('app.household_ids', :v, true)"),
+            {"v": str(seed.household_b_id)},
+        )
+        invisible_lines = list(
+            (await session.scalars(select(OrderLine).where(OrderLine.id == line_id))).all()
+        )
+        invisible_attempts = list(
+            (
+                await session.scalars(select(PaymentAttempt).where(PaymentAttempt.id == attempt_id))
+            ).all()
+        )
+    assert invisible_lines == []
+    assert invisible_attempts == []
+
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.identity_id', :v, true)"), {"v": str(seed.customer_a.id)}
+        )
+        await session.execute(
+            text("SELECT set_config('app.household_ids', :v, true)"),
+            {"v": str(seed.household_a_id)},
+        )
+        visible_lines = list(
+            (await session.scalars(select(OrderLine).where(OrderLine.id == line_id))).all()
+        )
+    assert len(visible_lines) == 1
+
+
 async def test_app_role_is_not_a_superuser_and_cannot_bypass_rls() -> None:
     """Guards the precondition the entire feature depends on: Postgres
     unconditionally bypasses row security for superusers, with no policy
@@ -376,9 +590,7 @@ async def test_app_role_is_not_a_superuser_and_cannot_bypass_rls() -> None:
     that regression."""
     async with app_engine.connect() as conn:
         result = await conn.execute(
-            text(
-                "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user"
-            )
+            text("SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user")
         )
         rolsuper, rolbypassrls = result.one()
     assert rolsuper is False
