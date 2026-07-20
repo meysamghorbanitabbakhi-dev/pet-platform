@@ -7,7 +7,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from string import Formatter
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
@@ -2735,6 +2735,14 @@ async def operational_telemetry(_: CurrentOperator, session: SessionDependency) 
         "outbox_pending": await session.scalar(
             select(func.count()).select_from(OutboxEvent).where(OutboxEvent.published_at.is_(None))
         ),
+        "outbox_failed": await session.scalar(
+            select(func.count()).select_from(OutboxEvent).where(OutboxEvent.status == "failed")
+        ),
+        "outbox_dead_letter": await session.scalar(
+            select(func.count())
+            .select_from(OutboxEvent)
+            .where(OutboxEvent.status == "dead_letter")
+        ),
         "notifications_failed": await session.scalar(
             select(func.count()).select_from(Notification).where(Notification.status == "failed")
         ),
@@ -2756,6 +2764,110 @@ async def operational_telemetry(_: CurrentOperator, session: SessionDependency) 
         ),
     }
     return {key: int(value or 0) for key, value in metrics.items()}
+
+
+class OutboxEventResponse(BaseModel):
+    id: UUID
+    event_type: str
+    aggregate_type: str
+    aggregate_id: str
+    status: str
+    disposition: str
+    attempts: int
+    occurred_at: datetime
+    available_at: datetime
+    published_at: datetime | None
+    last_error: str | None
+
+
+class OutboxEventListResponse(BaseModel):
+    items: list[OutboxEventResponse]
+    has_more: bool
+
+
+class OutboxReplayBody(BaseModel):
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+def _outbox_event_response(record: OutboxEvent) -> OutboxEventResponse:
+    return OutboxEventResponse(
+        id=record.id,
+        event_type=record.event_type,
+        aggregate_type=record.aggregate_type,
+        aggregate_id=record.aggregate_id,
+        status=record.status,
+        disposition=record.disposition,
+        attempts=record.attempts,
+        occurred_at=record.occurred_at,
+        available_at=record.available_at,
+        published_at=record.published_at,
+        last_error=record.last_error,
+    )
+
+
+@router.get("/outbox/events", response_model=OutboxEventListResponse)
+async def list_outbox_events(
+    _: CurrentOperator,
+    session: SessionDependency,
+    status_filter: Annotated[
+        Literal["pending", "failed", "dead_letter", "published"], Query(alias="status")
+    ] = "dead_letter",
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> OutboxEventListResponse:
+    rows = list(
+        (
+            await session.scalars(
+                select(OutboxEvent)
+                .where(OutboxEvent.status == status_filter)
+                .order_by(OutboxEvent.occurred_at.desc())
+                .offset(offset)
+                .limit(limit + 1)
+            )
+        ).all()
+    )
+    has_more = len(rows) > limit
+    return OutboxEventListResponse(
+        items=[_outbox_event_response(row) for row in rows[:limit]], has_more=has_more
+    )
+
+
+@router.post("/outbox/events/{event_id}/replay", response_model=OutboxEventResponse)
+async def replay_outbox_event(
+    event_id: UUID,
+    body: OutboxReplayBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> OutboxEventResponse:
+    # Operator replay procedure: a failed/dead-lettered event is reset to
+    # pending so the outbox worker's normal dispatch loop picks it back up
+    # on its next poll -- this does not re-invoke handlers directly, which
+    # keeps replay subject to the same disposition/handler-lookup rules
+    # (and any handler-side idempotency) as the original dispatch attempt.
+    record = await session.get(OutboxEvent, event_id, with_for_update=True)
+    if record is None:
+        raise HTTPException(status_code=404, detail="outbox_event_not_found")
+    if record.status not in ("failed", "dead_letter"):
+        raise HTTPException(status_code=409, detail="outbox_event_not_replayable")
+    previous_status = record.status
+    record.status = "pending"
+    record.available_at = utc_now()
+    record.claimed_until = None
+    record.attempts = 0
+    record.last_error = None
+    _audit(
+        session,
+        request,
+        operator.id,
+        "outbox_event.replayed",
+        "outbox_event",
+        event_id,
+        body.reason,
+        {"event_type": record.event_type, "previous_status": previous_status},
+    )
+    await session.commit()
+    return _outbox_event_response(record)
 
 
 @router.get("/audit/export")

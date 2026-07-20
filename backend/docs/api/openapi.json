@@ -7330,6 +7330,123 @@
         "title": "OtpVerifyResponse",
         "type": "object"
       },
+      "OutboxEventListResponse": {
+        "properties": {
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OutboxEventResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "has_more"
+        ],
+        "title": "OutboxEventListResponse",
+        "type": "object"
+      },
+      "OutboxEventResponse": {
+        "properties": {
+          "aggregate_id": {
+            "title": "Aggregate Id",
+            "type": "string"
+          },
+          "aggregate_type": {
+            "title": "Aggregate Type",
+            "type": "string"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "available_at": {
+            "format": "date-time",
+            "title": "Available At",
+            "type": "string"
+          },
+          "disposition": {
+            "title": "Disposition",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "event_type",
+          "aggregate_type",
+          "aggregate_id",
+          "status",
+          "disposition",
+          "attempts",
+          "occurred_at",
+          "available_at",
+          "published_at",
+          "last_error"
+        ],
+        "title": "OutboxEventResponse",
+        "type": "object"
+      },
+      "OutboxReplayBody": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "OutboxReplayBody",
+        "type": "object"
+      },
       "PaymentCallbackResponse": {
         "properties": {
           "delivery_commitment_at": {
@@ -14864,6 +14981,141 @@
           }
         ],
         "summary": "Propose Resolution",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/outbox/events": {
+      "get": {
+        "operationId": "list_outbox_events_api_v1_operator_outbox_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "dead_letter",
+              "enum": [
+                "pending",
+                "failed",
+                "dead_letter",
+                "published"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboxEventListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Outbox Events",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/outbox/events/{event_id}/replay": {
+      "post": {
+        "operationId": "replay_outbox_event_api_v1_operator_outbox_events__event_id__replay_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutboxReplayBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboxEventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Replay Outbox Event",
         "tags": [
           "operator"
         ]

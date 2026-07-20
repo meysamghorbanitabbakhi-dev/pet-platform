@@ -1162,6 +1162,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/outbox/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Outbox Events */
+        get: operations["list_outbox_events_api_v1_operator_outbox_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/outbox/events/{event_id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replay Outbox Event */
+        post: operations["replay_outbox_event_api_v1_operator_outbox_events__event_id__replay_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/payments/{attempt_id}/reconcile": {
         parameters: {
             query?: never;
@@ -5582,6 +5616,52 @@ export interface components {
             /** Token Type */
             token_type?: "bearer" | null;
         };
+        /** OutboxEventListResponse */
+        OutboxEventListResponse: {
+            /** Has More */
+            has_more: boolean;
+            /** Items */
+            items: components["schemas"]["OutboxEventResponse"][];
+        };
+        /** OutboxEventResponse */
+        OutboxEventResponse: {
+            /** Aggregate Id */
+            aggregate_id: string;
+            /** Aggregate Type */
+            aggregate_type: string;
+            /** Attempts */
+            attempts: number;
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            /** Disposition */
+            disposition: string;
+            /** Event Type */
+            event_type: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Error */
+            last_error: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Published At */
+            published_at: string | null;
+            /** Status */
+            status: string;
+        };
+        /** OutboxReplayBody */
+        OutboxReplayBody: {
+            /** Reason */
+            reason: string;
+        };
         /** PaymentCallbackResponse */
         PaymentCallbackResponse: {
             /** Delivery Commitment At */
@@ -9358,6 +9438,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreatedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_outbox_events_api_v1_operator_outbox_events_get: {
+        parameters: {
+            query?: {
+                status?: "pending" | "failed" | "dead_letter" | "published";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutboxEventListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replay_outbox_event_api_v1_operator_outbox_events__event_id__replay_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OutboxReplayBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutboxEventResponse"];
                 };
             };
             /** @description Validation Error */

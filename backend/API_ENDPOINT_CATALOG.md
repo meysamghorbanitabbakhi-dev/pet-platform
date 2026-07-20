@@ -176,3 +176,14 @@ endpoint below returns `409 concierge_offers_disabled` while the flag is off —
 | POST | `/operator/concierge-offers/{offer_id}/promote` | Operator-discretion catalog promotion of an already-accepted offer's one-off `Offer` (Decision 0.37); idempotent |
 | GET | `/operator/concierge-offers` | Operator queue, filterable by `status` |
 | GET | `/operator/concierge-offers/{offer_id}` | Operator detail, including internal landed-cost components and supplier identity — never returned from a customer-facing route |
+
+## Outbox dead-letter visibility and replay (2026-07-20, Workstream 5D)
+
+`/operator/telemetry` gains `outbox_failed` and `outbox_dead_letter` alongside the pre-existing
+`outbox_pending` count. Two new endpoints give operators a replay procedure for events stuck in
+`failed`/`dead_letter` without needing direct database access.
+
+| Method | Endpoint | Capability |
+|---|---|---|
+| GET | `/operator/outbox/events` | Paginated list of outbox events filtered by `status` (defaults to `dead_letter`) |
+| POST | `/operator/outbox/events/{event_id}/replay` | Resets a `failed`/`dead_letter` event to `pending` (clears attempts/claim/last_error) so the outbox worker's normal poll loop redelivers it; `409` if the event isn't in a replayable state |

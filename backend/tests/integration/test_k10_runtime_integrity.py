@@ -5,6 +5,7 @@ import os
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Any
 
 import httpx
@@ -1122,6 +1123,118 @@ async def test_outbox_registry_retries_dead_letter_and_audit_only(
         assert unknown is not None and unknown.status == "dead_letter"
     await redis_client.set("pet-platform:test:heartbeat", "alive", ex=30)
     assert await redis_client.get("pet-platform:test:heartbeat") == "alive"
+
+
+async def test_outbox_dispatcher_invokes_every_registered_handler_once() -> None:
+    call_counts = {"first": 0, "second": 0}
+
+    async def first_handler(payload: dict[str, object]) -> None:
+        call_counts["first"] += 1
+
+    async def second_handler(payload: dict[str, object]) -> None:
+        call_counts["second"] += 1
+
+    aggregate_id = f"dup-handler-{uuid.uuid4().hex}"
+    async with SessionFactory() as session:
+        event_id = add_outbox_event(
+            session,
+            DomainEvent(
+                event_type="wallet.late_delivery_credit_granted",
+                aggregate_type="order",
+                aggregate_id=aggregate_id,
+                payload={},
+            ),
+        )
+        await session.commit()
+
+    dispatcher = OutboxDispatcher(SessionFactory, batch_size=10)
+    dispatcher.register("wallet.late_delivery_credit_granted", first_handler)
+    dispatcher.register("wallet.late_delivery_credit_granted", second_handler)
+    record = None
+    for _ in range(6):
+        await dispatcher.dispatch_batch()
+        async with SessionFactory() as session:
+            record = await session.scalar(
+                select(OutboxEvent).where(OutboxEvent.event_id == event_id)
+            )
+            if record is not None and record.status == "published":
+                break
+
+    assert record is not None and record.status == "published"
+    # A single dispatch of one event must invoke every handler registered
+    # for its type exactly once each -- not zero (a silently dropped
+    # handler) and not more than once (a duplicate side effect, e.g. a
+    # customer notified twice for the same event).
+    assert call_counts == {"first": 1, "second": 1}
+
+
+async def test_outbox_dispatcher_reclaims_stuck_event_after_simulated_process_restart() -> None:
+    calls = 0
+
+    async def handler(payload: dict[str, object]) -> None:
+        nonlocal calls
+        calls += 1
+
+    aggregate_id = f"restart-{uuid.uuid4().hex}"
+    async with SessionFactory() as session:
+        event_id = add_outbox_event(
+            session,
+            DomainEvent(
+                event_type="wallet.late_delivery_credit_granted",
+                aggregate_type="order",
+                aggregate_id=aggregate_id,
+                payload={},
+            ),
+        )
+        await session.commit()
+
+    # Simulate a worker process crashing mid-dispatch: the batch claim
+    # (claimed_until pushed into the future, attempts incremented) already
+    # happened, but the process died before _mark_published/_mark_failed
+    # ever ran, exactly as _claim_batch would leave it.
+    async with SessionFactory() as session:
+        record = await session.scalar(select(OutboxEvent).where(OutboxEvent.event_id == event_id))
+        assert record is not None
+        record.claimed_until = utc_now() + timedelta(minutes=2)
+        record.attempts = 1
+        await session.commit()
+
+    restarted_dispatcher = OutboxDispatcher(SessionFactory, batch_size=10)
+    restarted_dispatcher.register("wallet.late_delivery_credit_granted", handler)
+
+    # While the crashed worker's claim lease is still live, a freshly
+    # started dispatcher instance must not touch the row -- the platform
+    # cannot yet assume the crashed process isn't still running.
+    await restarted_dispatcher.dispatch_batch()
+    async with SessionFactory() as session:
+        record = await session.scalar(select(OutboxEvent).where(OutboxEvent.event_id == event_id))
+        assert record is not None and record.status == "pending"
+    assert calls == 0
+
+    # Once the claim lease expires, the restarted process's normal poll
+    # loop recovers the row exactly like any other worker instance would.
+    async with SessionFactory() as session:
+        await session.execute(
+            text(
+                "update system_outbox_events set claimed_until = now() - interval '1 minute' "
+                "where event_id = :event_id"
+            ),
+            {"event_id": str(event_id)},
+        )
+        await session.commit()
+
+    record = None
+    for _ in range(6):
+        await restarted_dispatcher.dispatch_batch()
+        async with SessionFactory() as session:
+            record = await session.scalar(
+                select(OutboxEvent).where(OutboxEvent.event_id == event_id)
+            )
+            if record is not None and record.status == "published":
+                break
+
+    assert record is not None and record.status == "published"
+    assert calls == 1
 
 
 async def test_household_address_update_and_delete_lifecycle(seed: Seed) -> None:
