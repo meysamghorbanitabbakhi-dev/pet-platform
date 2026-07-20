@@ -939,6 +939,55 @@ async def test_http_concierge_offer_is_non_enumerating_for_a_foreign_customer(
     assert nonexistent.json()["error"]["code"] == foreign.json()["error"]["code"]
 
 
+async def test_concierge_offer_mutations_are_non_enumerating_for_a_foreign_customer(
+    concierge_offers_enabled: None,
+    app_and_client: tuple[object, httpx.AsyncClient],
+) -> None:
+    app, client = app_and_client
+    accept_seed = await _seed_request()
+    accept_offer_id = await _presented_offer(accept_seed)
+    decline_seed = await _seed_request()
+    decline_offer_id = await _presented_offer(decline_seed)
+    refresh_seed = await _seed_request()
+    refresh_offer_id = await _presented_offer(refresh_seed)
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, refresh_offer_id, with_for_update=True)
+        assert offer is not None
+        offer.expires_at = utc_now() - timedelta(hours=1)
+        offer.status = "expired"
+        await session.commit()
+        outsider = AuthIdentity(
+            identity_type="customer", mobile_e164=f"+98924{accept_seed.token[:7]}", status="active"
+        )
+        session.add(outsider)
+        await session.commit()
+        outsider_id = outsider.id
+    async with SessionFactory() as session:
+        outsider_obj = await session.get(AuthIdentity, outsider_id)
+    app.dependency_overrides[get_current_identity] = lambda: outsider_obj
+
+    accepted = await client.post(
+        f"/api/v1/concierge-offers/{accept_offer_id}/accept",
+        json={"address_id": str(accept_seed.address_id)},
+    )
+    assert accepted.status_code == 404
+
+    declined = await client.post(
+        f"/api/v1/concierge-offers/{decline_offer_id}/decline",
+        json={"reason": "این پیشنهاد من نیست"},
+    )
+    assert declined.status_code == 404
+
+    refreshed = await client.post(f"/api/v1/concierge-offers/{refresh_offer_id}/refresh")
+    assert refreshed.status_code == 404
+
+    async with SessionFactory() as session:
+        untouched_accept = await session.get(ConciergeOffer, accept_offer_id)
+        untouched_decline = await session.get(ConciergeOffer, decline_offer_id)
+        assert untouched_accept is not None and untouched_accept.status == "offer_presented"
+        assert untouched_decline is not None and untouched_decline.status == "offer_presented"
+
+
 async def test_http_operator_queue_filters_by_status(
     concierge_offers_enabled: None,
     app_and_client: tuple[object, httpx.AsyncClient],
