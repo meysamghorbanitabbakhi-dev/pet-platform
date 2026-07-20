@@ -142,6 +142,66 @@ async def test_reopening_with_different_facts_requires_correction_endpoint() -> 
     assert len(await _active_estimates(unit_id)) == 1
 
 
+async def test_reopening_same_grams_different_feeding_context_requires_correction() -> None:
+    """Gap-closure fix (Workstream 8): the replay-safety check used to
+    compare only remaining_quantity_grams/remaining_low_grams/
+    remaining_high_grams/remaining_input_mode -- feeding_context and
+    daily_portion_grams were never compared at all, so a request that
+    changed only one of those two was wrongly treated as a safe replay
+    and silently returned the stale estimate instead of being rejected."""
+    _, _, unit_id = await _seed_unit()
+    async with SessionFactory() as session:
+        first = await InventoryService().open_and_estimate(
+            session,
+            inventory_unit_id=unit_id,
+            remaining_grams=900,
+            remaining_low_grams=900,
+            remaining_high_grams=900,
+            remaining_input_mode="grams",
+            remaining_provenance={},
+            feeding_context="unknown",
+            daily_portion_grams=None,
+        )
+    async with SessionFactory() as session:
+        with pytest.raises(InventoryError, match="unit_already_opened_use_correction_endpoint"):
+            await InventoryService().open_and_estimate(
+                session,
+                inventory_unit_id=unit_id,
+                remaining_grams=900,
+                remaining_low_grams=900,
+                remaining_high_grams=900,
+                remaining_input_mode="grams",
+                remaining_provenance={},
+                feeding_context="exclusive",
+                daily_portion_grams=100,
+            )
+    estimates = await _active_estimates(unit_id)
+    assert len(estimates) == 1
+    assert estimates[0].id == first.id
+
+
+async def test_new_estimate_records_algorithm_version_and_request_hash() -> None:
+    _, _, unit_id = await _seed_unit()
+    async with SessionFactory() as session:
+        estimate = await InventoryService().open_and_estimate(
+            session,
+            inventory_unit_id=unit_id,
+            remaining_grams=900,
+            remaining_low_grams=900,
+            remaining_high_grams=900,
+            remaining_input_mode="grams",
+            remaining_provenance={},
+            feeding_context="exclusive",
+            daily_portion_grams=100,
+        )
+    assert estimate.algorithm_version == "v1"
+    assert estimate.request_hash is not None and len(estimate.request_hash) == 64
+    assert estimate.provenance is not None
+    assert estimate.provenance["schema_version"] == 2
+    assert estimate.provenance["daily_portion_grams_requested"] == 100
+    assert estimate.provenance["daily_portion_grams_applied"] == 100
+
+
 async def test_exhaust_retires_the_active_estimate() -> None:
     customer_id, _, unit_id = await _seed_unit()
     async with SessionFactory() as session:
