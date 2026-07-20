@@ -12,6 +12,7 @@ import {
   submitCheckIn,
 } from "@/lib/api/client";
 import { journeyDetailFixture } from "@/test/fixtures/gate-fixtures";
+import { ApiError } from "@/lib/api/errors";
 import { checkInIdempotencyKey } from "@/lib/journey-idempotency";
 import { JourneyActive } from "./journey-active";
 
@@ -74,6 +75,70 @@ describe("JourneyActive", () => {
         checkInIdempotencyKey(journeyDetailFixture.id, "week1", "on_track"),
       ),
     );
+  });
+
+  it("shows a busy submit button while the check-in is in flight, distinct from its resting state", async () => {
+    vi.mocked(getJourney).mockResolvedValue(journeyDetailFixture);
+    let resolveSubmit: (value: {
+      answer_key: string;
+      check_in_key: string;
+      completed: boolean;
+      diary_entry_id: string | null;
+      garden_reward_id: string | null;
+      id: string;
+      journey_id: string;
+      submitted_at: string;
+    }) => void = () => {};
+    vi.mocked(submitCheckIn).mockReturnValue(
+      new Promise((resolve) => {
+        resolveSubmit = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+
+    renderWithQuery(<JourneyActive journeyId={journeyDetailFixture.id} />);
+    await screen.findByRole("heading", { name: "هفته اول: بررسی وزن" });
+    await user.click(screen.getByRole("button", { name: "روند طبیعی است" }));
+    await user.click(screen.getByRole("button", { name: "ثبت پاسخ" }));
+
+    expect(
+      await screen.findByRole("button", { name: "در حال انجام" }),
+    ).toBeDisabled();
+
+    resolveSubmit({
+      answer_key: "on_track",
+      check_in_key: "week1",
+      completed: false,
+      diary_entry_id: null,
+      garden_reward_id: null,
+      id: "checkin-1",
+      journey_id: journeyDetailFixture.id,
+      submitted_at: "2026-07-17T09:00:00Z",
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "در حال انجام" }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("shows a distinct error banner and stays on the same step when the check-in is rejected", async () => {
+    vi.mocked(getJourney).mockResolvedValue(journeyDetailFixture);
+    vi.mocked(submitCheckIn).mockRejectedValue(
+      new ApiError("پاسخ نامعتبر است", 422),
+    );
+    const user = userEvent.setup();
+
+    renderWithQuery(<JourneyActive journeyId={journeyDetailFixture.id} />);
+    await screen.findByRole("heading", { name: "هفته اول: بررسی وزن" });
+    await user.click(screen.getByRole("button", { name: "روند طبیعی است" }));
+    await user.click(screen.getByRole("button", { name: "ثبت پاسخ" }));
+
+    expect(await screen.findByText("پاسخ نامعتبر است")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "هفته اول: بررسی وزن" }),
+    ).toBeInTheDocument();
   });
 
   it("offers completion only once every step has an answer, never inventing eligibility client-side", async () => {

@@ -14,6 +14,8 @@ import {
   listShelfLifeExceptions,
   replaceOrderPetPlan,
 } from "@/lib/api/client";
+import { addCartItem, readCart } from "@/lib/cart";
+import { getOrderAttempt } from "@/lib/checkout-attempt";
 import {
   ids,
   meContextFixture,
@@ -423,5 +425,43 @@ describe("OrderDetailView", () => {
     expect(
       screen.getByText(/بازگردانده خواهد شد؛ بازگشت وجه به صورت دستی/),
     ).toBeInTheDocument();
+  });
+
+  it("clears the local cart and checkout attempt once the confirmation view sees a verified payment", async () => {
+    window.localStorage.clear();
+    addCartItem(orderDetailFixture.lines[0].offer_id);
+    getOrderAttempt("checkout-signature-1");
+    vi.mocked(getOrderDetail).mockResolvedValue(orderDetailFixture);
+    vi.mocked(getOrderJourney).mockResolvedValue(orderJourneyFixture);
+
+    renderWithQuery(
+      <OrderDetailView confirmation orderId={orderDetailFixture.id} />,
+    );
+
+    expect(
+      await screen.findByText(/سفارش از سرویس دوباره دریافت شد/),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(readCart().items).toEqual([]));
+  });
+
+  it("does not clear the cart on the confirmation view while payment is not yet verified", async () => {
+    window.localStorage.clear();
+    addCartItem(orderDetailFixture.lines[0].offer_id);
+    vi.mocked(getOrderDetail).mockResolvedValue({
+      ...orderDetailFixture,
+      payment: { ...orderDetailFixture.payment!, status: "pending" },
+    });
+    vi.mocked(getOrderJourney).mockResolvedValue(orderJourneyFixture);
+
+    renderWithQuery(
+      <OrderDetailView confirmation orderId={orderDetailFixture.id} />,
+    );
+
+    expect(
+      await screen.findByText(/سفارش از سرویس دوباره دریافت شد/),
+    ).toBeInTheDocument();
+    expect(readCart().items).toEqual([
+      { offerId: orderDetailFixture.lines[0].offer_id, quantity: 1 },
+    ]);
   });
 });

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getJourneyOffers, getMeContext, getPolicies } from "@/lib/api/client";
@@ -80,5 +81,41 @@ describe("JourneysList", () => {
     await waitFor(() =>
       expect(replace).toHaveBeenCalledWith("/auth/session-expired"),
     );
+  });
+
+  it("shows a loading skeleton while journey offers are being fetched, not a blank screen", async () => {
+    let resolveOffers: (value: typeof journeyOffersFixture) => void = () => {};
+    vi.mocked(getJourneyOffers).mockReturnValue(
+      new Promise((resolve) => {
+        resolveOffers = resolve;
+      }),
+    );
+
+    renderWithQuery(<JourneysList />);
+
+    expect(
+      (await screen.findAllByRole("status")).length,
+    ).toBeGreaterThan(0);
+    resolveOffers(journeyOffersFixture);
+    expect(
+      await screen.findByText(journeyOffersFixture[0].title_fa),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a dedicated error state with retry when journey offers fail to load", async () => {
+    vi.mocked(getJourneyOffers).mockRejectedValue(new Error("network"));
+    const user = userEvent.setup();
+
+    renderWithQuery(<JourneysList />);
+
+    expect(
+      await screen.findByText("فهرست مسیرها در دسترس نیست"),
+    ).toBeInTheDocument();
+    vi.mocked(getJourneyOffers).mockResolvedValue(journeyOffersFixture);
+    await user.click(screen.getByRole("button", { name: "تلاش دوباره" }));
+
+    expect(
+      await screen.findByText(journeyOffersFixture[0].title_fa),
+    ).toBeInTheDocument();
   });
 });
