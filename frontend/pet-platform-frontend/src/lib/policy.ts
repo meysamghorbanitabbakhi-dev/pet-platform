@@ -29,6 +29,12 @@ export function shouldRenderReserveNow(
   return enabled(policy, "reserve_now_enabled");
 }
 
+export function shouldRenderReplenishmentReservations(
+  policy: PolicyResponse | null | undefined,
+): boolean {
+  return enabled(policy, "replenishment_reservation_enabled");
+}
+
 export function shouldRenderCareJourneys(
   policy: PolicyResponse | null | undefined,
   offers: JourneyOfferResponse[] | null | undefined,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
@@ -8,6 +9,7 @@ import {
   Button,
   Card,
   ErrorState,
+  Money,
   Sheet,
   Skeleton,
   StatusChip,
@@ -18,17 +20,22 @@ import type {
   ReorderAssessmentResponse,
 } from "@/lib/api-types";
 import {
+  approveReplenishmentReservation,
   assessReorder,
   correctEstimate,
+  declineReplenishmentReservation,
   exhaustInventory,
   getInventoryDetail,
+  getOfferDetail,
   getPolicies,
+  listAddresses,
+  listReplenishmentReservations,
   openInventory,
   snoozeReorder,
 } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import { formatIranDateTime, formatPersianNumber } from "@/lib/format";
-import { enabled } from "@/lib/policy";
+import { enabled, shouldRenderReplenishmentReservations } from "@/lib/policy";
 import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 
 const levelLabels: Record<string, string> = {
@@ -351,6 +358,259 @@ function ReorderPanel({ unitId }: { unitId: string }) {
   );
 }
 
+const replenishmentStatusLabel: Record<string, string> = {
+  pending_approval: "در انتظار تایید شما",
+  approved: "تایید شد و سفارش ایجاد شد",
+  declined: "رد شد",
+  expired: "مهلت پاسخ به پایان رسید",
+  invalidated: "به دلیل تغییر وضعیت این واحد، لغو شد",
+};
+
+const replenishmentStatusTone: Record<
+  string,
+  "positive" | "info" | "warning" | "error" | "muted"
+> = {
+  pending_approval: "warning",
+  approved: "positive",
+  declined: "muted",
+  expired: "muted",
+  invalidated: "muted",
+};
+
+function ApproveReplenishmentSheet({
+  reservationId,
+  householdId,
+  onClose,
+  onApproved,
+}: {
+  reservationId: string;
+  householdId: string;
+  onClose: () => void;
+  onApproved: () => void;
+}) {
+  const addressesQuery = useQuery({
+    queryKey: ["households", householdId, "addresses"],
+    queryFn: () => listAddresses(householdId),
+  });
+  const approveMutation = useMutation({
+    mutationFn: (addressId: string) =>
+      approveReplenishmentReservation(reservationId, {
+        address_id: addressId,
+      }),
+    onSuccess: onApproved,
+  });
+
+  return (
+    <Sheet title="تایید سفارش تمدید" onClose={onClose}>
+      <div className="stack">
+        <p className="caption">
+          با تایید، سفارشی با قیمت لحظه‌ای پیشنهاد ثبت می‌شود؛ پرداخت جداگانه و
+          با تایید صریح شما انجام می‌شود و هیچ مبلغی به‌صورت خودکار برداشت
+          نمی‌شود. آدرس تحویل را انتخاب کنید.
+        </p>
+        {addressesQuery.isLoading ? <Skeleton /> : null}
+        {addressesQuery.isError ? (
+          <Banner tone="error">{errorText(addressesQuery.error)}</Banner>
+        ) : null}
+        {addressesQuery.data?.length ? (
+          <div className="stack">
+            {addressesQuery.data.map((address) => (
+              <Button
+                key={address.id}
+                variant="secondary"
+                loading={approveMutation.isPending}
+                disabled={approveMutation.isPending}
+                onClick={() => approveMutation.mutate(address.id)}
+              >
+                {address.label} · {address.recipient_name}
+              </Button>
+            ))}
+          </div>
+        ) : addressesQuery.isSuccess ? (
+          <Banner tone="warning">
+            آدرسی ثبت نشده است. ابتدا از بخش آدرس‌ها یک آدرس اضافه کنید.
+          </Banner>
+        ) : null}
+        {approveMutation.isError ? (
+          <Banner tone="error">{errorText(approveMutation.error)}</Banner>
+        ) : null}
+      </div>
+    </Sheet>
+  );
+}
+
+function DeclineReplenishmentSheet({
+  reservationId,
+  onClose,
+  onDeclined,
+}: {
+  reservationId: string;
+  onClose: () => void;
+  onDeclined: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const declineMutation = useMutation({
+    mutationFn: () =>
+      declineReplenishmentReservation(reservationId, {
+        reason: reason.trim() || null,
+      }),
+    onSuccess: onDeclined,
+  });
+
+  return (
+    <Sheet title="رد سفارش تمدید" onClose={onClose}>
+      <div className="stack">
+        <div className="field">
+          <label htmlFor="replenishment-decline-reason">
+            دلیل رد (اختیاری)
+          </label>
+          <textarea
+            id="replenishment-decline-reason"
+            className="input"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </div>
+        {declineMutation.isError ? (
+          <Banner tone="error">{errorText(declineMutation.error)}</Banner>
+        ) : null}
+        <div className="cluster">
+          <Button
+            loading={declineMutation.isPending}
+            onClick={() => declineMutation.mutate()}
+          >
+            تایید رد سفارش
+          </Button>
+          <Button variant="ghost" onClick={onClose}>
+            انصراف
+          </Button>
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
+function ReplenishmentReservationPanel({
+  unitId,
+  householdId,
+}: {
+  unitId: string;
+  householdId: string;
+}) {
+  const queryClient = useQueryClient();
+  const [sheet, setSheet] = useState<"approve" | "decline" | null>(null);
+
+  const listQuery = useQuery({
+    queryKey: ["pet-life", "replenishment-reservations", householdId],
+    queryFn: () => listReplenishmentReservations(householdId),
+    enabled: Boolean(householdId),
+  });
+  const reservationForOffer = (listQuery.data ?? []).find(
+    (item) => item.inventory_unit_id === unitId,
+  );
+  const offerQuery = useQuery({
+    queryKey: ["catalog", "offers", reservationForOffer?.offer_id],
+    queryFn: () => getOfferDetail(reservationForOffer?.offer_id ?? ""),
+    enabled: Boolean(reservationForOffer),
+  });
+
+  async function invalidate() {
+    setSheet(null);
+    await queryClient.invalidateQueries({
+      queryKey: ["pet-life", "replenishment-reservations", householdId],
+    });
+  }
+
+  if (listQuery.isLoading) {
+    return (
+      <Card className="stack">
+        <Skeleton />
+      </Card>
+    );
+  }
+
+  if (listQuery.isError) {
+    return (
+      <Card className="stack">
+        <Banner tone="error">{errorText(listQuery.error)}</Banner>
+        <Button variant="secondary" onClick={() => void listQuery.refetch()}>
+          تلاش دوباره
+        </Button>
+      </Card>
+    );
+  }
+
+  const reservation = reservationForOffer;
+  if (!reservation) return null;
+
+  return (
+    <Card className="stack">
+      <div className="split">
+        <h2 className="title">سفارش تمدید پیشنهادی</h2>
+        <StatusChip
+          tone={replenishmentStatusTone[reservation.status] ?? "muted"}
+        >
+          {replenishmentStatusLabel[reservation.status] ?? reservation.status}
+        </StatusChip>
+      </div>
+      <p className="caption">
+        بر اساس برآورد مصرف، این واحد ظرف{" "}
+        {formatPersianNumber(reservation.predicted_depletion_low_days)} تا{" "}
+        {formatPersianNumber(reservation.predicted_depletion_high_days)} روز
+        تمام می‌شود. این فقط یک پیشنهاد است و بدون تایید صریح شما هیچ سفارش یا
+        پرداختی ثبت نمی‌شود.
+      </p>
+      {offerQuery.data ? (
+        <div className="split">
+          <span>{offerQuery.data.title_fa}</span>
+          <span>
+            <Money irr={offerQuery.data.price_irr} /> (تقریبی)
+          </span>
+        </div>
+      ) : offerQuery.isLoading ? (
+        <Skeleton />
+      ) : null}
+      {reservation.status === "pending_approval" ? (
+        <>
+          <p className="caption">
+            مهلت پاسخ: {formatIranDateTime(reservation.approval_expires_at)}
+          </p>
+          <div className="cluster">
+            <Button onClick={() => setSheet("approve")}>تایید سفارش</Button>
+            <Button variant="ghost" onClick={() => setSheet("decline")}>
+              رد پیشنهاد
+            </Button>
+          </div>
+        </>
+      ) : null}
+      {reservation.status === "approved" && reservation.resulting_order_id ? (
+        <Link
+          className="button button--secondary"
+          href={`/orders/${reservation.resulting_order_id}`}
+        >
+          مشاهده سفارش
+        </Link>
+      ) : null}
+
+      {sheet === "approve" ? (
+        <ApproveReplenishmentSheet
+          reservationId={reservation.id}
+          householdId={householdId}
+          onClose={() => setSheet(null)}
+          onApproved={invalidate}
+        />
+      ) : null}
+      {sheet === "decline" ? (
+        <DeclineReplenishmentSheet
+          reservationId={reservation.id}
+          onClose={() => setSheet(null)}
+          onDeclined={invalidate}
+        />
+      ) : null}
+    </Card>
+  );
+}
+
 export function InventoryOpening({ unitId }: { unitId: string }) {
   const queryClient = useQueryClient();
   const detailQuery = useQuery({
@@ -529,6 +789,15 @@ export function InventoryOpening({ unitId }: { unitId: string }) {
 
         {alreadyOpened && !unavailable && !exhausted ? (
           <ReorderPanel unitId={unitId} />
+        ) : null}
+        {alreadyOpened &&
+        !unavailable &&
+        !exhausted &&
+        shouldRenderReplenishmentReservations(policyQuery.data) ? (
+          <ReplenishmentReservationPanel
+            unitId={unitId}
+            householdId={detail.household_id}
+          />
         ) : null}
       </div>
     </AppShell>

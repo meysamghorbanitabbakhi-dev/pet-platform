@@ -4,17 +4,25 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  approveReplenishmentReservation,
   assessReorder,
   correctEstimate,
+  declineReplenishmentReservation,
   exhaustInventory,
   getInventoryDetail,
+  getOfferDetail,
   getPolicies,
+  listAddresses,
+  listReplenishmentReservations,
   openInventory,
   snoozeReorder,
 } from "@/lib/api/client";
 import {
+  addressFixture,
   inventoryDetailFixture,
+  offerDetailFixture,
   policyFixture,
+  replenishmentReservationFixture,
   reorderAssessmentFixture,
 } from "@/test/fixtures/gate-fixtures";
 import { InventoryOpening } from "./inventory-opening";
@@ -27,11 +35,16 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/api/client", () => ({
+  approveReplenishmentReservation: vi.fn(),
   assessReorder: vi.fn(),
   correctEstimate: vi.fn(),
+  declineReplenishmentReservation: vi.fn(),
   exhaustInventory: vi.fn(),
   getInventoryDetail: vi.fn(),
+  getOfferDetail: vi.fn(),
   getPolicies: vi.fn(),
+  listAddresses: vi.fn(),
+  listReplenishmentReservations: vi.fn(),
   openInventory: vi.fn(),
   snoozeReorder: vi.fn(),
 }));
@@ -285,6 +298,110 @@ describe("InventoryOpening", () => {
       expect(snoozeReorder).toHaveBeenCalledWith(inventoryDetailFixture.id, {
         hours: 72,
       }),
+    );
+  });
+
+  it("never queries or renders replenishment reservations while the policy leaves them disabled", async () => {
+    vi.mocked(getInventoryDetail).mockResolvedValue({
+      ...inventoryDetailFixture,
+      opened_at: "2026-07-17T10:00:00Z",
+      state: "opened",
+    });
+
+    renderWithQuery(<InventoryOpening unitId={inventoryDetailFixture.id} />);
+    await screen.findByText(/قبلاً ثبت شده/);
+
+    expect(screen.queryByText("سفارش تمدید پیشنهادی")).not.toBeInTheDocument();
+    expect(listReplenishmentReservations).not.toHaveBeenCalled();
+  });
+
+  it("shows a pending replenishment reservation and lets the customer approve it with a chosen address", async () => {
+    vi.mocked(getPolicies).mockResolvedValue({
+      ...policyFixture,
+      replenishment_reservation_enabled: true,
+    });
+    vi.mocked(getInventoryDetail).mockResolvedValue({
+      ...inventoryDetailFixture,
+      opened_at: "2026-07-17T10:00:00Z",
+      state: "opened",
+    });
+    vi.mocked(listReplenishmentReservations).mockResolvedValue([
+      {
+        ...replenishmentReservationFixture,
+        inventory_unit_id: inventoryDetailFixture.id,
+      },
+    ]);
+    vi.mocked(getOfferDetail).mockResolvedValue(offerDetailFixture);
+    vi.mocked(listAddresses).mockResolvedValue([addressFixture]);
+    vi.mocked(approveReplenishmentReservation).mockResolvedValue({
+      ...replenishmentReservationFixture,
+      inventory_unit_id: inventoryDetailFixture.id,
+      status: "approved",
+      resulting_order_id: "order-from-replenishment",
+    });
+    const user = userEvent.setup();
+
+    renderWithQuery(<InventoryOpening unitId={inventoryDetailFixture.id} />);
+    await screen.findByText("سفارش تمدید پیشنهادی");
+    expect(screen.getByText("در انتظار تایید شما")).toBeInTheDocument();
+    expect(
+      await screen.findByText(offerDetailFixture.title_fa),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "تایید سفارش" }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: `${addressFixture.label} · ${addressFixture.recipient_name}`,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(approveReplenishmentReservation).toHaveBeenCalledWith(
+        replenishmentReservationFixture.id,
+        { address_id: addressFixture.id },
+      ),
+    );
+  });
+
+  it("lets the customer decline a pending replenishment reservation with a reason", async () => {
+    vi.mocked(getPolicies).mockResolvedValue({
+      ...policyFixture,
+      replenishment_reservation_enabled: true,
+    });
+    vi.mocked(getInventoryDetail).mockResolvedValue({
+      ...inventoryDetailFixture,
+      opened_at: "2026-07-17T10:00:00Z",
+      state: "opened",
+    });
+    vi.mocked(listReplenishmentReservations).mockResolvedValue([
+      {
+        ...replenishmentReservationFixture,
+        inventory_unit_id: inventoryDetailFixture.id,
+      },
+    ]);
+    vi.mocked(getOfferDetail).mockResolvedValue(offerDetailFixture);
+    vi.mocked(declineReplenishmentReservation).mockResolvedValue({
+      ...replenishmentReservationFixture,
+      inventory_unit_id: inventoryDetailFixture.id,
+      status: "declined",
+    });
+    const user = userEvent.setup();
+
+    renderWithQuery(<InventoryOpening unitId={inventoryDetailFixture.id} />);
+    await screen.findByText("سفارش تمدید پیشنهادی");
+
+    await user.click(screen.getByRole("button", { name: "رد پیشنهاد" }));
+    await user.type(
+      screen.getByLabelText("دلیل رد (اختیاری)"),
+      "دیگر لازم نیست",
+    );
+    await user.click(screen.getByRole("button", { name: "تایید رد سفارش" }));
+
+    await waitFor(() =>
+      expect(declineReplenishmentReservation).toHaveBeenCalledWith(
+        replenishmentReservationFixture.id,
+        { reason: "دیگر لازم نیست" },
+      ),
     );
   });
 });

@@ -63,6 +63,9 @@ import type {
   PolicyResponse,
   ReorderAssessmentResponse,
   ReorderSnoozeBody,
+  ReplenishmentReservationApproveBody,
+  ReplenishmentReservationDeclineBody,
+  ReplenishmentReservationResponse,
   TodayResponse,
 } from "@/lib/api-types";
 import type {
@@ -463,6 +466,82 @@ export async function snoozeReorderBackend(
       body,
       headers,
     }),
+  );
+}
+
+export async function listReplenishmentReservationsBackend(
+  householdId: string,
+): Promise<ReplenishmentReservationResponse[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.listReplenishmentReservations(householdId);
+  }
+  return withAuth((headers) =>
+    backendClient.GET(
+      "/api/v1/pet-life/households/{household_id}/replenishment-reservations",
+      {
+        params: { path: { household_id: householdId } },
+        headers,
+      },
+    ),
+  );
+}
+
+export async function getReplenishmentReservationBackend(
+  reservationId: string,
+): Promise<ReplenishmentReservationResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.getReplenishmentReservation(reservationId);
+  }
+  return withAuth((headers) =>
+    backendClient.GET(
+      "/api/v1/pet-life/replenishment-reservations/{reservation_id}",
+      {
+        params: { path: { reservation_id: reservationId } },
+        headers,
+      },
+    ),
+  );
+}
+
+export async function approveReplenishmentReservationBackend(
+  reservationId: string,
+  body: ReplenishmentReservationApproveBody,
+): Promise<ReplenishmentReservationResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.approveReplenishmentReservation(reservationId, body);
+  }
+  return withAuth((headers) =>
+    backendClient.POST(
+      "/api/v1/pet-life/replenishment-reservations/{reservation_id}/approve",
+      {
+        params: { path: { reservation_id: reservationId } },
+        body,
+        headers,
+      },
+    ),
+  );
+}
+
+export async function declineReplenishmentReservationBackend(
+  reservationId: string,
+  body: ReplenishmentReservationDeclineBody,
+): Promise<ReplenishmentReservationResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) {
+    return developmentApi.declineReplenishmentReservation(reservationId, body);
+  }
+  return withAuth((headers) =>
+    backendClient.POST(
+      "/api/v1/pet-life/replenishment-reservations/{reservation_id}/decline",
+      {
+        params: { path: { reservation_id: reservationId } },
+        body,
+        headers,
+      },
+    ),
   );
 }
 
@@ -1326,7 +1405,11 @@ export async function acceptShelfLifeExceptionBackend(
 ): Promise<ShelfLifeExceptionResponse> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) {
-    return developmentApi.respondToShelfLifeException(orderId, exceptionId, "accept");
+    return developmentApi.respondToShelfLifeException(
+      orderId,
+      exceptionId,
+      "accept",
+    );
   }
   return withAuth((headers) =>
     backendClient.POST(
@@ -1345,7 +1428,11 @@ export async function declineShelfLifeExceptionBackend(
 ): Promise<ShelfLifeExceptionResponse> {
   const developmentApi = await loadDevelopmentApi();
   if (developmentApi) {
-    return developmentApi.respondToShelfLifeException(orderId, exceptionId, "decline");
+    return developmentApi.respondToShelfLifeException(
+      orderId,
+      exceptionId,
+      "decline",
+    );
   }
   return withAuth((headers) =>
     backendClient.POST(

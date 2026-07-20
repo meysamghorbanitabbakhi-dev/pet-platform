@@ -33,7 +33,7 @@ K9 completes frontend integration contracts without resolving open product polic
 | Sourcing/delivery | One sourcing path after payment; delivery projects sourced lines into unopened inventory without starting estimates |
 | Inventory | Household inventory detail, external units, assignments, exact-grams opening, semantic-level bounds from nominal quantity and exhaust lifecycle |
 | Food estimation | Server-owned ranges/provenance; unknown shares never leak pet-level remaining-days values |
-| Replenishment | Authoritative reorder assessment, 3-day safety buffer and durable 72-hour snooze with approved early-break rule |
+| Replenishment | Authoritative reorder assessment, 3-day safety buffer and durable 72-hour snooze with approved early-break rule; system-proposed replenishment reservations (scheduler-created from pessimistic depletion estimate, customer approve/decline, one row per unit ever) gated behind `replenishment_reservation_enabled=false` — added 2026-07-19 (Workstream 3, ADR-009) |
 | Today | Typed discriminated food states and deterministic single attention item with module failure isolation |
 | Availability | Idempotent subscribe/cancel/list, order_created=false and once-per-activation governed notification |
 | Support/concierge | Shared customer request domain, operator status workflow and no operational promises |

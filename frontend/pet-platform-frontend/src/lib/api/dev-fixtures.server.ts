@@ -27,6 +27,8 @@ import type {
   PetProfilePatch,
   PrivacyRequestBody,
   ReorderSnoozeBody,
+  ReplenishmentReservationApproveBody,
+  ReplenishmentReservationDeclineBody,
 } from "@/lib/api-types";
 
 const devOnboardingCookie = "pet_dev_onboarding";
@@ -96,6 +98,41 @@ export async function loadDevelopmentApi() {
       void _unitId;
       void _body;
       return undefined;
+    },
+    listReplenishmentReservations: async (_householdId: string) => {
+      void _householdId;
+      return fixtures.replenishmentReservationFixture
+        ? [fixtures.replenishmentReservationFixture]
+        : [];
+    },
+    getReplenishmentReservation: async (_reservationId: string) => {
+      void _reservationId;
+      return fixtures.replenishmentReservationFixture;
+    },
+    approveReplenishmentReservation: async (
+      _reservationId: string,
+      _body: ReplenishmentReservationApproveBody,
+    ) => {
+      void _reservationId;
+      void _body;
+      return {
+        ...fixtures.replenishmentReservationFixture,
+        status: "approved" as const,
+        approved_at: "2026-07-19T12:00:00Z",
+        resulting_order_id: fixtures.ids.orderPaid,
+      };
+    },
+    declineReplenishmentReservation: async (
+      _reservationId: string,
+      _body: ReplenishmentReservationDeclineBody,
+    ) => {
+      void _reservationId;
+      void _body;
+      return {
+        ...fixtures.replenishmentReservationFixture,
+        status: "declined" as const,
+        declined_at: "2026-07-19T12:00:00Z",
+      };
     },
     getJourneyDefinition: async (_definitionId: string) => {
       void _definitionId;
@@ -508,10 +545,16 @@ export async function loadDevelopmentApi() {
         reason: "نمونه دلیل استثنا در محیط توسعه",
         refund_amount_irr: decision === "decline" ? 4_800_000 : null,
         refund_auto_processed: false as const,
-        refund_status: decision === "decline" ? ("owed" as const) : ("not_applicable" as const),
+        refund_status:
+          decision === "decline"
+            ? ("owed" as const)
+            : ("not_applicable" as const),
         respond_by: "2026-07-22T12:00:00Z",
         responded_at: "2026-07-19T12:00:00Z",
-        status: decision === "decline" ? ("declined" as const) : ("accepted" as const),
+        status:
+          decision === "decline"
+            ? ("declined" as const)
+            : ("accepted" as const),
         proposed_exact_expiry_date: "2026-09-01",
       };
     },

@@ -1866,6 +1866,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pet-life/households/{household_id}/replenishment-reservations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Replenishment Reservations */
+        get: operations["list_replenishment_reservations_api_v1_pet_life_households__household_id__replenishment_reservations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pet-life/households/{household_id}/wallet": {
         parameters: {
             query?: never;
@@ -2598,6 +2615,57 @@ export interface paths {
         put?: never;
         /** Reorder Assessment */
         post: operations["reorder_assessment_api_v1_pet_life_reorder_assess_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pet-life/replenishment-reservations/{reservation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Replenishment Reservation */
+        get: operations["get_replenishment_reservation_api_v1_pet_life_replenishment_reservations__reservation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pet-life/replenishment-reservations/{reservation_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Replenishment Reservation */
+        post: operations["approve_replenishment_reservation_api_v1_pet_life_replenishment_reservations__reservation_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pet-life/replenishment-reservations/{reservation_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Replenishment Reservation */
+        post: operations["decline_replenishment_reservation_api_v1_pet_life_replenishment_reservations__reservation_id__decline_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5364,6 +5432,12 @@ export interface components {
             reorder_snooze_early_break_worsening_days: number;
             /** Replacement Self Service Enabled */
             replacement_self_service_enabled: boolean;
+            /** Replenishment Reservation Approval Window Hours */
+            replenishment_reservation_approval_window_hours: number;
+            /** Replenishment Reservation Enabled */
+            replenishment_reservation_enabled: boolean;
+            /** Replenishment Reservation Lead Days */
+            replenishment_reservation_lead_days: number;
             /** Reserve Now Enabled */
             reserve_now_enabled: boolean;
             /** Semantic Level Estimation Enabled */
@@ -5904,6 +5978,81 @@ export interface components {
              * @default 72
              */
             hours: number;
+        };
+        /** ReplenishmentReservationApproveBody */
+        ReplenishmentReservationApproveBody: {
+            /**
+             * Address Id
+             * Format: uuid
+             */
+            address_id: string;
+        };
+        /** ReplenishmentReservationDeclineBody */
+        ReplenishmentReservationDeclineBody: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /** ReplenishmentReservationResponse */
+        ReplenishmentReservationResponse: {
+            /**
+             * Approval Expires At
+             * Format: date-time
+             */
+            approval_expires_at: string;
+            /** Approved At */
+            approved_at?: string | null;
+            /**
+             * Auto Charged
+             * @default false
+             * @constant
+             */
+            auto_charged: false;
+            /** Declined At */
+            declined_at?: string | null;
+            /** Expired At */
+            expired_at?: string | null;
+            /**
+             * Household Id
+             * Format: uuid
+             */
+            household_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invalidated At */
+            invalidated_at?: string | null;
+            /**
+             * Inventory Unit Id
+             * Format: uuid
+             */
+            inventory_unit_id: string;
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+            /** Pet Id */
+            pet_id?: string | null;
+            /** Predicted Depletion High Days */
+            predicted_depletion_high_days: number;
+            /** Predicted Depletion Low Days */
+            predicted_depletion_low_days: number;
+            /**
+             * Product Id
+             * Format: uuid
+             */
+            product_id: string;
+            /** Quantity */
+            quantity: number;
+            /** Resulting Order Id */
+            resulting_order_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending_approval" | "approved" | "declined" | "expired" | "invalidated";
         };
         /** ReservationApproveBody */
         ReservationApproveBody: {
@@ -10347,6 +10496,37 @@ export interface operations {
             };
         };
     };
+    list_replenishment_reservations_api_v1_pet_life_households__household_id__replenishment_reservations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                household_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplenishmentReservationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wallet_balance_api_v1_pet_life_households__household_id__wallet_get: {
         parameters: {
             query?: never;
@@ -11953,6 +12133,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReorderAssessmentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_replenishment_reservation_api_v1_pet_life_replenishment_reservations__reservation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplenishmentReservationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_replenishment_reservation_api_v1_pet_life_replenishment_reservations__reservation_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplenishmentReservationApproveBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplenishmentReservationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_replenishment_reservation_api_v1_pet_life_replenishment_reservations__reservation_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplenishmentReservationDeclineBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplenishmentReservationResponse"];
                 };
             };
             /** @description Validation Error */

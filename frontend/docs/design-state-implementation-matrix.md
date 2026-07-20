@@ -309,3 +309,38 @@ Journey completeness is derived from whether every state on that journey's `main
 | G5-SUPPORT-02 | T16 | /support/new | inline | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | response.acknowledgement_fa rendered verbatim; explicit false promises for availability/price/response-time/sourcing | IMPLEMENTED | src/features/support/concierge-new-request.tsx | none | - | Wave 4: renders policy.customer_request_acknowledgement_fa verbatim before submission, and the response's own acknowledgement_fa + unmet promises on the detail page after. |
 | G5-SUPPORT-03 | T16 | /support | page/list | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | GET /api/v1/customer-requests | IMPLEMENTED | src/app/support/page.tsx; src/features/support/concierge-request-list.tsx; src/app/api/bff/customer-requests/route.ts (GET) | none | - | Wave 4: real request history with customer-safe status labels, linking to each request's detail page. |
 | G5-SUPPORT-04 | T16 | /support/:requestId | page/detail | K9 frontend-integration.md | Input, Button, Banner (acknowledgement), Card (list/detail) | concierge_requests_enabled=true; customer_request_acknowledgement_fa (fixed text) | GET /api/v1/customer-requests/{request_id} | IMPLEMENTED | src/app/support/[requestId]/page.tsx; src/features/support/concierge-request-detail.tsx; src/app/api/bff/customer-requests/[requestId]/route.ts | none | - | Wave 4: shows message, status, and unmet promises; never exposes internal operator notes (not present in CustomerRequestResponse). |
+
+## Workstream 3 addendum (2026-07-19) — Replenishment reservations (net-new, beyond the 152-state canonical contract)
+
+Replenishment reservations (`replenishment_reservation_enabled`, disabled by default) are net-new
+product scope approved by the mission brief that authorized this pass, not a completion of any of
+the 152 states above — `gate5.2c-screen-data.v3.1.js` is checksum-locked and was not, and should
+not be, modified to add rows for it. This section records the implementation the same way the
+Post-Wave-8/Program-closure sections above record other real, shipped work, without touching the
+152/11 counts, `check-design-contract.mjs`'s hard-coded expectations, or the checksummed canonical
+manifest.
+
+**Capability**: when an inventory unit's pessimistic depletion estimate
+(`FoodEstimate.low_days`) crosses `replenishment_reservation_lead_days` (default 14) and a
+reorderable offer exists for its product, the backend scheduler creates (or refreshes in place —
+never duplicates; `replenishment_reservations.inventory_unit_id` is a full unique constraint, one
+row per unit ever) a `ReplenishmentReservation` row. The customer explicitly approves (creating a
+real, full-payment Order via the existing `CheckoutService` at the live offer price — no
+reconfirmed-price concept, no deposit, no auto-charge) or declines within
+`replenishment_reservation_approval_window_hours` (default 48); an unanswered reservation expires
+with exactly one final reminder notification. Correcting or exhausting the unit's estimate
+refreshes or invalidates its reservation in place via the existing
+`/pet-life/inventory/{unit_id}/estimate/correct` and `/pet-life/inventory/{unit_id}/exhaust`
+endpoints.
+
+| item | detail |
+|---|---|
+| policy gate | `replenishment_reservation_enabled` (bool, default false); `replenishment_reservation_lead_days` (int, default 14); `replenishment_reservation_approval_window_hours` (int, default 48) — all on `GET /api/v1/system/policies` |
+| backend operations | `GET /pet-life/households/{household_id}/replenishment-reservations`; `GET /pet-life/replenishment-reservations/{reservation_id}`; `POST .../approve` (body: `address_id`); `POST .../decline` (body: `reason`) |
+| backend implementation | `app/modules/replenishment/models.py`, `app/modules/replenishment/reservations.py`, `app/api/routes/pet_life.py`, `app/workers/scheduler.py`, `app/workers/outbox.py`, `app/modules/notifications/service.py`, `app/modules/system/event_registry.py`, migration `20260719_0034` |
+| backend tests | `tests/integration/test_replenishment_reservations.py` (27 tests: creation/lead-day gating, no-duplicate/refresh-in-place, terminal-state immutability, approve at live price with no auto-charge, idempotent approve/decline, expiry with one reminder, scheduler scan, concurrent-creation race, concurrent approve-vs-decline race, HTTP gating, full HTTP lifecycle, non-enumerating 404, correct/exhaust hook wiring) |
+| frontend surface (inventory) | `src/features/inventory/inventory-opening.tsx` (`ReplenishmentReservationPanel`, `ApproveReplenishmentSheet`, `DeclineReplenishmentSheet`) on `/inventory/[unitId]`, next to the existing reorder-assessment panel |
+| frontend surface (today) | `src/features/today/today-dashboard.tsx` (`ReplenishmentReservationsBanner`), a policy-gated pending-count link to `/inventory`, matching the existing `reserve_now_enabled` placeholder-banner pattern |
+| BFF routes | `src/app/api/bff/households/[householdId]/replenishment-reservations/route.ts`; `src/app/api/bff/replenishment-reservations/[reservationId]/route.ts`; `.../approve/route.ts`; `.../decline/route.ts` |
+| frontend tests | `src/lib/policy.test.ts` (fail-closed gate); `src/features/inventory/inventory-opening.test.tsx` (policy-hidden, approve-with-address, decline-with-reason); `src/features/today/today-dashboard.test.tsx` (banner shown/hidden by policy and by pending count) |
+| current status | Fully implemented end-to-end and gated off by default pending a launch decision; not reachable in production until `replenishment_reservation_enabled=true` is explicitly set. No customer-visible price is shown before approval (the price is determined live at approval time via the existing checkout path, same as a manual reorder) — this is a deliberate scope boundary, not a gap. |

@@ -8,6 +8,7 @@ import {
   getMeContext,
   getPolicies,
   getToday,
+  listReplenishmentReservations,
 } from "@/lib/api/client";
 import { useSessionExpiryRedirect } from "@/lib/session/use-session-expiry";
 import { TodayDashboard, usePersistedSelectedPet } from "./today-dashboard";
@@ -88,6 +89,12 @@ function TodayLoaded({
     queryFn: () => getJourneyOffers(activePetId),
     enabled: Boolean(activePetId && policy.care_journey_delivery_enabled),
   });
+  const householdId = todayQuery.data?.household_id;
+  const replenishmentReservationsQuery = useQuery({
+    queryKey: ["pet-life", "replenishment-reservations", householdId],
+    queryFn: () => listReplenishmentReservations(householdId ?? ""),
+    enabled: Boolean(householdId && policy.replenishment_reservation_enabled),
+  });
 
   return (
     <AppShell>
@@ -96,6 +103,7 @@ function TodayLoaded({
         policy={policy}
         today={todayQuery.data ?? null}
         journeyOffers={journeyQuery.data ?? []}
+        replenishmentReservations={replenishmentReservationsQuery.data ?? []}
         activePetId={activePetId}
         onPetSelect={setActivePetId}
         loading={todayQuery.isLoading}

@@ -16,12 +16,14 @@ import type {
   JourneyOfferResponse,
   MeContextResponse,
   PolicyResponse,
+  ReplenishmentReservationResponse,
   TodayResponse,
 } from "@/lib/api-types";
 import { formatPersianNumber } from "@/lib/format";
 import {
   isPolicyCompatible,
   shouldRenderCareJourneys,
+  shouldRenderReplenishmentReservations,
   shouldRenderReserveNow,
 } from "@/lib/policy";
 import { selectedPetStorageKey as selectedPetKey } from "@/lib/selected-pet";
@@ -32,6 +34,7 @@ export function TodayDashboard({
   policy,
   today,
   journeyOffers,
+  replenishmentReservations,
   activePetId,
   onPetSelect,
   loading,
@@ -47,6 +50,7 @@ export function TodayDashboard({
   policy: PolicyResponse;
   today: TodayResponse | null;
   journeyOffers: JourneyOfferResponse[];
+  replenishmentReservations?: ReplenishmentReservationResponse[];
   activePetId: string;
   onPetSelect: (petId: string) => void;
   loading?: boolean;
@@ -156,6 +160,11 @@ export function TodayDashboard({
               رزرو اکنون فقط با سیاست فعال نمایش داده می‌شود.
             </Banner>
           ) : null}
+          {shouldRenderReplenishmentReservations(policy) ? (
+            <ReplenishmentReservationsBanner
+              reservations={replenishmentReservations ?? []}
+            />
+          ) : null}
           <GardenPreview today={today} />
         </>
       ) : (
@@ -186,6 +195,33 @@ function HouseholdInventoryBoundary({ today }: { today: TodayResponse }) {
         </p>
       </div>
     </Card>
+  );
+}
+
+function ReplenishmentReservationsBanner({
+  reservations,
+}: {
+  reservations: ReplenishmentReservationResponse[];
+}) {
+  const pendingCount = reservations.filter(
+    (item) => item.status === "pending_approval",
+  ).length;
+  if (!pendingCount) return null;
+  return (
+    <Link
+      className="card stack"
+      data-testid="replenishment-reservations-banner"
+      href="/inventory"
+    >
+      <div className="eyebrow">سفارش تمدید پیشنهادی</div>
+      <h2 className="title">
+        {formatPersianNumber(pendingCount)} پیشنهاد در انتظار تایید شما
+      </h2>
+      <p className="caption">
+        برای بررسی و پاسخ، به صفحه انبار خانوار بروید. بدون تایید صریح شما هیچ
+        سفارش یا پرداختی ثبت نمی‌شود.
+      </p>
+    </Link>
   );
 }
 

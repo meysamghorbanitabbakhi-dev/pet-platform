@@ -129,3 +129,23 @@ Zero-charge reservation → operator source/price reconfirmation and proposal �
 | GET | `/operator/reservations/{reservation_id}` | Operator detail |
 
 No frontend UI exists for reserve-now yet (unlike Workstreams 2A/2B/2E's live customer endpoints) — building it against endpoints that always 409 would be unverifiable, so it is deferred to whichever future pass enables the flag.
+
+## Replenishment reservations (2026-07-19, Workstream 3 — gated off, `replenishment_reservation_enabled=false`)
+
+System-proposed reorder per inventory unit → customer explicit approval (real full-payment order
+at the live offer price) or decline, with no deposit or auto-charge concept anywhere in the
+schema. Fully built, tested, and has frontend UI (inventory-unit panel + Today summary banner),
+but every endpoint below returns `409 replenishment_reservation_disabled` while the flag is off —
+see `docs/runbooks/replenishment-reservation-rollout.md` and ADR-009 before ever turning it on.
+
+| Method | Endpoint | Capability |
+|---|---|---|
+| GET | `/pet-life/households/{household_id}/replenishment-reservations` | Customer list of a household's replenishment reservations |
+| GET | `/pet-life/replenishment-reservations/{reservation_id}` | Customer detail; non-enumerating 404 for a missing or foreign-household reservation |
+| POST | `/pet-life/replenishment-reservations/{reservation_id}/approve` | Customer approves; creates a real, full-payment `Order` at the *live* offer price (no reconfirmed-price step, unlike reserve-now) for the existing payment flow; idempotent, returns the same order on replay |
+| POST | `/pet-life/replenishment-reservations/{reservation_id}/decline` | Customer declines the proposed reservation; idempotent |
+
+Reservations themselves are created and refreshed by a scheduler job (not a customer-initiated
+endpoint), and refreshed or invalidated in place by the pre-existing
+`POST /pet-life/inventory/{unit_id}/estimate/correct` and
+`POST /pet-life/inventory/{unit_id}/exhaust` endpoints — see ADR-009.

@@ -42,6 +42,7 @@ import type {
   PolicyResponse,
   ProductAlternativeResponse,
   ReorderAssessmentResponse,
+  ReplenishmentReservationResponse,
   TodayResponse,
 } from "@/lib/api-types";
 
@@ -60,6 +61,7 @@ export const ids = {
   offerDog: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   offerCat: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
   offerUnavailable: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+  replenishmentReservation: "ffffffff-ffff-4fff-8fff-ffffffffffff",
 };
 
 export const policyFixture: PolicyResponse = {
@@ -86,6 +88,9 @@ export const policyFixture: PolicyResponse = {
   reorder_safety_buffer_days: 3,
   reorder_snooze_early_break_worsening_days: 2,
   replacement_self_service_enabled: false,
+  replenishment_reservation_enabled: false,
+  replenishment_reservation_lead_days: 14,
+  replenishment_reservation_approval_window_hours: 48,
   reserve_now_enabled: false,
   semantic_level_estimation_enabled: true,
   sourcing_start_rule:
@@ -495,6 +500,27 @@ export const reorderAssessmentFixture: ReorderAssessmentResponse = {
   safety_buffer_days: 3,
   snoozed_until: null,
 };
+
+export const replenishmentReservationFixture: ReplenishmentReservationResponse =
+  {
+    id: ids.replenishmentReservation,
+    household_id: ids.household,
+    pet_id: ids.petBishi,
+    inventory_unit_id: ids.inventoryUnit,
+    product_id: ids.offerDog,
+    offer_id: ids.offerDog,
+    quantity: 1,
+    predicted_depletion_low_days: 6,
+    predicted_depletion_high_days: 9,
+    status: "pending_approval",
+    approval_expires_at: "2026-07-21T12:00:00Z",
+    approved_at: null,
+    declined_at: null,
+    expired_at: null,
+    invalidated_at: null,
+    resulting_order_id: null,
+    auto_charged: false,
+  };
 
 export const journeyDefinitionFixture: JourneyDefinitionResponse = {
   approved_at: "2026-06-01T00:00:00Z",

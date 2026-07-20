@@ -12,6 +12,7 @@ import {
   meContextFixture,
   policyDisabledFixture,
   policyFixture,
+  replenishmentReservationFixture,
   returningTodayFixture,
   rexTodayFixture,
   unopenedTodayFixture,
@@ -95,6 +96,61 @@ describe("TodayDashboard", () => {
 
     expect(screen.queryByTestId("care-journeys")).not.toBeInTheDocument();
     expect(screen.queryByText(/رزرو اکنون/)).not.toBeInTheDocument();
+  });
+
+  it("shows a pending replenishment reservations banner only when the runtime policy enables it", () => {
+    const { rerender } = render(
+      <TodayDashboard
+        context={meContextFixture}
+        policy={{ ...policyFixture, replenishment_reservation_enabled: true }}
+        today={returningTodayFixture}
+        journeyOffers={[]}
+        replenishmentReservations={[replenishmentReservationFixture]}
+        activePetId={meContextFixture.pets[0].id}
+        onPetSelect={() => {}}
+      />,
+    );
+
+    const banner = screen.getByTestId("replenishment-reservations-banner");
+    expect(
+      within(banner).getByText("۱ پیشنهاد در انتظار تایید شما"),
+    ).toBeInTheDocument();
+    expect(banner).toHaveAttribute("href", "/inventory");
+
+    rerender(
+      <TodayDashboard
+        context={meContextFixture}
+        policy={policyFixture}
+        today={returningTodayFixture}
+        journeyOffers={[]}
+        replenishmentReservations={[replenishmentReservationFixture]}
+        activePetId={meContextFixture.pets[0].id}
+        onPetSelect={() => {}}
+      />,
+    );
+    expect(
+      screen.queryByTestId("replenishment-reservations-banner"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the replenishment reservations banner once nothing is pending anymore", () => {
+    render(
+      <TodayDashboard
+        context={meContextFixture}
+        policy={{ ...policyFixture, replenishment_reservation_enabled: true }}
+        today={returningTodayFixture}
+        journeyOffers={[]}
+        replenishmentReservations={[
+          { ...replenishmentReservationFixture, status: "approved" },
+        ]}
+        activePetId={meContextFixture.pets[0].id}
+        onPetSelect={() => {}}
+      />,
+    );
+
+    expect(
+      screen.queryByTestId("replenishment-reservations-banner"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a distinct empty state when the household itself hasn't been created yet", () => {

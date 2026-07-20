@@ -43,6 +43,12 @@ export type PetSummary = Schema<"PetSummary">;
 export type InventoryListItem = Schema<"InventoryListItem">;
 export type ReorderAssessmentResponse = Schema<"ReorderAssessmentResponse">;
 export type ReorderSnoozeBody = Schema<"ReorderSnoozeBody">;
+export type ReplenishmentReservationResponse =
+  Schema<"ReplenishmentReservationResponse">;
+export type ReplenishmentReservationApproveBody =
+  Schema<"ReplenishmentReservationApproveBody">;
+export type ReplenishmentReservationDeclineBody =
+  Schema<"ReplenishmentReservationDeclineBody">;
 export type InventoryAssignmentResponse = Schema<"InventoryAssignmentResponse">;
 export type JourneyDefinitionResponse = Schema<"JourneyDefinitionResponse">;
 export type JourneyDetailResponse = Schema<"JourneyDetailResponse">;

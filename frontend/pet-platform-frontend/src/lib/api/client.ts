@@ -74,6 +74,9 @@ import type {
   PrivacyRequestResponse,
   ReorderAssessmentResponse,
   ReorderSnoozeBody,
+  ReplenishmentReservationApproveBody,
+  ReplenishmentReservationDeclineBody,
+  ReplenishmentReservationResponse,
   SmsPreferenceResponse,
   TodayResponse,
   WalletSummaryResponse,
@@ -243,6 +246,38 @@ export function snoozeReorder(unitId: string, body: ReorderSnoozeBody) {
     method: "PUT",
     body,
   });
+}
+
+export function listReplenishmentReservations(householdId: string) {
+  return bff<ReplenishmentReservationResponse[]>(
+    `/api/bff/households/${householdId}/replenishment-reservations`,
+  );
+}
+
+export function getReplenishmentReservation(reservationId: string) {
+  return bff<ReplenishmentReservationResponse>(
+    `/api/bff/replenishment-reservations/${reservationId}`,
+  );
+}
+
+export function approveReplenishmentReservation(
+  reservationId: string,
+  body: ReplenishmentReservationApproveBody,
+) {
+  return bff<ReplenishmentReservationResponse>(
+    `/api/bff/replenishment-reservations/${reservationId}/approve`,
+    { method: "POST", body },
+  );
+}
+
+export function declineReplenishmentReservation(
+  reservationId: string,
+  body: ReplenishmentReservationDeclineBody,
+) {
+  return bff<ReplenishmentReservationResponse>(
+    `/api/bff/replenishment-reservations/${reservationId}/decline`,
+    { method: "POST", body },
+  );
 }
 
 export function listDiary(petId: string) {
@@ -498,7 +533,10 @@ export function acceptShelfLifeException(orderId: string, exceptionId: string) {
   );
 }
 
-export function declineShelfLifeException(orderId: string, exceptionId: string) {
+export function declineShelfLifeException(
+  orderId: string,
+  exceptionId: string,
+) {
   return bff<ShelfLifeExceptionResponse>(
     `/api/bff/orders/${orderId}/shelf-life-exceptions/${exceptionId}/decline`,
     { method: "POST" },
