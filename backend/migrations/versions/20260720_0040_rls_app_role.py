@@ -32,18 +32,97 @@ production must already have overridden DATABASE_APP_URL to a real
 password before this migration runs there, or requests will be unable to
 authenticate as this role after this migration (see Consequences in the
 paired ADR-011 amendment for the operational sequencing this implies).
+
+Username/password are sourced from server-side Settings, never request
+input -- but they were originally spliced directly into f-string SQL
+text (a `PASSWORD '{password}'` literal and an ad hoc `"{username}"`
+identifier with no escaping), which breaks outright if either value
+ever contains a quote character, and is the wrong pattern to leave
+sitting in the codebase regardless of today's trust level. Postgres
+does not accept a bind parameter in a role-DDL PASSWORD clause (verified
+directly: `ALTER ROLE x PASSWORD $1` is a syntax error), so this instead
+defines a session-local `pg_temp` PL/pgSQL function that takes
+username/password as ordinary, properly bound SQL function arguments
+and uses Postgres's own `format(... %I ... %L ...)` to build the DDL
+text server-side -- %I and %L apply Postgres's real identifier/literal
+quoting (embedded quotes and backslashes included), not Python string
+escaping. `pg_temp` functions are session-local and auto-dropped when
+this migration's connection closes, so nothing lingers afterward.
 """
 
 from collections.abc import Sequence
 
 from alembic import op
 from app.core.config import get_settings
+from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
 revision: str = "20260720_0040"
 down_revision: str | None = "20260720_0039"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+_CREATE_ROLE_HELPER_SQL = """
+CREATE FUNCTION pg_temp.gap_closure_apply_app_role(
+    p_username text, p_password text, p_exists boolean
+) RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF p_exists THEN
+    EXECUTE format(
+        'ALTER ROLE %I WITH LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD %L', p_username, p_password
+    );
+  ELSE
+    EXECUTE format(
+        'CREATE ROLE %I WITH LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD %L', p_username, p_password
+    );
+  END IF;
+END;
+$$
+"""
+
+_GRANT_HELPER_SQL = """
+CREATE FUNCTION pg_temp.gap_closure_grant_app_role(p_username text, p_database text) RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', p_database, p_username);
+  EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', p_username);
+  EXECUTE format(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO %I', p_username
+  );
+  EXECUTE format('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO %I', p_username);
+  EXECUTE format(
+      'ALTER DEFAULT PRIVILEGES IN SCHEMA public '
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', p_username
+  );
+  EXECUTE format(
+      'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO %I',
+      p_username
+  );
+END;
+$$
+"""
+
+_REVOKE_HELPER_SQL = """
+CREATE FUNCTION pg_temp.gap_closure_revoke_app_role(p_username text, p_database text) RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE format(
+      'ALTER DEFAULT PRIVILEGES IN SCHEMA public '
+      'REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES FROM %I', p_username
+  );
+  EXECUTE format(
+      'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE USAGE, SELECT ON SEQUENCES FROM %I',
+      p_username
+  );
+  EXECUTE format('REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM %I', p_username);
+  EXECUTE format('REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM %I', p_username);
+  EXECUTE format('REVOKE USAGE ON SCHEMA public FROM %I', p_username);
+  EXECUTE format('REVOKE CONNECT ON DATABASE %I FROM %I', p_database, p_username);
+  EXECUTE format('DROP ROLE IF EXISTS %I', p_username);
+END;
+$$
+"""
 
 
 def _app_role_credentials() -> tuple[str, str]:
@@ -56,67 +135,30 @@ def _app_role_credentials() -> tuple[str, str]:
 def upgrade() -> None:
     username, password = _app_role_credentials()
     connection = op.get_bind()
-    # username/password come from server-side Settings, never request
-    # input, so direct interpolation here carries the same trust level
-    # as the CREATE ROLE/GRANT statements below (which must interpolate
-    # regardless, since role/database names cannot be bind parameters in
-    # DDL) -- not a SQL-injection-relevant string.
-    exists = connection.exec_driver_sql(
-        f"SELECT 1 FROM pg_roles WHERE rolname = '{username}'"
-    ).scalar()
-    if exists:
-        # Password may have been rotated since the role was first created
-        # (e.g. redeploying this migration's environment) -- keep it in
-        # sync with the current DATABASE_APP_URL rather than assuming
-        # the original value is still correct.
-        connection.exec_driver_sql(
-            f'ALTER ROLE "{username}" WITH LOGIN NOSUPERUSER NOBYPASSRLS '
-            f"PASSWORD '{password}'"
-        )
-    else:
-        connection.exec_driver_sql(
-            f'CREATE ROLE "{username}" WITH LOGIN NOSUPERUSER NOBYPASSRLS '
-            f"PASSWORD '{password}'"
-        )
+    exists = bool(
+        connection.execute(
+            text("SELECT 1 FROM pg_roles WHERE rolname = :username"), {"username": username}
+        ).scalar()
+    )
+    connection.execute(text(_CREATE_ROLE_HELPER_SQL))
+    connection.execute(
+        text("SELECT pg_temp.gap_closure_apply_app_role(:username, :password, :exists)"),
+        {"username": username, "password": password, "exists": exists},
+    )
     database_name = connection.exec_driver_sql("SELECT current_database()").scalar()
-    connection.exec_driver_sql(f'GRANT CONNECT ON DATABASE "{database_name}" TO "{username}"')
-    connection.exec_driver_sql(f'GRANT USAGE ON SCHEMA public TO "{username}"')
-    connection.exec_driver_sql(
-        f'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "{username}"'
-    )
-    connection.exec_driver_sql(
-        f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "{username}"'
-    )
-    connection.exec_driver_sql(
-        "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-        f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{username}"'
-    )
-    connection.exec_driver_sql(
-        "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-        f'GRANT USAGE, SELECT ON SEQUENCES TO "{username}"'
+    connection.execute(text(_GRANT_HELPER_SQL))
+    connection.execute(
+        text("SELECT pg_temp.gap_closure_grant_app_role(:username, :database)"),
+        {"username": username, "database": database_name},
     )
 
 
 def downgrade() -> None:
     username, _ = _app_role_credentials()
     connection = op.get_bind()
-    connection.exec_driver_sql(
-        "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-        f'REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES FROM "{username}"'
-    )
-    connection.exec_driver_sql(
-        "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-        f'REVOKE USAGE, SELECT ON SEQUENCES FROM "{username}"'
-    )
-    connection.exec_driver_sql(
-        f'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{username}"'
-    )
-    connection.exec_driver_sql(
-        f'REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM "{username}"'
-    )
-    connection.exec_driver_sql(f'REVOKE USAGE ON SCHEMA public FROM "{username}"')
     database_name = connection.exec_driver_sql("SELECT current_database()").scalar()
-    connection.exec_driver_sql(
-        f'REVOKE CONNECT ON DATABASE "{database_name}" FROM "{username}"'
+    connection.execute(text(_REVOKE_HELPER_SQL))
+    connection.execute(
+        text("SELECT pg_temp.gap_closure_revoke_app_role(:username, :database)"),
+        {"username": username, "database": database_name},
     )
-    connection.exec_driver_sql(f'DROP ROLE IF EXISTS "{username}"')
