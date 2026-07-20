@@ -136,3 +136,68 @@ async def test_concurrent_checkout_for_the_last_available_unit_never_oversells(
     # Exactly one order was actually persisted -- the rejection above
     # happened before commit, not as an after-the-fact cleanup.
     assert len(orders) == 1
+
+
+async def test_uncommitted_idempotency_race_does_not_destroy_the_callers_other_work(
+    capacity_seed: CapacitySeed,
+) -> None:
+    """create_order_uncommitted participates in a trusted caller's own
+    transaction (concierge acceptance, replenishment approval) rather than
+    owning commit/rollback -- a genuine concurrent race on the same
+    idempotency_key must be caught with a SAVEPOINT (begin_nested), not a
+    plain session.rollback(), or the second racer's rollback would also
+    discard whatever the caller already did earlier in that same
+    transaction. Simulates that "caller's own prior work" with a marker
+    Product row inserted before the checkout call, and proves it survives
+    (commits successfully) regardless of which side of the race a given
+    attempt landed on."""
+    shared_key = f"trusted-caller-race-{uuid.uuid4().hex}"
+
+    async def attempt(marker_name: str) -> tuple[str, uuid.UUID]:
+        async with SessionFactory() as session:
+            marker = Product(name_fa=marker_name, status="active")
+            session.add(marker)
+            await session.flush()  # the caller's own prior transaction work
+            try:
+                order = await CheckoutService().create_order_uncommitted(
+                    session,
+                    customer_identity_id=capacity_seed.customer_id,
+                    household_id=capacity_seed.household_id,
+                    address_id=capacity_seed.address_id,
+                    items=[CheckoutItem(capacity_seed.offer_id, 1)],
+                    idempotency_key=shared_key,
+                    allowed_modes=frozenset({"full_payment"}),
+                )
+                outcome = f"ok:{order.id}"
+            except CheckoutError as exc:
+                outcome = f"conflict:{exc}"
+            # The assertion that matters: committing here must succeed and
+            # must not silently be a no-op for the marker row, regardless
+            # of which branch above was taken.
+            await session.commit()
+            return outcome, marker.id
+
+    marker_a_name = f"marker-a-{uuid.uuid4().hex}"
+    marker_b_name = f"marker-b-{uuid.uuid4().hex}"
+    (outcome_a, marker_a_id), (outcome_b, marker_b_id) = await asyncio.gather(
+        attempt(marker_a_name), attempt(marker_b_name)
+    )
+
+    async with SessionFactory() as session:
+        marker_a = await session.get(Product, marker_a_id)
+        marker_b = await session.get(Product, marker_b_id)
+        orders = (
+            await session.scalars(
+                select(Order).where(Order.checkout_idempotency_key == shared_key)
+            )
+        ).all()
+
+    # Both callers' own prior work committed successfully -- neither was
+    # silently discarded by the other side's idempotency-conflict handling.
+    assert marker_a is not None and marker_a.name_fa == marker_a_name
+    assert marker_b is not None and marker_b.name_fa == marker_b_name
+    # Exactly one real order was created for the shared idempotency key,
+    # regardless of which attempt's flush won the race.
+    assert len(orders) == 1
+    assert outcome_a.startswith("ok:") and outcome_b.startswith("ok:"), (outcome_a, outcome_b)
+    assert outcome_a.split(":", 1)[1] == outcome_b.split(":", 1)[1] == str(orders[0].id)

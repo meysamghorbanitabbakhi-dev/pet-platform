@@ -169,11 +169,23 @@ class CheckoutService:
                 "postal_code": address.postal_code,
             },
         )
-        session.add(order)
+        # A concurrent call with the same idempotency_key can race past the
+        # `existing is None` check above (neither has committed yet) and
+        # both attempt this insert; the loser hits the unique constraint on
+        # flush. That failure is caught inside a SAVEPOINT (begin_nested),
+        # not via session.rollback() -- this function participates in the
+        # caller's own transaction (see the docstring above) and does not
+        # own it, so a plain rollback here would discard anything the
+        # caller already did earlier in that same transaction (e.g.
+        # concierge's freshly-created Product/Offer, replenishment's
+        # already-mutated reservation), not just this insert attempt. A
+        # savepoint's rollback is scoped to only the work done since it was
+        # opened.
         try:
-            await session.flush()
+            async with session.begin_nested():
+                session.add(order)
+                await session.flush()
         except IntegrityError as exc:
-            await session.rollback()
             replay = await session.scalar(
                 select(Order).where(
                     Order.customer_identity_id == customer_identity_id,
