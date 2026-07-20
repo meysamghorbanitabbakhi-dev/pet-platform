@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -15,7 +15,14 @@ class SupplierAssurance(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     supplier_id: Mapped[UUID] = mapped_column(ForeignKey("catalog_suppliers.id"), index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
-    evidence_path: Mapped[str] = mapped_column(Text, nullable=False)
+    # evidence_path (legacy Text storage-key copy) is retired from the ORM
+    # as of migration 20260720_0037 -- the column is intentionally left in
+    # place, unmapped, rather than dropped in the same migration that
+    # introduces its replacement (Workstream 5B: avoid destructive column
+    # removal until the replacement has been verified in practice).
+    evidence_file_id: Mapped[UUID] = mapped_column(
+        ForeignKey("trust_evidence_files.id"), nullable=False
+    )
     valid_from: Mapped[date] = mapped_column(Date, nullable=False)
     valid_until: Mapped[date | None] = mapped_column(Date)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -31,7 +38,9 @@ class ReferencePriceEvidence(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     amount_irr: Mapped[int] = mapped_column(Integer, nullable=False)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     source_label: Mapped[str] = mapped_column(String(300), nullable=False)
-    evidence_path: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_file_id: Mapped[UUID] = mapped_column(
+        ForeignKey("trust_evidence_files.id"), nullable=False
+    )
     recorded_by_operator_id: Mapped[UUID] = mapped_column(
         ForeignKey("identity_auth_identities.id"), nullable=False
     )

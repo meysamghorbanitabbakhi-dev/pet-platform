@@ -80,11 +80,21 @@ async def _seed_unsourced_line(
         session.add_all([operator, customer, supplier, product, household])
         await session.flush()
         if with_assurance:
+            assurance_evidence = EvidenceFile(
+                storage_key=f"assurances/{token}.pdf",
+                original_filename="assurance.pdf",
+                media_type="application/pdf",
+                size_bytes=32,
+                checksum_sha256="3" * 64,
+                uploaded_by_operator_id=operator.id,
+            )
+            session.add(assurance_evidence)
+            await session.flush()
             session.add(
                 SupplierAssurance(
                     supplier_id=supplier.id,
                     version=1,
-                    evidence_path=f"assurances/{token}.pdf",
+                    evidence_file_id=assurance_evidence.id,
                     valid_from=date(2020, 1, 1),
                     valid_until=None,
                     active=True,

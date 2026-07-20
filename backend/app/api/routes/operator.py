@@ -1787,7 +1787,7 @@ async def record_supplier_assurance(
     assurance = SupplierAssurance(
         supplier_id=supplier_id,
         version=body.version,
-        evidence_path=evidence_file.storage_key,
+        evidence_file_id=evidence_file.id,
         valid_from=body.valid_from,
         valid_until=body.valid_until,
         active=True,
@@ -1832,7 +1832,7 @@ async def record_reference_evidence(
         amount_irr=body.amount_irr,
         observed_at=body.observed_at,
         source_label=body.source_label,
-        evidence_path=evidence_file.storage_key,
+        evidence_file_id=evidence_file.id,
         recorded_by_operator_id=operator.id,
     )
     session.add(evidence)
