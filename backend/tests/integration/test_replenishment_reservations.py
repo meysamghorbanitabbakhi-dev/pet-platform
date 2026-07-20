@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.db.session import SessionFactory, close_database
 from app.main import create_app
 from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.checkout.service import CheckoutItem, CheckoutService
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.households.models import Household, HouseholdAddress, HouseholdMembership
 from app.modules.identity.models import AuthIdentity
@@ -31,6 +32,7 @@ from app.modules.replenishment.reservations import (
     invalidate_reservation_for_unit,
     scan_and_create_due_reservations,
 )
+from app.modules.system.models import OperatorAuditLog
 from fastapi import FastAPI
 from sqlalchemy import select
 
@@ -308,6 +310,67 @@ async def test_approve_creates_a_real_order_at_the_live_offer_price() -> None:
     assert reservation.status == "approved"
     assert reservation.resulting_order_id == order.id
     assert reservation.approved_at is not None
+
+
+async def test_crash_between_order_creation_and_reservation_approval_leaves_no_orphan() -> None:
+    """Fault injection (Workstream 2): simulates a process crash after the
+    order is constructed but before approve_reservation's own atomic
+    commit -- create_order_uncommitted must leave nothing persisted when
+    the caller never reaches its own commit, and a subsequent real
+    approval attempt must succeed cleanly from scratch rather than
+    tripping over an orphaned half-written order."""
+    seed = await _seed_unit_with_estimate(low_days=5)
+    reservation_id = await _create(seed)
+    assert reservation_id is not None
+    idempotency_key = f"replenishment:{reservation_id}"
+
+    async with SessionFactory() as session:
+        reservation = await session.get(
+            ReplenishmentReservation, reservation_id, with_for_update=True
+        )
+        assert reservation is not None
+        # Exactly what approve_reservation does internally, up to (but not
+        # including) mutating reservation.status and committing -- then we
+        # deliberately stop here, simulating the process dying right at
+        # that point, instead of continuing to the atomic commit.
+        await CheckoutService().create_order_uncommitted(
+            session,
+            customer_identity_id=seed.customer_id,
+            household_id=seed.household_id,
+            address_id=seed.address_id,
+            items=[CheckoutItem(seed.offer_id, 1)],
+            idempotency_key=idempotency_key,
+            allowed_modes=frozenset({"full_payment"}),
+        )
+        await session.rollback()
+
+    async with SessionFactory() as session:
+        orphan = await session.scalar(
+            select(Order).where(
+                Order.customer_identity_id == seed.customer_id,
+                Order.checkout_idempotency_key == idempotency_key,
+            )
+        )
+        assert orphan is None
+        untouched = await session.get(ReplenishmentReservation, reservation_id)
+        assert untouched is not None and untouched.status == "pending_approval"
+
+    # A real, subsequent approval attempt (the customer retrying, or the
+    # same request replayed) must succeed cleanly -- no leftover state
+    # from the simulated crash blocks it.
+    async with SessionFactory() as session:
+        reservation = await session.get(
+            ReplenishmentReservation, reservation_id, with_for_update=True
+        )
+        assert reservation is not None
+        reservation, order = await approve_reservation(
+            session,
+            reservation=reservation,
+            customer_identity_id=seed.customer_id,
+            address_id=seed.address_id,
+        )
+    assert reservation.status == "approved"
+    assert order.checkout_idempotency_key == idempotency_key
 
 
 async def test_approve_does_not_auto_charge() -> None:
@@ -837,3 +900,168 @@ async def test_http_exhaust_inventory_invalidates_pending_reservation(
     assert reservation is not None
     assert reservation.status == "invalidated"
     assert reservation.invalidated_at is not None
+
+
+# --- HTTP layer: operator monitoring and correction (Workstream 4) -----------
+
+
+async def _seed_operator() -> AuthIdentity:
+    token = uuid.uuid4().hex[:10]
+    async with SessionFactory() as session:
+        operator = AuthIdentity(
+            identity_type="operator", mobile_e164=f"+98929{token[:7]}", status="active"
+        )
+        session.add(operator)
+        await session.commit()
+        return operator
+
+
+async def test_http_operator_replenishment_routes_are_disabled_by_default(
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
+) -> None:
+    app, client = app_and_client
+    operator = await _seed_operator()
+    app.dependency_overrides[get_current_identity] = lambda: operator
+
+    assert get_settings().replenishment_reservation_enabled is False
+    listed = await client.get("/api/v1/operator/replenishment-reservations")
+    assert listed.status_code == 409
+    detail = await client.get(f"/api/v1/operator/replenishment-reservations/{uuid.uuid4()}")
+    assert detail.status_code == 409
+    invalidated = await client.post(
+        f"/api/v1/operator/replenishment-reservations/{uuid.uuid4()}/invalidate",
+        json={"reason": "should not reach this while disabled"},
+    )
+    assert invalidated.status_code == 409
+
+
+async def test_http_operator_can_list_and_view_reservation_detail(
+    replenishment_reservation_enabled: None,
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
+) -> None:
+    app, client = app_and_client
+    seed = await _seed_unit_with_estimate(low_days=5)
+    reservation_id = await _create(seed)
+    assert reservation_id is not None
+    operator = await _seed_operator()
+    app.dependency_overrides[get_current_identity] = lambda: operator
+
+    listed = await client.get(
+        "/api/v1/operator/replenishment-reservations", params={"status": "pending_approval"}
+    )
+    assert listed.status_code == 200
+    assert str(reservation_id) in {item["id"] for item in listed.json()}
+
+    detail = await client.get(f"/api/v1/operator/replenishment-reservations/{reservation_id}")
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["id"] == str(reservation_id)
+    assert body["status"] == "pending_approval"
+    assert [event["event_type"] for event in body["events"]] == ["created"]
+
+    missing = await client.get(f"/api/v1/operator/replenishment-reservations/{uuid.uuid4()}")
+    assert missing.status_code == 404
+
+
+async def test_http_operator_can_invalidate_a_pending_reservation(
+    replenishment_reservation_enabled: None,
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
+) -> None:
+    app, client = app_and_client
+    seed = await _seed_unit_with_estimate(low_days=5)
+    reservation_id = await _create(seed)
+    assert reservation_id is not None
+    operator = await _seed_operator()
+    app.dependency_overrides[get_current_identity] = lambda: operator
+
+    response = await client.post(
+        f"/api/v1/operator/replenishment-reservations/{reservation_id}/invalidate",
+        json={"reason": "estimate mapping looked wrong on manual review"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "invalidated"
+
+    # Idempotent: invalidating an already-invalidated reservation is a
+    # no-op success, not an error or a duplicate audit entry.
+    again = await client.post(
+        f"/api/v1/operator/replenishment-reservations/{reservation_id}/invalidate",
+        json={"reason": "retry after a client timeout"},
+    )
+    assert again.status_code == 200
+    assert again.json()["status"] == "invalidated"
+
+    async with SessionFactory() as session:
+        audit_count = len(
+            (
+                await session.scalars(
+                    select(OperatorAuditLog).where(
+                        OperatorAuditLog.action == "replenishment_reservation.invalidated",
+                        OperatorAuditLog.resource_id == str(reservation_id),
+                    )
+                )
+            ).all()
+        )
+    assert audit_count == 1
+
+    # A subsequent customer approval attempt against the now-invalidated
+    # reservation must fail, not silently create an order.
+    async with SessionFactory() as session:
+        customer = await session.get(AuthIdentity, seed.customer_id)
+    app.dependency_overrides[get_current_identity] = lambda: customer
+    approved = await client.post(
+        f"/api/v1/pet-life/replenishment-reservations/{reservation_id}/approve",
+        json={"address_id": str(seed.address_id)},
+    )
+    assert approved.status_code == 409
+
+
+async def test_http_operator_cannot_invalidate_an_already_approved_reservation(
+    replenishment_reservation_enabled: None,
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
+) -> None:
+    app, client = app_and_client
+    seed = await _seed_unit_with_estimate(low_days=5)
+    reservation_id = await _create(seed)
+    assert reservation_id is not None
+    async with SessionFactory() as session:
+        reservation = await session.get(
+            ReplenishmentReservation, reservation_id, with_for_update=True
+        )
+        assert reservation is not None
+        await approve_reservation(
+            session,
+            reservation=reservation,
+            customer_identity_id=seed.customer_id,
+            address_id=seed.address_id,
+        )
+    operator = await _seed_operator()
+    app.dependency_overrides[get_current_identity] = lambda: operator
+
+    response = await client.post(
+        f"/api/v1/operator/replenishment-reservations/{reservation_id}/invalidate",
+        json={"reason": "should be rejected: already approved"},
+    )
+    assert response.status_code == 409
+
+
+async def test_http_operator_replenishment_routes_require_operator_role(
+    replenishment_reservation_enabled: None,
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
+) -> None:
+    app, client = app_and_client
+    seed = await _seed_unit_with_estimate(low_days=5)
+    reservation_id = await _create(seed)
+    assert reservation_id is not None
+    async with SessionFactory() as session:
+        customer = await session.get(AuthIdentity, seed.customer_id)
+    app.dependency_overrides[get_current_identity] = lambda: customer
+
+    listed = await client.get("/api/v1/operator/replenishment-reservations")
+    assert listed.status_code == 403
+    detail = await client.get(f"/api/v1/operator/replenishment-reservations/{reservation_id}")
+    assert detail.status_code == 403
+    invalidated = await client.post(
+        f"/api/v1/operator/replenishment-reservations/{reservation_id}/invalidate",
+        json={"reason": "a customer should never reach this"},
+    )
+    assert invalidated.status_code == 403

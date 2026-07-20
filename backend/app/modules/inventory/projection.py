@@ -44,6 +44,18 @@ async def project_delivered_order(
             raise DeliveryProjectionError(
                 f"order line {line.id} has no confirmed sourced-unit evidence"
             )
+        if evidence.exact_expiry_date < now.date():
+            # The confirmed expiry date (set at sourcing-confirmation time,
+            # or a shelf-life exception's accepted proposal) can be days
+            # old by the time delivery actually happens -- a slow
+            # fulfillment on a short-shelf-life exception must not ship an
+            # already-expired unit just because it was valid when
+            # confirmed. Blocks the whole "mark delivered" transaction so
+            # the order's status never advances while this is unresolved.
+            raise DeliveryProjectionError(
+                f"order line {line.id} sourced-unit evidence expired on "
+                f"{evidence.exact_expiry_date.isoformat()}, before delivery"
+            )
         existing = await session.scalar(
             select(InventoryUnit).where(InventoryUnit.order_line_id == line.id)
         )

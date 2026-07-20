@@ -17,7 +17,7 @@ from app.main import create_app
 from app.modules.catalog.models import Offer, Product, Supplier
 from app.modules.households.models import Household, HouseholdAddress, HouseholdMembership
 from app.modules.identity.models import AuthIdentity
-from app.modules.orders.models import Order
+from app.modules.orders.models import Order, OrderLine
 from app.modules.reservations.models import Reservation
 from app.modules.reservations.service import (
     ReservationError,
@@ -144,6 +144,7 @@ async def _propose(
     reservation_id: uuid.UUID,
     *,
     reconfirmed_price_irr: int,
+    reconfirmed_available: bool = True,
     response_window_hours: int = 48,
 ) -> None:
     async with SessionFactory() as session:
@@ -154,7 +155,7 @@ async def _propose(
             reservation=reservation,
             operator_id=seed.operator_id,
             reconfirmed_price_irr=reconfirmed_price_irr,
-            reconfirmed_available=True,
+            reconfirmed_available=reconfirmed_available,
             reason="قیمت و موجودی از تامین‌کننده تایید شد",
             response_window_hours=response_window_hours,
         )
@@ -393,6 +394,153 @@ async def test_approve_is_idempotent_and_returns_the_same_order() -> None:
             ).all()
         )
     assert order_count == 1
+
+
+async def test_approve_rejects_a_reconfirmation_that_says_not_available() -> None:
+    """Workstream 3 gap closure: an operator can propose reconfirmed terms
+    with reconfirmed_available=False (an honest "we checked and it isn't
+    actually available" update) -- approval must never convert that into
+    a real order."""
+    seed = await _seed_reservable_offer()
+    reservation_id = await _request(seed)
+    await _propose(
+        seed, reservation_id, reconfirmed_price_irr=8_500_000, reconfirmed_available=False
+    )
+
+    async with SessionFactory() as session:
+        reservation = await session.get(Reservation, reservation_id, with_for_update=True)
+        offer = await session.get(Offer, seed.offer_id)
+        supplier = await session.get(Supplier, offer.supplier_id) if offer else None
+        address = await session.get(HouseholdAddress, seed.address_id)
+        assert reservation is not None and offer is not None and supplier is not None
+        assert address is not None
+        with pytest.raises(ReservationError, match="reservation_not_available"):
+            await approve_and_convert_reservation(
+                session,
+                reservation=reservation,
+                offer=offer,
+                supplier=supplier,
+                address=address,
+                customer_identity_id=seed.customer_id,
+            )
+        await session.rollback()
+
+    async with SessionFactory() as session:
+        order_count = len(
+            (
+                await session.scalars(
+                    select(Order).where(Order.household_id == seed.household_id)
+                )
+            ).all()
+        )
+    assert order_count == 0
+
+
+async def test_approve_rejects_an_offer_that_became_unavailable_after_proposal() -> None:
+    """Workstream 3 gap closure: the offer itself can be paused/retired by
+    an operator in the window between proposal and the customer's
+    approval click -- approval must re-check, not trust the reconfirmed
+    snapshot alone for offer-level state that can change independently."""
+    seed = await _seed_reservable_offer()
+    reservation_id = await _request(seed)
+    await _propose(seed, reservation_id, reconfirmed_price_irr=8_500_000)
+
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.offer_id, with_for_update=True)
+        assert offer is not None
+        offer.sourcing_capacity_status = "paused"
+        await session.commit()
+
+    async with SessionFactory() as session:
+        reservation = await session.get(Reservation, reservation_id, with_for_update=True)
+        offer = await session.get(Offer, seed.offer_id)
+        supplier = await session.get(Supplier, offer.supplier_id) if offer else None
+        address = await session.get(HouseholdAddress, seed.address_id)
+        assert reservation is not None and offer is not None and supplier is not None
+        assert address is not None
+        with pytest.raises(ReservationError, match="offer_unavailable"):
+            await approve_and_convert_reservation(
+                session,
+                reservation=reservation,
+                offer=offer,
+                supplier=supplier,
+                address=address,
+                customer_identity_id=seed.customer_id,
+            )
+        await session.rollback()
+
+
+async def test_approve_rejects_when_offer_capacity_is_exhausted_by_other_orders() -> None:
+    """Workstream 3 gap closure: capacity can be consumed by other orders
+    (an ordinary full_payment sibling offer scenario is not applicable
+    here, but a second reservation converting first against the same
+    capped offer is) between proposal and approval."""
+    seed = await _seed_reservable_offer()
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.offer_id, with_for_update=True)
+        assert offer is not None
+        offer.max_pending_quantity = 1
+        await session.commit()
+
+    reservation_id = await _request(seed, quantity=1)
+    await _propose(seed, reservation_id, reconfirmed_price_irr=8_500_000)
+
+    # A sibling order consumes the offer's only unit of capacity first.
+    async with SessionFactory() as session:
+        other_customer = AuthIdentity(
+            identity_type="customer", mobile_e164=f"+98920{seed.token[:7]}", status="active"
+        )
+        session.add(other_customer)
+        await session.flush()
+        session.add(
+            Order(
+                customer_identity_id=other_customer.id,
+                household_id=seed.household_id,
+                status="awaiting_payment",
+                currency="IRR",
+                merchandise_total_irr=seed.offer_price_irr,
+                checkout_idempotency_key=f"capacity-blocker-{seed.token}",
+                delivery_address_snapshot={"line": "blocker"},
+            )
+        )
+        await session.flush()
+        blocker_order = await session.scalar(
+            select(Order).where(Order.checkout_idempotency_key == f"capacity-blocker-{seed.token}")
+        )
+        assert blocker_order is not None
+        session.add(
+            OrderLine(
+                order_id=blocker_order.id,
+                offer_id=seed.offer_id,
+                sku_snapshot=f"RESERVE-{seed.token}",
+                title_fa_snapshot="blocker",
+                unit_label_fa_snapshot="عدد",
+                supplier_country_snapshot="FR",
+                quantity=1,
+                unit_price_irr=seed.offer_price_irr,
+                line_total_irr=seed.offer_price_irr,
+                created_at=utc_now(),
+            )
+        )
+        await session.commit()
+
+    async with SessionFactory() as session:
+        reservation = await session.get(Reservation, reservation_id, with_for_update=True)
+        offer = await session.get(Offer, seed.offer_id)
+        supplier = await session.get(Supplier, offer.supplier_id) if offer else None
+        address = await session.get(HouseholdAddress, seed.address_id)
+        assert reservation is not None and offer is not None and supplier is not None
+        assert address is not None
+        with pytest.raises(ReservationError, match="offer_capacity_exhausted"):
+            await approve_and_convert_reservation(
+                session,
+                reservation=reservation,
+                offer=offer,
+                supplier=supplier,
+                address=address,
+                customer_identity_id=seed.customer_id,
+            )
+        await session.rollback()
 
 
 async def test_approve_rejects_an_address_from_another_household() -> None:

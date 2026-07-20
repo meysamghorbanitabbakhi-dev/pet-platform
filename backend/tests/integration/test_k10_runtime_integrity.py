@@ -188,6 +188,7 @@ async def seed() -> Seed:
             status="active",
             stock_posture="sourced_after_payment",
             minimum_shelf_life_months=6,
+            default_batch_threshold_quantity=100,
         )
         unavailable_offer = Offer(
             product_id=product.id,

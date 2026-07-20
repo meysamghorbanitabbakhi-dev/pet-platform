@@ -26,6 +26,21 @@ class Settings(BaseSettings):
     security_hsts_enabled: bool = False
 
     database_url: str = "postgresql+asyncpg://pet_platform:pet_platform@localhost:5432/pet_platform"
+    # Row-level security (ADR-011's amendment) is enforced by Postgres for
+    # every role except superusers and table owners without
+    # FORCE ROW LEVEL SECURITY -- database_url's role is a superuser in
+    # every environment set up so far (it also runs migrations, which
+    # need elevated DDL privileges), so RLS policies would silently no-op
+    # under it. The application's own request-serving engine connects as
+    # this separate, deliberately unprivileged role instead; migrations
+    # (which create the role itself, see 20260720_0040) keep using
+    # database_url. A production deployment MUST override this with a
+    # real password via environment configuration -- the default here is
+    # a placeholder matching this codebase's existing database_url
+    # convention, not a secret.
+    database_app_url: str = (
+        "postgresql+asyncpg://pet_platform_app:pet_platform_app@localhost:5432/pet_platform"
+    )
     redis_url: str = "redis://localhost:6379/0"
     media_root: Path = Path("./media")
 
@@ -61,6 +76,7 @@ class Settings(BaseSettings):
     replenishment_reservation_approval_window_hours: int = Field(default=48, ge=1, le=168)
     concierge_offers_enabled: bool = False
     concierge_offer_default_validity_hours: int = Field(default=24, ge=12, le=48)
+    shelf_life_exception_response_window_hours: int = Field(default=72, ge=1, le=168)
     customer_request_acknowledgement_fa: str = (
         "درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. "
         "ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست."

@@ -57,7 +57,7 @@ class OrderSeed:
 
 
 async def _seed_offer(
-    *, default_batch_threshold_quantity: int | None = None
+    *, default_batch_threshold_quantity: int | None = 100
 ) -> OfferSeed:
     token = uuid.uuid4().hex[:10]
     async with SessionFactory() as session:

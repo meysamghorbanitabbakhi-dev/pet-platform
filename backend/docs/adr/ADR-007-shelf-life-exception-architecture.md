@@ -73,3 +73,35 @@ an automatic payment-gateway reversal — and that question was explicitly frame
   shelf-life decline/expiry. A future partial-fulfillment feature should not assume this field's
   meaning generalizes without re-checking every place that currently treats "excluded" and
   "declined/expired shelf-life exception" as synonymous.
+
+## Amendment (2026-07-20) — gap-closure program, Workstream 7
+
+Three items, all addressed without inventing an unspecified business number:
+
+1. **Re-propose after decline/expiry** — the first Consequence above explicitly named this as a
+   deferred future workstream; the gap-closure brief is that workstream. `one_exception_per_order_line`
+   (migration 20260719_0032) is replaced by a partial unique index
+   (`uq_shelf_life_exceptions_one_active_per_order_line`, migration 20260720_0038) that only
+   applies while a row is still `'proposed'`. At most one *active* proposal per line at a time,
+   exactly as before; a resolved (declined/expired) one no longer blocks a revised re-proposal.
+   `'accepted'` stays excluded independently by `propose_shelf_life_exception`'s pre-existing
+   `already_sourced` check. "The exception record is the snapshot" (point 1 above) still holds per
+   proposal — a re-proposal is a new row with its own snapshot, not an edit to the old one.
+2. **Positive-discount requirement** — `additional_discount_irr >= 0` allowed a $0-compensation
+   exception: asking a customer to accept a product short of the guarantee they paid for with
+   nothing in return. Tightened to `> 0` at three layers (Pydantic body, service function, DB
+   CHECK constraint via the same migration) — not a judgment call this ADR made originally, just
+   an unaddressed gap.
+3. **No invented 72-hour deadline** — `_DEFAULT_RESPONSE_WINDOW_HOURS = 72` was a hardcoded Python
+   module constant with no way to change it short of a code deploy. Moved to
+   `settings.shelf_life_exception_response_window_hours` (default 72, bounds 1-168h, same pattern
+   as `concierge_offer_default_validity_hours`) — operator-configurable now, still 72h out of the
+   box so no behavior actually changes until someone deliberately reconfigures it.
+
+Also fixed, found auditing fulfillment rather than this module directly: `project_delivered_order`
+(`app/modules/inventory/projection.py`) now rejects marking an order delivered if any line's
+confirmed `SourcedUnitEvidence.exact_expiry_date` has already passed by delivery time. A
+short-shelf-life exception's accepted date is fixed at acceptance time, potentially days before
+actual delivery; slow fulfillment must not ship an already-expired unit just because the date was
+valid when confirmed. Applies to every line, not only shelf-life-exception ones, since both share
+the same `SourcedUnitEvidence` record.

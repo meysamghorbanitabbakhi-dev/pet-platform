@@ -2,9 +2,16 @@
 
 ## Before deployment
 
-1. Copy `.env.example` into the deployment secret manager and replace every placeholder.
+1. Copy `.env.example` into the deployment secret manager and replace every placeholder,
+   including `DATABASE_APP_URL` (row-level security's request-serving role, ADR-011's amendment,
+   migration `20260720_0040`) with a real, deployment-specific password -- not the placeholder
+   value, which matches `database_url`'s own convention of an unusable default.
 2. Mount a persistent volume at `MEDIA_ROOT`; confirm the application user can write it.
-3. Start PostgreSQL and Redis, then run `alembic upgrade head` exactly once.
+3. Start PostgreSQL and Redis, then run `alembic upgrade head` exactly once. This provisions the
+   `DATABASE_APP_URL` role (idempotent -- re-running syncs its password to whatever is currently
+   configured, see the migration's own docstring) as well as applying schema changes; the
+   application cannot authenticate to its own database until this has run with the correct
+   password already in place.
 4. Create the single operator with `python -m app.cli.bootstrap_operator --mobile 09...`.
 5. Seed draft operational content with `python -m app.cli.seed_launch`.
 6. The operator must review and activate notification content through the audited API.

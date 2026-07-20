@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.common.time import utc_now
@@ -45,13 +46,19 @@ def _event(
 
 async def _find_available_offer(session: AsyncSession, *, product_id: UUID) -> Offer | None:
     """Same 'reorderable' definition as _reorder_options in pet_life.py
-    (status=active, stock_posture=sourced_after_payment,
+    (mode=full_payment, status=active, stock_posture=sourced_after_payment,
     sourcing_capacity_status=open) -- deliberately not a second,
-    subtly-different notion of availability."""
+    subtly-different notion of availability. mode=full_payment excludes
+    'reserve' (needs its own operator reconfirmation workflow) and
+    'concierge_only' (bound to one specific customer/request) offers --
+    an automatic recommendation must never point at either, since
+    approval here converts straight into a real order via CheckoutService,
+    which itself now rejects both modes."""
     offer = await session.scalar(
         select(Offer)
         .where(
             Offer.product_id == product_id,
+            Offer.mode == "full_payment",
             Offer.status == "active",
             Offer.stock_posture == "sourced_after_payment",
             Offer.sourcing_capacity_status == "open",
@@ -193,14 +200,20 @@ async def approve_reservation(
         session.add(_event(reservation.id, "expired", now))
         await session.commit()
         raise ReplenishmentReservationError("reservation_response_window_expired")
+    idempotency_key = f"replenishment:{reservation.id}"
     try:
-        order = await CheckoutService().create_order(
+        order = await CheckoutService().create_order_uncommitted(
             session,
             customer_identity_id=customer_identity_id,
             household_id=reservation.household_id,
             address_id=address_id,
             items=[CheckoutItem(reservation.offer_id, reservation.quantity)],
-            idempotency_key=f"replenishment:{reservation.id}",
+            idempotency_key=idempotency_key,
+            # _find_available_offer already restricts selection to
+            # mode=full_payment offers -- explicit here so this call site
+            # states what it trusts, not because a wider offer could
+            # actually reach this point.
+            allowed_modes=frozenset({"full_payment"}),
         )
     except CheckoutError as exc:
         raise ReplenishmentReservationError(f"checkout_failed:{exc}") from exc
@@ -208,7 +221,14 @@ async def approve_reservation(
     reservation.approved_at = now
     reservation.resulting_order_id = order.id
     session.add(_event(reservation.id, "approved", now, identity_id=customer_identity_id))
-    await session.commit()
+    # Order, its lines, and this reservation's approval commit together --
+    # if the process crashes before this line, NOTHING persists (no order
+    # left behind with a reservation that never shows it was used).
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise ReplenishmentReservationError("approval_conflict_retry") from exc
     return reservation, order
 
 
@@ -259,6 +279,37 @@ async def invalidate_reservation_for_unit(
     reservation.status = "invalidated"
     reservation.invalidated_at = now
     session.add(_event(reservation.id, "invalidated", now, reason=reason))
+    return reservation
+
+
+async def operator_invalidate_reservation(
+    session: AsyncSession,
+    *,
+    reservation: ReplenishmentReservation,
+    operator_id: UUID,
+    reason: str,
+) -> ReplenishmentReservation:
+    """Operator-initiated correction (Workstream 4): the system's
+    automatic recommendation was wrong for some reason a human caught
+    (e.g. the underlying estimate/product mapping looks off) and no
+    automatic correction/exhaustion event will invalidate it on its own.
+    Idempotent; a reservation that already reached any other terminal or
+    approved state cannot be invalidated this way -- mirrors
+    invalidate_reservation_for_unit's own pending_approval-only rule, just
+    reachable directly by reservation_id instead of inventory_unit_id, and
+    with an operator identity/reason recorded for the audit trail rather
+    than a system-triggered one. Caller must have already row-locked
+    `reservation`; does not commit."""
+    if reservation.status == "invalidated":
+        return reservation
+    if reservation.status != "pending_approval":
+        raise ReplenishmentReservationError(
+            f"reservation_not_invalidatable:{reservation.status}"
+        )
+    now = utc_now()
+    reservation.status = "invalidated"
+    reservation.invalidated_at = now
+    session.add(_event(reservation.id, "invalidated", now, identity_id=operator_id, reason=reason))
     return reservation
 
 

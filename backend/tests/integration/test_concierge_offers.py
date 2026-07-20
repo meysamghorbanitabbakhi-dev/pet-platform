@@ -14,7 +14,8 @@ from app.common.time import utc_now
 from app.core.config import get_settings
 from app.db.session import SessionFactory, close_database
 from app.main import create_app
-from app.modules.catalog.models import Offer, Supplier
+from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.checkout.service import CheckoutItem, CheckoutService
 from app.modules.concierge.models import ConciergeOffer
 from app.modules.concierge.service import (
     ConciergeOfferError,
@@ -421,6 +422,83 @@ async def test_accept_offer_creates_a_hidden_one_off_catalog_offer_and_order() -
     assert request is not None and request.status == "resolved"
 
 
+async def test_crash_between_order_creation_and_offer_acceptance_leaves_no_orphan() -> None:
+    """Fault injection (Workstream 2): replicates accept_offer's own
+    sequence (create the one-off product/offer, then construct the order)
+    up to but not including its atomic commit, then simulates a crash by
+    rolling back instead of continuing to mutate offer.status. Nothing
+    from either step may survive, and a subsequent real accept_offer call
+    must still succeed cleanly."""
+    seed = await _seed_request()
+    offer_id = await _presented_offer(seed)
+    idempotency_key = f"concierge:{offer_id}"
+
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, offer_id, with_for_update=True)
+        assert offer is not None
+        assert offer.supplier_id is not None and offer.title_fa is not None
+        product = Product(name_fa=offer.title_fa, status="active")
+        session.add(product)
+        await session.flush()
+        catalog_offer = Offer(
+            product_id=product.id,
+            supplier_id=offer.supplier_id,
+            sku=f"CONCIERGE-{offer.id}",
+            title_fa=offer.title_fa,
+            unit_label_fa=offer.unit_label_fa or "عدد",
+            price_irr=offer.price_irr,
+            status="active",
+            stock_posture="sourced_after_payment",
+            sourcing_capacity_status="open",
+            minimum_shelf_life_months=offer.minimum_shelf_life_months,
+            mode="concierge_only",
+            sourcing_route="individual",
+            max_pending_quantity=offer.quantity,
+        )
+        session.add(catalog_offer)
+        await session.flush()
+        await CheckoutService().create_order_uncommitted(
+            session,
+            customer_identity_id=seed.customer_id,
+            household_id=offer.household_id,
+            address_id=seed.address_id,
+            items=[CheckoutItem(catalog_offer.id, offer.quantity)],
+            idempotency_key=idempotency_key,
+            allowed_modes=frozenset({"concierge_only"}),
+        )
+        # Simulated crash: never reach offer.status = "accepted" or commit.
+        await session.rollback()
+
+    async with SessionFactory() as session:
+        orphan_order = await session.scalar(
+            select(Order).where(
+                Order.customer_identity_id == seed.customer_id,
+                Order.checkout_idempotency_key == idempotency_key,
+            )
+        )
+        assert orphan_order is None
+        orphan_offer = await session.scalar(
+            select(Offer).where(Offer.sku == f"CONCIERGE-{offer_id}")
+        )
+        assert orphan_offer is None
+        untouched = await session.get(ConciergeOffer, offer_id)
+        assert untouched is not None and untouched.status == "offer_presented"
+
+    # A real, subsequent accept_offer call must succeed cleanly -- no
+    # leftover state from the simulated crash blocks it.
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, offer_id, with_for_update=True)
+        assert offer is not None
+        offer, order = await accept_offer(
+            session,
+            offer=offer,
+            customer_identity_id=seed.customer_id,
+            address_id=seed.address_id,
+        )
+    assert offer.status == "accepted"
+    assert order.checkout_idempotency_key == idempotency_key
+
+
 async def test_accept_offer_does_not_auto_charge() -> None:
     seed = await _seed_request()
     offer_id = await _presented_offer(seed)
@@ -538,6 +616,34 @@ async def test_decline_offer_is_idempotent() -> None:
     first = await _decline_once()
     second = await _decline_once()
     assert first.responded_at == second.responded_at
+
+
+async def test_decline_offer_after_deadline_expires_instead() -> None:
+    """Mirrors test_accept_offer_after_deadline_expires_instead: discovering
+    the deadline has passed during a decline attempt must persist the
+    expiry transition just as reliably as discovering it during an accept
+    attempt, even though decline_offer itself raises rather than returning
+    normally (gap-closure fix -- this used to be silently rolled back)."""
+    seed = await _seed_request()
+    offer_id = await _presented_offer(seed)
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, offer_id, with_for_update=True)
+        assert offer is not None
+        offer.expires_at = utc_now() - timedelta(hours=1)
+        await session.commit()
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, offer_id, with_for_update=True)
+        assert offer is not None
+        with pytest.raises(ConciergeOfferError, match="offer_validity_expired"):
+            await decline_offer(
+                session,
+                offer=offer,
+                customer_identity_id=seed.customer_id,
+                reason="دیگر لازم نیست",
+            )
+    async with SessionFactory() as session:
+        offer = await session.get(ConciergeOffer, offer_id)
+    assert offer is not None and offer.status == "expired"
 
 
 # --- service-level: request_refresh ----------------------------------------
@@ -674,10 +780,12 @@ async def test_promote_to_catalog_flips_mode_and_lifts_the_quantity_cap() -> Non
             offer=offer,
             operator_id=seed.operator_id,
             rationale="تقاضای تکراری و تامین پایدار در سه ماه گذشته",
+            default_batch_threshold_quantity=20,
         )
         await session.commit()
     assert catalog_offer.mode == "full_payment"
     assert catalog_offer.sourcing_route == "aggregated"
+    assert catalog_offer.default_batch_threshold_quantity == 20
     assert catalog_offer.max_pending_quantity is None
     async with SessionFactory() as session:
         offer = await session.get(ConciergeOffer, offer_id)
@@ -692,7 +800,11 @@ async def test_promote_to_catalog_rejects_a_non_accepted_offer() -> None:
         assert offer is not None
         with pytest.raises(ConciergeOfferError, match="offer_not_accepted"):
             await promote_to_catalog(
-                session, offer=offer, operator_id=seed.operator_id, rationale="too early"
+                session,
+                offer=offer,
+                operator_id=seed.operator_id,
+                rationale="too early",
+                default_batch_threshold_quantity=20,
             )
 
 
@@ -1012,13 +1124,73 @@ async def test_http_operator_queue_filters_by_status(
     assert any(item["household_id"] == str(presented_seed.household_id) for item in items)
 
 
-# --- catalog hiding ----------------------------------------------------------
-
-
-async def test_accepted_concierge_offer_is_hidden_from_browse_and_search_but_reachable_by_id(
+async def test_http_operator_concierge_routes_require_operator_role(
     concierge_offers_enabled: None,
     app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
+    app, client = app_and_client
+    seed = await _seed_request()
+    offer_id = await _presented_offer(seed)
+    async with SessionFactory() as session:
+        customer = await session.get(AuthIdentity, seed.customer_id)
+    app.dependency_overrides[get_current_identity] = lambda: customer
+
+    listed = await client.get("/api/v1/operator/concierge-offers")
+    assert listed.status_code == 403
+    detail = await client.get(f"/api/v1/operator/concierge-offers/{offer_id}")
+    assert detail.status_code == 403
+    started = await client.post(
+        f"/api/v1/operator/customer-requests/{seed.request_id}/concierge-offers/start-review"
+    )
+    assert started.status_code == 403
+    presented = await client.post(
+        f"/api/v1/operator/concierge-offers/{offer_id}/present",
+        json={
+            "title_fa": "x",
+            "unit_label_fa": "x",
+            "authenticity_basis": "supplier_invoice_verified",
+            "supplier_id": str(seed.supplier_id),
+            "verification_evidence_file_id": str(seed.evidence_file_id),
+            "minimum_shelf_life_months": 6,
+            "estimated_delivery_days": 20,
+            "pricing_mode": "reference_price_savings",
+            "price_irr": 1_000_000,
+            "reference_price_irr": 1_200_000,
+            "price_explanation_fa": "x",
+        },
+    )
+    assert presented.status_code == 403
+    unavailable = await client.post(
+        f"/api/v1/operator/concierge-offers/{offer_id}/unavailable",
+        json={"reason": "a customer should never reach this"},
+    )
+    assert unavailable.status_code == 403
+    promoted = await client.post(
+        f"/api/v1/operator/concierge-offers/{offer_id}/promote",
+        json={
+            "rationale": "a customer should never reach this",
+            "default_batch_threshold_quantity": 20,
+        },
+    )
+    assert promoted.status_code == 403
+
+
+# --- catalog hiding ----------------------------------------------------------
+
+
+async def test_accepted_concierge_offer_is_hidden_from_browse_search_and_direct_id(
+    concierge_offers_enabled: None,
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
+) -> None:
+    """Hardened by the gap-closure security pass: the public catalog detail
+    route is fully unauthenticated, so "reachable by id" was equivalent to
+    "disclosed to anyone who has or guesses the id" -- direct-id
+    enumeration must not disclose a concierge_only offer (bound to one
+    specific customer's verified, priced sourcing arrangement) to anyone
+    else. The owning customer views it via the ownership-checked
+    GET /concierge-offers/{offer_id} route and their order detail's own
+    price/title snapshot instead -- neither depends on the public catalog
+    route staying open for this mode."""
     app, client = app_and_client
     seed = await _seed_request()
     offer_id = await _presented_offer(
@@ -1049,5 +1221,5 @@ async def test_accepted_concierge_offer_is_hidden_from_browse_and_search_but_rea
     assert search.json()["page"]["total"] == 0
 
     direct = await client.get(f"/api/v1/catalog/offers/{promoted_offer_id}")
-    assert direct.status_code == 200
-    assert direct.json()["id"] == str(promoted_offer_id)
+    nonexistent = await client.get(f"/api/v1/catalog/offers/{uuid.uuid4()}")
+    assert direct.status_code == nonexistent.status_code == 404

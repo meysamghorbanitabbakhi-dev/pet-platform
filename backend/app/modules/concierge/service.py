@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.common.time import utc_now
@@ -342,13 +343,20 @@ async def accept_offer(
     session.add(catalog_offer)
     await session.flush()
     try:
-        order = await CheckoutService().create_order(
+        order = await CheckoutService().create_order_uncommitted(
             session,
             customer_identity_id=customer_identity_id,
             household_id=offer.household_id,
             address_id=address_id,
             items=[CheckoutItem(catalog_offer.id, offer.quantity)],
             idempotency_key=f"concierge:{offer.id}",
+            # Trusted internal conversion: catalog_offer was just created
+            # above specifically for this acceptance, mode='concierge_only'
+            # by construction -- not an arbitrary customer-supplied
+            # offer_id, so it is safe to allow the one mode this flow
+            # itself produces. Ordinary customer checkout never passes
+            # allowed_modes and stays restricted to full_payment.
+            allowed_modes=frozenset({"concierge_only"}),
         )
     except CheckoutError as exc:
         raise ConciergeOfferError(f"checkout_failed:{exc}") from exc
@@ -361,7 +369,15 @@ async def accept_offer(
     await _resolve_request(
         session, offer.request_id, operator_id=None, now=now, note="concierge offer accepted"
     )
-    await session.commit()
+    # The one-off product/offer, the order and its lines, and this
+    # offer's acceptance all commit together -- if the process crashes
+    # before this line, NOTHING persists, never a real order left behind
+    # with no accepted offer to show for it.
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise ConciergeOfferError("acceptance_conflict_retry") from exc
     return offer, order
 
 
@@ -383,7 +399,12 @@ async def decline_offer(
         await _resolve_request(
             session, offer.request_id, operator_id=None, now=now, note="concierge offer expired"
         )
-        await session.flush()
+        # Mirrors accept_offer's self-commit on the same discovered-expiry
+        # path: the route never commits on an error response, so without
+        # this the expiry transition and its event would be silently
+        # rolled back when the session closes, leaving the offer stuck as
+        # offer_presented until the scheduler sweep catches it instead.
+        await session.commit()
         raise ConciergeOfferError("offer_validity_expired")
     offer.status = "declined"
     offer.responded_at = now
@@ -511,7 +532,12 @@ async def expire_stale_offers(
 
 
 async def promote_to_catalog(
-    session: AsyncSession, *, offer: ConciergeOffer, operator_id: UUID, rationale: str
+    session: AsyncSession,
+    *,
+    offer: ConciergeOffer,
+    operator_id: UUID,
+    rationale: str,
+    default_batch_threshold_quantity: int,
 ) -> Offer:
     """Operator-discretion catalog promotion (Decision 0.37) -- the
     criteria (request frequency, conversion, repeat demand, source
@@ -520,10 +546,16 @@ async def promote_to_catalog(
     complexity) are inherently qualitative; this records the operator's
     reasoned decision rather than fabricating an automatic score.
     Flips the lazily-created one-off Offer's mode from 'concierge_only' to
-    'full_payment' (making it browsable/searchable) and lifts the
-    one-off max_pending_quantity cap. Idempotent: promoting an
-    already-promoted offer returns the same catalog Offer. Caller must
-    have already row-locked `offer`.
+    'full_payment' (making it browsable/searchable), moves it onto the
+    aggregated sourcing route, and lifts the one-off max_pending_quantity
+    cap. The operator must also set a real pooling threshold in the same
+    call -- the offer is about to start accepting arbitrary customers, so
+    it can no longer rely on the single verified quantity the concierge
+    cycle priced (see purchasing.service's requirement that an aggregated
+    offer always carry a configured threshold before it can open a batch).
+    Idempotent: promoting an already-promoted offer returns the same
+    catalog Offer, ignoring this call's threshold value. Caller must have
+    already row-locked `offer`.
     """
     if offer.catalog_promoted_at is not None:
         if offer.promoted_offer_id is None:
@@ -540,6 +572,7 @@ async def promote_to_catalog(
     now = utc_now()
     catalog_offer.mode = "full_payment"
     catalog_offer.sourcing_route = "aggregated"
+    catalog_offer.default_batch_threshold_quantity = default_batch_threshold_quantity
     catalog_offer.max_pending_quantity = None
     offer.catalog_promoted_at = now
     offer.catalog_promoted_by_operator_id = operator_id

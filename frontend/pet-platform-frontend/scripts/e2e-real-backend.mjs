@@ -19,6 +19,15 @@ const PG_PORT = 55433;
 const REDIS_PORT = 56380;
 const BACKEND_PORT = 8010;
 const DATABASE_URL = `postgresql+asyncpg://pet_platform:pet_platform@127.0.0.1:${PG_PORT}/pet_platform`;
+// Real request traffic connects as this separate, unprivileged role
+// instead of DATABASE_URL's superuser one (row-level security is
+// unconditionally bypassed for superusers in Postgres, with no
+// override -- see backend ADR-011's amendment). Migration
+// 20260720_0040 creates this role as part of `alembic upgrade head`
+// below; it must resolve to the same ephemeral Postgres container the
+// rest of this harness uses, not the default placeholder host/port
+// Settings.database_app_url falls back to.
+const DATABASE_APP_URL = `postgresql+asyncpg://pet_platform_app:pet_platform_app@127.0.0.1:${PG_PORT}/pet_platform`;
 const REDIS_URL = `redis://127.0.0.1:${REDIS_PORT}/0`;
 const mediaRoot = resolve(root, ".e2e-real-backend-media");
 const distDir = ".next-e2e-real-backend";
@@ -125,6 +134,7 @@ const backendEnv = {
   APP_ENV: "development",
   LOG_LEVEL: "INFO",
   DATABASE_URL,
+  DATABASE_APP_URL,
   REDIS_URL,
   MEDIA_ROOT: mediaRoot,
   JWT_SECRET: "e2e-real-backend-secret-at-least-32-characters",

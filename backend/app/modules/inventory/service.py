@@ -8,10 +8,40 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.time import utc_now
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit
+from app.modules.system.idempotency import canonical_request_hash
+
+# Bump when the low_days/high_days formula below changes materially --
+# each FoodEstimate row records the version that produced it (see the
+# model's own docstring), and open_and_estimate's replay-safety check
+# folds this into the hash so a formula change never gets silently
+# masked as "the same request, safe to replay."
+_ALGORITHM_VERSION = "v1"
 
 
 class InventoryError(Exception):
     pass
+
+
+def _estimate_request_hash(
+    *,
+    remaining_grams: int | None,
+    remaining_low_grams: int,
+    remaining_high_grams: int,
+    remaining_input_mode: str,
+    feeding_context: str,
+    daily_portion_grams: int | None,
+) -> str:
+    return canonical_request_hash(
+        {
+            "algorithm_version": _ALGORITHM_VERSION,
+            "remaining_grams": remaining_grams,
+            "remaining_low_grams": remaining_low_grams,
+            "remaining_high_grams": remaining_high_grams,
+            "remaining_input_mode": remaining_input_mode,
+            "feeding_context": feeding_context,
+            "daily_portion_grams": daily_portion_grams,
+        }
+    )
 
 
 class InventoryService:
@@ -40,6 +70,21 @@ class InventoryService:
         if remaining_high_grams <= 0:
             raise InventoryError("remaining quantity must be positive")
 
+        # Hashes the request as the caller actually submitted it (the raw
+        # daily_portion_grams, before the "derive it from pet assignments
+        # if the caller left it unset" logic below runs) -- what matters
+        # for replay-safety is whether this is the same request, not
+        # whether it happens to land on the same derived number.
+        request_hash = _estimate_request_hash(
+            remaining_grams=remaining_grams,
+            remaining_low_grams=remaining_low_grams,
+            remaining_high_grams=remaining_high_grams,
+            remaining_input_mode=remaining_input_mode,
+            feeding_context=feeding_context,
+            daily_portion_grams=daily_portion_grams,
+        )
+        requested_daily_portion_grams = daily_portion_grams
+
         existing_active = await session.scalar(
             select(FoodEstimate).where(
                 FoodEstimate.inventory_unit_id == unit.id,
@@ -51,17 +96,16 @@ class InventoryService:
             # record means this is a raw reopen of an already-opened unit
             # (correct_estimate/exhaust_inventory always retire the active
             # row themselves before calling in). Replay-safe only for an
-            # exact repeat of the same facts -- anything else must go
-            # through the correction endpoint, which explicitly retires
-            # the old estimate first (see PostgreSQL partial unique index
-            # one_active_estimate_per_unit, migration 20260720_0036).
-            same_facts = (
-                unit.remaining_quantity_grams == remaining_grams
-                and unit.remaining_low_grams == remaining_low_grams
-                and unit.remaining_high_grams == remaining_high_grams
-                and unit.remaining_input_mode == remaining_input_mode
-            )
-            if same_facts:
+            # exact repeat of the same request -- anything else (including
+            # a change to feeding_context or daily_portion_grams, which
+            # the previous, narrower comparison here did not check at
+            # all) must go through the correction endpoint, which
+            # explicitly retires the old estimate first (see PostgreSQL
+            # partial unique index one_active_estimate_per_unit, migration
+            # 20260720_0036). A legacy row with no request_hash on record
+            # (predates this check) can never match a replay and always
+            # falls through to the correction-endpoint error.
+            if existing_active.request_hash == request_hash:
                 return existing_active
             raise InventoryError("unit_already_opened_use_correction_endpoint")
 
@@ -108,11 +152,17 @@ class InventoryService:
             basis=basis,
             scope="household",
             last_confirmed_at=unit.opened_at,
+            algorithm_version=_ALGORITHM_VERSION,
+            request_hash=request_hash,
             provenance={
+                "schema_version": 2,
                 "remaining_input_mode": remaining_input_mode,
+                "remaining_grams": remaining_grams,
                 "remaining_low_grams": remaining_low_grams,
                 "remaining_high_grams": remaining_high_grams,
                 "feeding_context": feeding_context,
+                "daily_portion_grams_requested": requested_daily_portion_grams,
+                "daily_portion_grams_applied": daily_portion_grams,
                 **remaining_provenance,
             },
         )

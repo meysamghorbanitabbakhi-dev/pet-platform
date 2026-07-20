@@ -15,6 +15,7 @@ from app.modules.catalog.models import Offer, Product, Supplier
 from app.modules.households.models import Household
 from app.modules.identity.models import AuthIdentity
 from app.modules.orders.models import Order, OrderLine
+from app.modules.purchasing.models import PurchaseBatch
 from app.modules.purchasing.service import allocate_order_line_to_batch
 from app.modules.system.models import OperatorAuditLog
 from app.modules.trust.files import EvidenceFile
@@ -195,6 +196,33 @@ async def test_sourcing_config_rejects_invalid_route(
         json={"sourcing_route": "bulk", "reason": "invalid route value"},
     )
     assert response.status_code == 422
+
+
+async def test_sourcing_config_rejects_aggregated_route_without_a_threshold(
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
+) -> None:
+    app, client = app_and_client
+    app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
+
+    response = await client.patch(
+        f"/api/v1/operator/offers/{batch_seed.offer_id}/sourcing-config",
+        json={
+            "sourcing_route": "aggregated",
+            "default_batch_threshold_quantity": None,
+            "reason": "switching back to pooled sourcing",
+        },
+    )
+    assert response.status_code == 422
+    assert (
+        response.json()["error"]["code"]
+        == "aggregated_route_requires_default_batch_threshold_quantity"
+    )
+
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, uuid.UUID(batch_seed.offer_id))
+        assert offer is not None
+        assert offer.sourcing_route == "aggregated"
+        assert offer.default_batch_threshold_quantity == 10
 
 
 async def test_list_and_detail_reflect_allocation_state(
@@ -387,6 +415,102 @@ async def test_commit_unknown_batch_is_404(
     assert response.status_code == 404
 
 
+async def _empty_batch(seed: BatchSeed) -> str:
+    """An open aggregated batch with no allocations -- e.g. opened but the
+    order that would have allocated into it was itself cancelled first, or
+    simply never received one. Constructed directly since
+    allocate_order_line_to_batch always creates an allocation alongside
+    the batch."""
+    async with SessionFactory() as session:
+        batch = PurchaseBatch(
+            offer_id=uuid.UUID(seed.offer_id),
+            grouping_mode="aggregated",
+            status="open",
+            minimum_viable_threshold_quantity=10,
+        )
+        session.add(batch)
+        await session.commit()
+        return str(batch.id)
+
+
+async def test_cancel_an_empty_batch(
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
+) -> None:
+    app, client = app_and_client
+    app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
+    batch_id = await _empty_batch(batch_seed)
+
+    response = await client.post(
+        f"/api/v1/operator/purchase-batches/{batch_id}/cancel",
+        json={"reason": "offer was pulled before any order pooled into it"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "cancelled"
+    assert body["cancelled_by_operator_id"] == str(batch_seed.operator.id)
+    assert await _audit_count("purchase_batch.cancelled", batch_id) == 1
+
+    replay = await client.post(
+        f"/api/v1/operator/purchase-batches/{batch_id}/cancel",
+        json={"reason": "retry after client timeout"},
+    )
+    assert replay.status_code == 200
+    assert replay.json()["status"] == "cancelled"
+    assert await _audit_count("purchase_batch.cancelled", batch_id) == 1
+
+
+async def test_cancel_rejects_a_batch_with_active_allocations(
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
+) -> None:
+    app, client = app_and_client
+    app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
+    batch_id = await _open_batch(batch_seed)
+
+    response = await client.post(
+        f"/api/v1/operator/purchase-batches/{batch_id}/cancel",
+        json={"reason": "trying to cancel a batch with a live order in it"},
+    )
+    assert response.status_code == 409
+
+    async with SessionFactory() as session:
+        batch = await session.get(PurchaseBatch, uuid.UUID(batch_id))
+        assert batch is not None
+        assert batch.status == "open"
+
+
+async def test_cancel_is_blocked_once_committed(
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
+) -> None:
+    app, client = app_and_client
+    app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
+    batch_id = await _open_batch(batch_seed)
+    evidence_id = await _evidence_file(batch_seed.operator.id)
+    committed = await client.post(
+        f"/api/v1/operator/purchase-batches/{batch_id}/commit",
+        json={"evidence_file_id": evidence_id, "reason": "supplier invoice paid in full"},
+    )
+    assert committed.status_code == 200
+
+    response = await client.post(
+        f"/api/v1/operator/purchase-batches/{batch_id}/cancel",
+        json={"reason": "trying to cancel an already-committed batch"},
+    )
+    assert response.status_code == 409
+
+
+async def test_cancel_unknown_batch_is_404(
+    app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
+) -> None:
+    app, client = app_and_client
+    app.dependency_overrides[get_current_identity] = lambda: batch_seed.operator
+
+    response = await client.post(
+        f"/api/v1/operator/purchase-batches/{uuid.uuid4()}/cancel",
+        json={"reason": "batch does not exist"},
+    )
+    assert response.status_code == 404
+
+
 async def test_non_operator_identity_is_forbidden(
     app_and_client: tuple[FastAPI, httpx.AsyncClient], batch_seed: BatchSeed
 ) -> None:
@@ -395,3 +519,10 @@ async def test_non_operator_identity_is_forbidden(
 
     response = await client.get("/api/v1/operator/purchase-batches")
     assert response.status_code == 403
+
+    batch_id = await _empty_batch(batch_seed)
+    cancel = await client.post(
+        f"/api/v1/operator/purchase-batches/{batch_id}/cancel",
+        json={"reason": "a customer should never reach this"},
+    )
+    assert cancel.status_code == 403

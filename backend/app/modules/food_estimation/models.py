@@ -32,3 +32,21 @@ class FoodEstimate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     pet_id: Mapped[UUID | None] = mapped_column(ForeignKey("pets_pets.id"))
     last_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provenance: Mapped[dict[str, object] | None] = mapped_column(JSONB)
+    # Which version of InventoryService's low_days/high_days formula
+    # produced this row (app.modules.inventory.service._ALGORITHM_VERSION)
+    # -- lets a future formula change be distinguished from old rows when
+    # auditing predictions against real outcomes, rather than every
+    # historical estimate silently looking like it came from whatever
+    # formula is live today. NULL only for rows written before this
+    # column existed (see migration 20260720_0039's backfill, which uses
+    # the explicit sentinel 'legacy_unversioned' rather than guessing).
+    algorithm_version: Mapped[str | None] = mapped_column(String(20))
+    # canonical_request_hash(...) over every material input to the
+    # calculation (including algorithm_version) -- open_and_estimate's
+    # replay-safety check compares this instead of a hand-picked subset
+    # of fields, so a change to any material input (not just the ones
+    # someone remembered to compare) correctly fails replay instead of
+    # silently returning stale results. NULL for legacy rows: their
+    # original daily_portion_grams was never captured in `provenance`,
+    # so reconstructing a hash for them would be a guess, not a fact.
+    request_hash: Mapped[str | None] = mapped_column(String(64))

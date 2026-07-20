@@ -84,7 +84,9 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "default_batch_threshold_quantity IS NULL OR default_batch_threshold_quantity > 0",
             name="positive_default_batch_threshold",
         ),
-        CheckConstraint("mode IN ('full_payment','reserve')", name="valid_mode"),
+        CheckConstraint(
+            "mode IN ('full_payment','reserve','concierge_only')", name="valid_mode"
+        ),
     )
 
     product_id: Mapped[UUID] = mapped_column(ForeignKey("catalog_products.id"), index=True)
@@ -114,16 +116,22 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         String(20), default="aggregated", nullable=False
     )
     # Default minimum-viable-quantity threshold for batches auto-opened
-    # against this offer (app.modules.purchasing.service). Null until an
-    # operator configures it; a batch opened with no configured default
-    # falls back to a threshold of 1 (i.e. no real aggregation benefit),
-    # never a guessed number -- see ADR-006.
+    # against this offer (app.modules.purchasing.service). Required before
+    # sourcing_route can be set to 'aggregated' (enforced at
+    # PATCH /offers/{id}/sourcing-config) -- opening a pooled batch with no
+    # real threshold configured gave "aggregation" no actual pooling
+    # effect, see ADR-006's 2026-07-20 amendment.
     default_batch_threshold_quantity: Mapped[int | None] = mapped_column(Integer)
     # 'full_payment' (default): the existing, only-live checkout path.
     # 'reserve': zero-charge reservation -> operator source/price
     # reconfirmation -> customer approval -> full-payment order (Workstream
     # 2C, app.modules.reservations) -- gated off entirely behind
     # settings.reserve_now_enabled=False until a launch decision is made.
+    # 'concierge_only': a one-off Offer/Product pair lazily created when a
+    # customer accepts a verified concierge offer (Workstream 4,
+    # app.modules.concierge) -- hidden from public browse/search/detail
+    # until an operator deliberately promotes it; never returned by the
+    # ordinary full-payment checkout eligibility check.
     # Never invents a deposit/partial-payment concept either way.
     mode: Mapped[str] = mapped_column(String(20), default="full_payment", nullable=False)
     # PostgreSQL STORED GENERATED columns (migration 20260719_0027):

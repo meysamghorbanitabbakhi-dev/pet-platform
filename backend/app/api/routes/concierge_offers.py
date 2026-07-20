@@ -57,6 +57,7 @@ class ConciergeOfferUnavailableBody(BaseModel):
 
 class ConciergeOfferPromoteBody(BaseModel):
     rationale: str = Field(min_length=5, max_length=2000)
+    default_batch_threshold_quantity: int = Field(gt=0)
 
 
 class OfferPresentationBody(BaseModel):
@@ -439,7 +440,11 @@ async def operator_promote_offer(
         raise HTTPException(status_code=404, detail="concierge_offer_not_found")
     try:
         await promote_to_catalog(
-            session, offer=offer, operator_id=operator.id, rationale=body.rationale
+            session,
+            offer=offer,
+            operator_id=operator.id,
+            rationale=body.rationale,
+            default_batch_threshold_quantity=body.default_batch_threshold_quantity,
         )
     except ConciergeOfferError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

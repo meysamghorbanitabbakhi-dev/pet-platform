@@ -73,6 +73,19 @@ async def _find_or_open_batch(session: AsyncSession, *, offer: Offer) -> Purchas
     if existing_batch is not None:
         return existing_batch
 
+    if offer.default_batch_threshold_quantity is None:
+        # An unconfigured threshold used to silently fall back to 1 --
+        # "no real aggregation benefit," per the offer's own comment. That
+        # let an offer accidentally left on the aggregated route commit
+        # supplier money after a single order, defeating the entire point
+        # of pooling. An operator must explicitly configure a real number
+        # (via PATCH /offers/{id}/sourcing-config) before this route can
+        # open a batch; nothing here guesses one.
+        raise PurchasingError(
+            f"offer {offer.id} is on the aggregated sourcing route with no "
+            "default_batch_threshold_quantity configured"
+        )
+
     # No open batch was visible -- try to open one. A concurrent transaction
     # may be doing the same thing right now; the partial unique index (one
     # open aggregated batch per offer) makes only one of us win. The insert
@@ -85,7 +98,7 @@ async def _find_or_open_batch(session: AsyncSession, *, offer: Offer) -> Purchas
         grouping_mode="aggregated",
         status="open",
         deadline_at=now + _ROLLING_DEADLINE,
-        minimum_viable_threshold_quantity=offer.default_batch_threshold_quantity or 1,
+        minimum_viable_threshold_quantity=offer.default_batch_threshold_quantity,
     )
     try:
         async with session.begin_nested():
@@ -177,6 +190,46 @@ async def commit_batch(
         PurchaseBatchEvent(
             purchase_batch_id=batch.id,
             event_type="committed",
+            occurred_at=now,
+            reason=reason,
+            operator_identity_id=operator_id,
+        )
+    )
+    await session.flush()
+    return batch
+
+
+async def cancel_batch(
+    session: AsyncSession, *, batch: PurchaseBatch, operator_id: UUID, reason: str
+) -> PurchaseBatch:
+    """Operator abandons an open batch that will never be committed --
+    e.g. a misconfigured or no-longer-sourceable offer (ADR-006's deferred
+    "future ADR ... if/when a real operational need arises," triggered by
+    the gap-closure program). Replay-safe: cancelling an already-cancelled
+    batch is a no-op.
+
+    Deliberately conservative: only a batch with no active (un-voided)
+    allocations can be cancelled this way. A batch still holding paid
+    orders' allocations must have each of those orders cancelled through
+    the customer-cancellation path first (which voids its allocation) --
+    Decision 0.12's "must not silently cancel paid orders" means bulk-
+    detaching live orders from their batch is not a decision this function
+    gets to make unilaterally. Caller must have already row-locked `batch`.
+    """
+    if batch.status == "cancelled":
+        return batch
+    if batch.status == "committed":
+        raise PurchasingError("batch is already committed")
+    if batch.allocated_quantity != 0:
+        raise PurchasingError("batch has active allocations and cannot be cancelled directly")
+    now = utc_now()
+    batch.status = "cancelled"
+    batch.cancelled_at = now
+    batch.cancelled_by_operator_id = operator_id
+    session.add(
+        PurchaseBatchEvent(
+            purchase_batch_id=batch.id,
+            event_type="cancelled",
             occurred_at=now,
             reason=reason,
             operator_identity_id=operator_id,

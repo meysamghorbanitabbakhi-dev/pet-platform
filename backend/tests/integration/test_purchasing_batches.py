@@ -5,6 +5,7 @@ import os
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from datetime import timedelta
 
 import pytest
 from app.common.time import utc_now
@@ -52,7 +53,7 @@ class OfferSeed:
 
 
 async def _seed_offer(
-    *, sourcing_route: str = "aggregated", default_batch_threshold_quantity: int | None = None
+    *, sourcing_route: str = "aggregated", default_batch_threshold_quantity: int | None = 100
 ) -> OfferSeed:
     token = uuid.uuid4().hex[:10]
     async with SessionFactory() as session:
@@ -172,6 +173,48 @@ async def test_aggregated_route_pools_multiple_lines_into_the_same_batch() -> No
     assert batch.grouping_mode == "aggregated"
 
 
+async def test_a_batch_past_its_deadline_still_absorbs_new_allocations() -> None:
+    """deadline_at is deliberately informational, per ADR-006: a
+    "visible weekly deadline" signal for the customer and an operator
+    review prompt, not an automation trigger -- commitment always
+    requires a human evidence-bearing action, and there is no batch
+    status between 'open' and 'committed'/'cancelled' for a deadline to
+    transition a batch into. The DB schema enforces at most one 'open'
+    aggregated batch per offer (uq_purchasing_batches_one_open_aggregated_per_offer);
+    a second still-open batch cannot coexist with an expired-but-open one,
+    so a passed deadline does not, and structurally cannot, redirect new
+    demand into a fresh batch without a schema change this pass does not
+    make. This is the deliberately-unchanged behavior, guarded against
+    regression."""
+    seed = await _seed_offer(sourcing_route="aggregated", default_batch_threshold_quantity=100)
+    line_a = await _add_line(seed, quantity=3)
+    line_b = await _add_line(seed, quantity=4)
+
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.offer_id)
+        assert offer is not None
+        alloc_a = await allocate_order_line_to_batch(session, order_line=line_a, offer=offer)
+        await session.commit()
+    async with SessionFactory() as session:
+        batch = await session.get(PurchaseBatch, alloc_a.purchase_batch_id, with_for_update=True)
+        assert batch is not None
+        batch.deadline_at = utc_now() - timedelta(hours=1)
+        await session.commit()
+
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.offer_id)
+        assert offer is not None
+        alloc_b = await allocate_order_line_to_batch(session, order_line=line_b, offer=offer)
+        await session.commit()
+
+    assert alloc_b.purchase_batch_id == alloc_a.purchase_batch_id
+    async with SessionFactory() as session:
+        batch = await session.get(PurchaseBatch, alloc_a.purchase_batch_id)
+    assert batch is not None
+    assert batch.status == "open"
+    assert batch.allocated_quantity == 7
+
+
 async def test_allocation_is_idempotent_on_replay() -> None:
     seed = await _seed_offer()
     line = await _add_line(seed, quantity=2)
@@ -235,21 +278,23 @@ async def test_threshold_reached_is_recorded_exactly_once_when_crossed() -> None
     assert event_count == 1
 
 
-async def test_no_configured_threshold_falls_back_to_one_not_a_guessed_number() -> None:
+async def test_no_configured_threshold_refuses_to_open_a_batch() -> None:
+    """Gap-closure ADR-006 amendment: an unconfigured threshold used to
+    silently open a batch with threshold=1 ("no real aggregation benefit,
+    not a guessed number"). That let a misconfigured aggregated offer
+    commit supplier money after a single order, defeating the point of
+    pooling -- PATCH /offers/{id}/sourcing-config now refuses to set
+    sourcing_route='aggregated' without a threshold, and this is the
+    defensive guard for any offer that reaches allocation in that state
+    anyway (pre-existing rows, direct DB writes)."""
     seed = await _seed_offer(default_batch_threshold_quantity=None)
     line = await _add_line(seed, quantity=1)
 
     async with SessionFactory() as session:
         offer = await session.get(Offer, seed.offer_id)
         assert offer is not None
-        allocation = await allocate_order_line_to_batch(session, order_line=line, offer=offer)
-        await session.commit()
-
-    async with SessionFactory() as session:
-        batch = await session.get(PurchaseBatch, allocation.purchase_batch_id)
-    assert batch is not None
-    assert batch.minimum_viable_threshold_quantity == 1
-    assert batch.threshold_reached_at is not None
+        with pytest.raises(PurchasingError, match="default_batch_threshold_quantity"):
+            await allocate_order_line_to_batch(session, order_line=line, offer=offer)
 
 
 async def test_concurrent_allocation_opens_exactly_one_aggregated_batch() -> None:
@@ -484,6 +529,7 @@ async def test_real_checkout_and_payment_verify_allocates_the_order_line_to_a_ba
             sourcing_capacity_status="open",
             minimum_shelf_life_months=6,
             sourcing_route="aggregated",
+            default_batch_threshold_quantity=100,
         )
         session.add(offer)
         await session.commit()

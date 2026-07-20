@@ -1692,6 +1692,11 @@
       },
       "ConciergeOfferPromoteBody": {
         "properties": {
+          "default_batch_threshold_quantity": {
+            "exclusiveMinimum": 0.0,
+            "title": "Default Batch Threshold Quantity",
+            "type": "integer"
+          },
           "rationale": {
             "maxLength": 2000,
             "minLength": 5,
@@ -1700,7 +1705,8 @@
           }
         },
         "required": [
-          "rationale"
+          "rationale",
+          "default_batch_threshold_quantity"
         ],
         "title": "ConciergeOfferPromoteBody",
         "type": "object"
@@ -8844,6 +8850,21 @@
         "title": "PurchaseBatchAllocationResponse",
         "type": "object"
       },
+      "PurchaseBatchCancelBody": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "PurchaseBatchCancelBody",
+        "type": "object"
+      },
       "PurchaseBatchCommitBody": {
         "properties": {
           "commitment_reference": {
@@ -9858,6 +9879,21 @@
         "title": "ReorderSnoozeBody",
         "type": "object"
       },
+      "ReplenishmentInvalidateBody": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ReplenishmentInvalidateBody",
+        "type": "object"
+      },
       "ReplenishmentReservationApproveBody": {
         "properties": {
           "address_id": {
@@ -9888,6 +9924,207 @@
           }
         },
         "title": "ReplenishmentReservationDeclineBody",
+        "type": "object"
+      },
+      "ReplenishmentReservationDetailResponse": {
+        "properties": {
+          "approval_expires_at": {
+            "format": "date-time",
+            "title": "Approval Expires At",
+            "type": "string"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "auto_charged": {
+            "const": false,
+            "default": false,
+            "title": "Auto Charged",
+            "type": "boolean"
+          },
+          "declined_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declined At"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ReplenishmentReservationEventResponse"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "expired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expired At"
+          },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invalidated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invalidated At"
+          },
+          "inventory_unit_id": {
+            "format": "uuid",
+            "title": "Inventory Unit Id",
+            "type": "string"
+          },
+          "offer_id": {
+            "format": "uuid",
+            "title": "Offer Id",
+            "type": "string"
+          },
+          "pet_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pet Id"
+          },
+          "predicted_depletion_high_days": {
+            "title": "Predicted Depletion High Days",
+            "type": "integer"
+          },
+          "predicted_depletion_low_days": {
+            "title": "Predicted Depletion Low Days",
+            "type": "integer"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "resulting_order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resulting Order Id"
+          },
+          "status": {
+            "enum": [
+              "pending_approval",
+              "approved",
+              "declined",
+              "expired",
+              "invalidated"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "household_id",
+          "inventory_unit_id",
+          "product_id",
+          "offer_id",
+          "quantity",
+          "predicted_depletion_low_days",
+          "predicted_depletion_high_days",
+          "status",
+          "approval_expires_at",
+          "events"
+        ],
+        "title": "ReplenishmentReservationDetailResponse",
+        "type": "object"
+      },
+      "ReplenishmentReservationEventResponse": {
+        "properties": {
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "identity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Id"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "event_type",
+          "occurred_at",
+          "reason",
+          "identity_id"
+        ],
+        "title": "ReplenishmentReservationEventResponse",
         "type": "object"
       },
       "ReplenishmentReservationResponse": {
@@ -10337,7 +10574,7 @@
       "ShelfLifeExceptionProposeBody": {
         "properties": {
           "additional_discount_irr": {
-            "minimum": 0.0,
+            "exclusiveMinimum": 0.0,
             "title": "Additional Discount Irr",
             "type": "integer"
           },
@@ -16693,6 +16930,64 @@
         ]
       }
     },
+    "/api/v1/operator/purchase-batches/{batch_id}/cancel": {
+      "post": {
+        "operationId": "cancel_purchase_batch_api_v1_operator_purchase_batches__batch_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseBatchCancelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Purchase Batch",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
     "/api/v1/operator/purchase-batches/{batch_id}/commit": {
       "post": {
         "operationId": "commit_purchase_batch_api_v1_operator_purchase_batches__batch_id__commit_post",
@@ -16746,6 +17041,170 @@
           }
         ],
         "summary": "Commit Purchase Batch",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/replenishment-reservations": {
+      "get": {
+        "operationId": "list_replenishment_reservations_api_v1_operator_replenishment_reservations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReplenishmentReservationResponse"
+                  },
+                  "title": "Response List Replenishment Reservations Api V1 Operator Replenishment Reservations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Replenishment Reservations",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/replenishment-reservations/{reservation_id}": {
+      "get": {
+        "operationId": "get_replenishment_reservation_api_v1_operator_replenishment_reservations__reservation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reservation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplenishmentReservationDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Replenishment Reservation",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/replenishment-reservations/{reservation_id}/invalidate": {
+      "post": {
+        "operationId": "invalidate_replenishment_reservation_api_v1_operator_replenishment_reservations__reservation_id__invalidate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reservation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplenishmentInvalidateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplenishmentReservationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Invalidate Replenishment Reservation",
         "tags": [
           "operator"
         ]

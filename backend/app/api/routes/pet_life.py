@@ -225,7 +225,7 @@ class IdResponse(BaseModel):
 async def create_household(
     body: HouseholdBody, identity: CurrentIdentity, session: SessionDependency
 ) -> IdResponse:
-    household = Household(name=body.name)
+    household = Household(name=body.name, created_by_identity_id=identity.id)
     session.add(household)
     await session.flush()
     session.add(
@@ -1743,12 +1743,20 @@ async def _reorder_options(
 ) -> list[ReorderOptionResponse]:
     if unit.product_id is None:
         return []
+    # mode=full_payment only: a reorder option here is something ordinary
+    # checkout can actually accept (which now rejects 'reserve' and
+    # 'concierge_only' offers). 'reserve' offers need their own operator
+    # reconfirmation workflow and 'concierge_only' offers are bound to one
+    # specific customer/request -- neither belongs in a generic reorder
+    # list. Same definition as _find_available_offer in
+    # app.modules.replenishment.reservations; keep both in sync.
     offers = list(
         (
             await session.scalars(
                 select(Offer)
                 .where(
                     Offer.product_id == unit.product_id,
+                    Offer.mode == "full_payment",
                     Offer.status.in_(("active", "unavailable")),
                 )
                 .order_by(Offer.status, Offer.created_at, Offer.id)

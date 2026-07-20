@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -241,7 +241,9 @@ async def approve_and_convert_reservation(
     offer.price_irr at whatever moment this happens to run) and returns
     it for the caller to proceed through the existing PaymentService
     flow. Idempotent: approving an already-converted reservation returns
-    the same order. Caller must have already row-locked `reservation`.
+    the same order. Caller must have already row-locked `reservation`
+    AND `offer` (the latter so the availability/capacity re-check below
+    is race-free against a concurrent operator/other-order change).
     """
     if reservation.status == "converted":
         if reservation.order_id is None:
@@ -261,6 +263,34 @@ async def approve_and_convert_reservation(
         raise ReservationError("delivery_address_unavailable")
     if reservation.reconfirmed_price_irr is None:
         raise ReservationError("reservation_missing_reconfirmed_price")
+    # Re-validate everything at the moment of conversion, not just at
+    # proposal time -- an operator's reconfirmation can say "not actually
+    # available" (reconfirmed_available=False) and still be proposed to
+    # the customer as a factual update; that must never be convertible
+    # into a real order. The underlying offer can also have been paused,
+    # retired, or hit its available_until window, or lost sourcing
+    # capacity, in the time between proposal and the customer's approval
+    # click -- caller must have already row-locked `offer` for this to be
+    # race-free against a concurrent capacity change.
+    if reservation.reconfirmed_available is not True:
+        raise ReservationError("reservation_not_available")
+    if offer.status != "active" or offer.sourcing_capacity_status != "open":
+        raise ReservationError("offer_unavailable")
+    if offer.available_from is not None and now < offer.available_from:
+        raise ReservationError("offer_unavailable")
+    if offer.available_until is not None and now >= offer.available_until:
+        raise ReservationError("offer_unavailable")
+    if offer.max_pending_quantity is not None:
+        pending = await session.scalar(
+            select(func.coalesce(func.sum(OrderLine.quantity), 0))
+            .join(Order, Order.id == OrderLine.order_id)
+            .where(
+                OrderLine.offer_id == offer.id,
+                Order.status.in_(("awaiting_payment", "paid", "sourcing")),
+            )
+        )
+        if int(pending or 0) + reservation.quantity > offer.max_pending_quantity:
+            raise ReservationError("offer_capacity_exhausted")
 
     line_total = reservation.reconfirmed_price_irr * reservation.quantity
     delivery_snapshot: dict[str, Any] = {
