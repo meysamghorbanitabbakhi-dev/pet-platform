@@ -34,3 +34,20 @@ corresponding media backup is not a complete platform backup.
 - who may initiate and approve a restore;
 - media behavior when the primary host is lost.
 
+## Rehearsal evidence (2026-07-20, Workstream 9)
+
+Steps 1-4 above were rehearsed against the live dev-stack PostgreSQL container without touching
+the shared database other tests depend on: `pg_dump --format=custom` (10.96 MB, 88 tables) into a
+newly created, disposable `rehearsal_restore` database via `pg_restore`, then verified with direct
+row/table counts rather than trusting a clean exit code alone -- table count (88), `orders_orders`
+row count (5,674), and `alembic_version` (`20260720_0037`) all matched the source exactly. The
+disposable database and dump file were dropped/removed immediately after.
+
+**Not rehearsed in this pass**: the paired media-volume backup/restore (step 3), starting an API
+instance against the restored database and exercising readiness/media-auth/audit checks (steps
+5-6), and a host-loss/full-environment-recreation scenario. This dev sandbox has no configured
+off-host destination, no media volume with representative content to make that rehearsal
+meaningful, and no second environment to stand an API instance up against the restored data.
+Genuine confidence in a full recovery still requires performing steps 3, 5, and 6 for real, ideally
+against a copy of production-scale data, before relying on this runbook operationally.
+
