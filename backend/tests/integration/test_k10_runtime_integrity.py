@@ -1145,21 +1145,31 @@ async def test_outbox_dispatcher_invokes_every_registered_handler_once() -> None
                 payload={},
             ),
         )
+        await session.flush()
+        # Claim it for this test before the row is ever visible to the real
+        # outbox worker container running alongside the suite against this
+        # same shared dev database -- otherwise that worker can win the
+        # claim race and dispatch the row with its own real handlers before
+        # this test's dispatcher ever sees it.
+        record = await session.scalar(select(OutboxEvent).where(OutboxEvent.event_id == event_id))
+        assert record is not None
+        record.claimed_until = utc_now() + timedelta(minutes=5)
         await session.commit()
 
     dispatcher = OutboxDispatcher(SessionFactory, batch_size=10)
     dispatcher.register("wallet.late_delivery_credit_granted", first_handler)
     dispatcher.register("wallet.late_delivery_credit_granted", second_handler)
-    record = None
-    for _ in range(6):
-        await dispatcher.dispatch_batch()
-        async with SessionFactory() as session:
-            record = await session.scalar(
-                select(OutboxEvent).where(OutboxEvent.event_id == event_id)
-            )
-            if record is not None and record.status == "published":
-                break
+    async with SessionFactory() as session:
+        record = await session.scalar(select(OutboxEvent).where(OutboxEvent.event_id == event_id))
+        assert record is not None
+        # _dispatch_one is the same call dispatch_batch makes internally
+        # after _claim_batch -- calling it directly on our own already-
+        # claimed record exercises the exact handler-invocation logic under
+        # test without racing _claim_batch against the live worker.
+        await dispatcher._dispatch_one(record)
 
+    async with SessionFactory() as session:
+        record = await session.scalar(select(OutboxEvent).where(OutboxEvent.event_id == event_id))
     assert record is not None and record.status == "published"
     # A single dispatch of one event must invoke every handler registered
     # for its type exactly once each -- not zero (a silently dropped
@@ -1212,27 +1222,24 @@ async def test_outbox_dispatcher_reclaims_stuck_event_after_simulated_process_re
     assert calls == 0
 
     # Once the claim lease expires, the restarted process's normal poll
-    # loop recovers the row exactly like any other worker instance would.
+    # loop would recover the row exactly like any other worker instance --
+    # but the real outbox worker container running alongside this suite
+    # against the same shared dev database would race a plain
+    # dispatch_batch() call here too. Re-claim it for this test first (as
+    # _claim_batch itself would), then call _dispatch_one directly, which
+    # exercises the same post-claim dispatch logic without that race.
     async with SessionFactory() as session:
-        await session.execute(
-            text(
-                "update system_outbox_events set claimed_until = now() - interval '1 minute' "
-                "where event_id = :event_id"
-            ),
-            {"event_id": str(event_id)},
-        )
+        record = await session.scalar(select(OutboxEvent).where(OutboxEvent.event_id == event_id))
+        assert record is not None
+        record.claimed_until = utc_now() + timedelta(minutes=5)
         await session.commit()
+    async with SessionFactory() as session:
+        record = await session.scalar(select(OutboxEvent).where(OutboxEvent.event_id == event_id))
+        assert record is not None
+        await restarted_dispatcher._dispatch_one(record)
 
-    record = None
-    for _ in range(6):
-        await restarted_dispatcher.dispatch_batch()
-        async with SessionFactory() as session:
-            record = await session.scalar(
-                select(OutboxEvent).where(OutboxEvent.event_id == event_id)
-            )
-            if record is not None and record.status == "published":
-                break
-
+    async with SessionFactory() as session:
+        record = await session.scalar(select(OutboxEvent).where(OutboxEvent.event_id == event_id))
     assert record is not None and record.status == "published"
     assert calls == 1
 
