@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     Text,
     select,
+    update,
 )
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import Mapped, mapped_column
@@ -142,6 +143,21 @@ async def propose_shelf_life_exception(
     )
     if active is not None:
         raise ShelfLifeExceptionError("exception_already_exists_for_line")
+    already_refunded = await session.scalar(
+        select(ShelfLifeException.id).where(
+            ShelfLifeException.order_line_id == order_line.id,
+            ShelfLifeException.refund_status == "operator_attested",
+        )
+    )
+    if already_refunded is not None:
+        # A prior exception's refund for this exact line has already been
+        # paid out (declined/expired -> operator attested the full-line
+        # refund). Re-offering the line now would let the customer both
+        # keep that refund and receive/accept the product -- a genuine
+        # double payout, not merely a bookkeeping inconsistency. The
+        # operator's only path forward here is a new order line (a fresh
+        # purchase), not a further exception against this one.
+        raise ShelfLifeExceptionError("order_line_refund_already_paid")
     now = utc_now()
     exception = ShelfLifeException(
         order_line_id=order_line.id,
@@ -187,6 +203,31 @@ def _expire_if_past_deadline(
     return True
 
 
+async def _supersede_prior_owed_refunds(
+    session: AsyncSession, *, order_line_id: UUID, keep_exception_id: UUID
+) -> None:
+    """A line can cycle through several proposals (re-proposal after
+    decline/expiry, ADR-007's amendment); only one full-line refund should
+    ever be payable for it at a time. Whenever a proposal newly reaches a
+    terminal state that sets its own 'owed' refund (or supersedes the need
+    for one, on accept), any *other* exception for the same line still
+    sitting at 'owed' from an earlier cycle must stop being payable --
+    otherwise more than one of them could be attested, a genuine double
+    liability. 'superseded' is a distinct terminal state from
+    'operator_attested' precisely so attest_refund's existing
+    refund_status == 'owed' check rejects it by construction, not a new
+    runtime guard bolted on top."""
+    await session.execute(
+        update(ShelfLifeException)
+        .where(
+            ShelfLifeException.order_line_id == order_line_id,
+            ShelfLifeException.id != keep_exception_id,
+            ShelfLifeException.refund_status == "owed",
+        )
+        .values(refund_status="superseded")
+    )
+
+
 async def accept_shelf_life_exception(
     session: AsyncSession,
     *,
@@ -210,6 +251,9 @@ async def accept_shelf_life_exception(
         raise ShelfLifeExceptionError(f"exception_not_open_for_response:{exception.status}")
     now = utc_now()
     if _expire_if_past_deadline(exception, order_line, now):
+        await _supersede_prior_owed_refunds(
+            session, order_line_id=order_line.id, keep_exception_id=exception.id
+        )
         await session.flush()
         raise ShelfLifeExceptionError("exception_response_window_expired")
     assurance = await session.scalar(
@@ -229,6 +273,20 @@ async def accept_shelf_life_exception(
     if exception.additional_discount_irr > 0:
         exception.refund_status = "owed"
         exception.refund_amount_irr = exception.additional_discount_irr
+    # Restores deliverability: a prior proposal for this same line may
+    # have been declined or allowed to expire, which sets this flag (see
+    # _expire_if_past_deadline and decline_shelf_life_exception below) --
+    # left set, project_delivered_order would permanently skip this line
+    # despite the SourcedUnitEvidence just added below making it genuinely
+    # deliverable now. See ADR-007's amendment.
+    order_line.excluded_from_delivery_at = None
+    # already_refunded (propose_shelf_life_exception) should already have
+    # blocked ever reaching accept for a line whose refund was paid
+    # *before* this proposal existed; this also covers attestation
+    # happening concurrently with this acceptance.
+    await _supersede_prior_owed_refunds(
+        session, order_line_id=order_line.id, keep_exception_id=exception.id
+    )
     session.add(
         SourcedUnitEvidence(
             order_line_id=order_line.id,
@@ -263,6 +321,9 @@ async def decline_shelf_life_exception(
         raise ShelfLifeExceptionError(f"exception_not_open_for_response:{exception.status}")
     now = utc_now()
     if _expire_if_past_deadline(exception, order_line, now):
+        await _supersede_prior_owed_refunds(
+            session, order_line_id=order_line.id, keep_exception_id=exception.id
+        )
         await session.flush()
         raise ShelfLifeExceptionError("exception_response_window_expired")
     exception.status = "declined"
@@ -271,6 +332,14 @@ async def decline_shelf_life_exception(
     exception.refund_status = "owed"
     exception.refund_amount_irr = order_line.line_total_irr
     order_line.excluded_from_delivery_at = now
+    # Superseding here too (not just on accept): a line can be declined
+    # more than once across successive re-proposal cycles, and each
+    # decline sets its own fresh 'owed' full-line refund -- without this,
+    # an earlier cycle's already-owed refund for the same line would
+    # remain independently attestable alongside this one.
+    await _supersede_prior_owed_refunds(
+        session, order_line_id=order_line.id, keep_exception_id=exception.id
+    )
     await session.flush()
     return exception
 
@@ -306,6 +375,9 @@ async def expire_stale_shelf_life_exceptions(
             if order_line is None:
                 continue
             if _expire_if_past_deadline(exception, order_line, now):
+                await _supersede_prior_owed_refunds(
+                    session, order_line_id=order_line.id, keep_exception_id=exception.id
+                )
                 expired += 1
         await session.commit()
         return expired

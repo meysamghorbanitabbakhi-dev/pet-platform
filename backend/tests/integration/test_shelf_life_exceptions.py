@@ -110,9 +110,7 @@ async def _seed_unsourced_line(
         customer = AuthIdentity(
             identity_type="customer", mobile_e164=f"+98919{token[:7]}", status="active"
         )
-        supplier = Supplier(
-            internal_name=f"sle-supplier-{token}", country_code="FR", active=True
-        )
+        supplier = Supplier(internal_name=f"sle-supplier-{token}", country_code="FR", active=True)
         product = Product(name_fa=f"محصول انقضا {token}", status="active")
         household = Household(name=f"hh-sle-{token}")
         session.add_all([operator, customer, supplier, product, household])
@@ -363,24 +361,163 @@ async def test_propose_after_decline_creates_a_fresh_exception() -> None:
     assert second.additional_discount_irr == 200_000
 
 
+async def test_full_reproposal_lifecycle_delivery_and_refund_reconciliation() -> None:
+    """The complete scenario a genuine correctness bug was found in:
+    propose -> decline -> re-propose -> accept -> delivery projection ->
+    delivery -> refund reconciliation. Before the fix, accepting the
+    second proposal never cleared order_line.excluded_from_delivery_at
+    (set by the first decline), so project_delivered_order would
+    permanently skip a line with real, accepted SourcedUnitEvidence; and
+    the first proposal's full-line refund stayed independently
+    attestable alongside the second proposal's own (smaller) discount
+    refund -- a genuine double-liability, not just stale bookkeeping."""
+    seed = await _seed_unsourced_line(quantity=1)
+    first_id = await _propose(seed, additional_discount_irr=50_000)
+    async with SessionFactory() as session:
+        exception = await session.get(ShelfLifeException, first_id, with_for_update=True)
+        line = await session.get(OrderLine, seed.order_line_id)
+        assert exception is not None and line is not None
+        await decline_shelf_life_exception(
+            session, exception=exception, order_line=line, customer_identity_id=seed.customer_id
+        )
+        await session.commit()
+    async with SessionFactory() as session:
+        line = await session.get(OrderLine, seed.order_line_id)
+        first = await session.get(ShelfLifeException, first_id)
+        assert line is not None and line.excluded_from_delivery_at is not None
+        assert first is not None and first.refund_status == "owed"
+        assert first.refund_amount_irr == seed.line_total_irr
+
+    second_id = await _propose(seed, additional_discount_irr=200_000)
+    async with SessionFactory() as session:
+        exception = await session.get(ShelfLifeException, second_id, with_for_update=True)
+        line = await session.get(OrderLine, seed.order_line_id)
+        assert exception is not None and line is not None
+        await accept_shelf_life_exception(
+            session,
+            exception=exception,
+            order_line=line,
+            supplier_id=seed.supplier_id,
+            customer_identity_id=seed.customer_id,
+        )
+        await session.commit()
+
+    async with SessionFactory() as session:
+        line = await session.get(OrderLine, seed.order_line_id)
+        first = await session.get(ShelfLifeException, first_id)
+        second = await session.get(ShelfLifeException, second_id)
+        order = await session.get(Order, seed.order_id)
+        assert order is not None
+        order.status = "delivered"
+        order.delivered_at = utc_now()
+        await session.commit()
+    # The accepted line is deliverable again -- the first decline's
+    # exclusion no longer silently overrides the second proposal's
+    # acceptance.
+    assert line is not None and line.excluded_from_delivery_at is None
+    # Only one refund is payable for this line at a time: the first
+    # proposal's full-line refund is superseded (no longer 'owed') the
+    # moment a later proposal for the same line is accepted; the second
+    # proposal's own (smaller) discount is what remains payable.
+    assert first is not None and first.refund_status == "superseded"
+    assert second is not None and second.refund_status == "owed"
+    assert second.refund_amount_irr == 200_000
+
+    async with SessionFactory() as session:
+        units = await project_delivered_order(
+            session, order_id=seed.order_id, household_id=seed.household_id
+        )
+        await session.commit()
+    assert len(units) == 1
+    assert units[0].order_line_id == seed.order_line_id
+
+    # Refund reconciliation: the superseded (first) refund can never be
+    # attested -- attest_refund's own refund_status == 'owed' check
+    # rejects anything else by construction, not a new guard bolted on.
+    evidence_id = await _evidence_file(seed.operator_id)
+    async with SessionFactory() as session:
+        first = await session.get(ShelfLifeException, first_id, with_for_update=True)
+        assert first is not None
+        with pytest.raises(RefundAttestationError, match="refund_not_owed:superseded"):
+            attest_refund(
+                first, operator_id=seed.operator_id, evidence_id=evidence_id, reference=None
+            )
+    # The second (accepted) proposal's own discount refund is exactly
+    # what remains legitimately payable.
+    async with SessionFactory() as session:
+        second = await session.get(ShelfLifeException, second_id, with_for_update=True)
+        assert second is not None
+        attest_refund(
+            second, operator_id=seed.operator_id, evidence_id=evidence_id, reference="PAY-2"
+        )
+        await session.commit()
+    async with SessionFactory() as session:
+        second = await session.get(ShelfLifeException, second_id)
+        assert second is not None and second.refund_status == "operator_attested"
+
+
+async def test_propose_rejects_a_new_exception_once_a_prior_refund_is_already_paid() -> None:
+    """If the first proposal's refund was already paid out (operator
+    attested it) before any re-proposal exists, offering a new exception
+    for the same line would let the customer keep that refund *and*
+    receive/accept the product -- a genuine double payout. The only
+    correct path forward is a new order line, not a further exception
+    against this one."""
+    seed = await _seed_unsourced_line(quantity=1)
+    first_id = await _propose(seed, additional_discount_irr=50_000)
+    async with SessionFactory() as session:
+        exception = await session.get(ShelfLifeException, first_id, with_for_update=True)
+        line = await session.get(OrderLine, seed.order_line_id)
+        assert exception is not None and line is not None
+        await decline_shelf_life_exception(
+            session, exception=exception, order_line=line, customer_identity_id=seed.customer_id
+        )
+        await session.commit()
+    evidence_id = await _evidence_file(seed.operator_id)
+    async with SessionFactory() as session:
+        first = await session.get(ShelfLifeException, first_id, with_for_update=True)
+        assert first is not None
+        attest_refund(
+            first, operator_id=seed.operator_id, evidence_id=evidence_id, reference="PAY-1"
+        )
+        await session.commit()
+
+    too_short_expiry = date.today() + timedelta(days=30 * (seed.minimum_shelf_life_months - 4))
+    async with SessionFactory() as session:
+        line = await session.get(OrderLine, seed.order_line_id)
+        order = await session.get(Order, seed.order_id)
+        assert line is not None and order is not None
+        with pytest.raises(ShelfLifeExceptionError, match="order_line_refund_already_paid"):
+            await propose_shelf_life_exception(
+                session,
+                order_line=line,
+                order=order,
+                minimum_shelf_life_months=seed.minimum_shelf_life_months,
+                operator_id=seed.operator_id,
+                proposed_exact_expiry_date=too_short_expiry,
+                additional_discount_irr=100_000,
+                reason="should be rejected -- refund already paid",
+                evidence_file_id=evidence_id,
+                response_window_hours=72,
+            )
+
+
 async def test_propose_rejects_a_line_that_is_already_sourced() -> None:
     seed = await _seed_unsourced_line()
     async with SessionFactory() as session:
         line = await session.get(OrderLine, seed.order_line_id)
         assert line is not None
+        assurance = await session.scalar(
+            select(SupplierAssurance).where(SupplierAssurance.supplier_id == seed.supplier_id)
+        )
+        assert assurance is not None
         session.add(
             SourcedUnitEvidence(
                 order_line_id=line.id,
                 exact_expiry_date=date.today() + timedelta(days=400),
                 supplier_country_snapshot="FR",
                 authenticity_basis="supplier_verified",
-                supplier_assurance_id=(
-                    await session.scalar(
-                        select(SupplierAssurance).where(
-                            SupplierAssurance.supplier_id == seed.supplier_id
-                        )
-                    )
-                ).id,
+                supplier_assurance_id=assurance.id,
                 confirmed_at=utc_now(),
                 recorded_by_operator_id=seed.operator_id,
             )
@@ -935,7 +1072,7 @@ async def _audit_count(action: str, resource_id: str) -> int:
 
 
 async def test_http_hard_block_rejects_an_expiry_shorter_than_the_guarantee(
-    app_and_client: tuple[FastAPI, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unsourced_line(minimum_shelf_life_months=6)
@@ -961,7 +1098,7 @@ async def test_http_hard_block_rejects_an_expiry_shorter_than_the_guarantee(
 
 
 async def test_http_operator_propose_and_customer_accept_flow(
-    app_and_client: tuple[FastAPI, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unsourced_line()
@@ -985,9 +1122,7 @@ async def test_http_operator_propose_and_customer_accept_flow(
     exception_id = proposed.json()["id"]
     # Audited against the order line (the acted-upon resource), matching
     # confirm_sourced_unit's convention -- not the newly-created exception.
-    assert (
-        await _audit_count("shelf_life_exception.proposed", str(seed.order_line_id)) == 1
-    )
+    assert await _audit_count("shelf_life_exception.proposed", str(seed.order_line_id)) == 1
 
     app.dependency_overrides[get_current_identity] = lambda: customer
     listed = await client.get(f"/api/v1/orders/{seed.order_id}/shelf-life-exceptions")
@@ -1007,7 +1142,7 @@ async def test_http_operator_propose_and_customer_accept_flow(
 
 
 async def test_http_decline_is_non_enumerating_for_foreign_order(
-    app_and_client: tuple[FastAPI, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unsourced_line()
@@ -1030,13 +1165,11 @@ async def test_http_decline_is_non_enumerating_for_foreign_order(
         f"/api/v1/orders/{seed.order_id}/shelf-life-exceptions/{exception_id}/decline"
     )
     assert nonexistent_order.status_code == foreign_order.status_code == 404
-    assert (
-        nonexistent_order.json()["error"]["code"] == foreign_order.json()["error"]["code"]
-    )
+    assert nonexistent_order.json()["error"]["code"] == foreign_order.json()["error"]["code"]
 
 
 async def test_http_accept_and_list_are_non_enumerating_for_foreign_order(
-    app_and_client: tuple[FastAPI, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unsourced_line()
@@ -1052,9 +1185,7 @@ async def test_http_accept_and_list_are_non_enumerating_for_foreign_order(
         other_customer_obj = await session.get(AuthIdentity, other_customer_id)
     app.dependency_overrides[get_current_identity] = lambda: other_customer_obj
 
-    nonexistent_list = await client.get(
-        f"/api/v1/orders/{uuid.uuid4()}/shelf-life-exceptions"
-    )
+    nonexistent_list = await client.get(f"/api/v1/orders/{uuid.uuid4()}/shelf-life-exceptions")
     foreign_list = await client.get(f"/api/v1/orders/{seed.order_id}/shelf-life-exceptions")
     assert nonexistent_list.status_code == foreign_list.status_code == 404
     assert nonexistent_list.json()["error"]["code"] == foreign_list.json()["error"]["code"]
@@ -1066,9 +1197,7 @@ async def test_http_accept_and_list_are_non_enumerating_for_foreign_order(
         f"/api/v1/orders/{seed.order_id}/shelf-life-exceptions/{exception_id}/accept"
     )
     assert nonexistent_accept.status_code == foreign_accept.status_code == 404
-    assert (
-        nonexistent_accept.json()["error"]["code"] == foreign_accept.json()["error"]["code"]
-    )
+    assert nonexistent_accept.json()["error"]["code"] == foreign_accept.json()["error"]["code"]
 
     async with SessionFactory() as session:
         exception = await session.get(ShelfLifeException, exception_id)
@@ -1076,7 +1205,7 @@ async def test_http_accept_and_list_are_non_enumerating_for_foreign_order(
 
 
 async def test_http_operator_attests_refund_for_a_declined_exception(
-    app_and_client: tuple[FastAPI, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_unsourced_line()
