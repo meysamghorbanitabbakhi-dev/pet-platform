@@ -62,3 +62,50 @@ explicitly deferred (product decision record, Part XXI) and is not decided by th
   `deadline_at` is customer-visible/informational (Decision 0.11's "visible weekly deadline") and
   an operator-review signal, not an automation trigger, since commitment always requires a human
   evidence-bearing action per point 4 above.
+
+## Amendment (2026-07-20) — gap-closure program, Workstream 6
+
+The gap-closure mission brief flagged three items against this ADR. Each is addressed below;
+none required inventing an unspecified business number.
+
+1. **Fixed weekly cutoff vs. rolling deadline (point 3, "not a fixed calendar weekday")** — the
+   brief asked for a fixed weekday/timezone cutoff. This ADR's original reasoning was that no
+   decision record specifies which weekday or timezone convention to use, and guessing one would
+   itself be the silent-assumption failure this program's governance forbids. Asked directly,
+   the product owner confirmed: **keep the rolling 7-day-from-first-allocation deadline** — point
+   3 stands unchanged. This is recorded as the resolution, not a default assumption.
+2. **"Unsafe effective fallback threshold of one" (point 5)** — **superseded.** An `aggregated`
+   offer with no operator-configured `default_batch_threshold_quantity` no longer silently opens
+   a batch with a threshold of 1 (which gave "aggregation" no real pooling effect and could let a
+   single order look commit-ready). `PATCH /offers/{id}/sourcing-config` now rejects setting
+   `sourcing_route="aggregated"` without a threshold (422), and
+   `purchasing.service._find_or_open_batch` now raises `PurchasingError` defensively if it ever
+   encounters that state anyway (pre-existing rows, direct DB writes). Payment verification and
+   reconciliation both catch this as a distinct 500 (`purchase_batch_configuration_error`) rather
+   than crashing uncontrolled or silently mis-pooling — an operator-fixable configuration error,
+   not a customer error; nothing commits, so retry succeeds once the offer is configured. This
+   does not guess an economically meaningful number; it just requires the number this ADR always
+   said should be operator data, before rather than after the batch depends on it.
+3. **Deadline enforcement was considered and reverted** — investigating point 2 surfaced that
+   `_find_or_open_batch` reuses the current open batch for new allocations even after its
+   `deadline_at` has passed, so the "visible weekly deadline" (Decision 0.11) has no effect on
+   new demand by itself. An attempt to stop reusing an expired-but-open batch was implemented and
+   then reverted after its own test caught a real conflict: `uq_purchasing_batches_one_open_aggregated_per_offer`
+   enforces at most one `open` aggregated batch per offer at the database level, and there is no
+   batch status between `open` and `committed`/`cancelled` for a deadline to transition a batch
+   into — so a second, fresh batch cannot coexist with the first while it stays `open` awaiting
+   operator review. Re-reading this ADR's own point above (`deadline_at` is "customer-visible/
+   informational ... an operator-review signal, not an automation trigger") confirms this was the
+   correct original design, not an oversight: making the deadline gate new pooling is a real
+   feature that needs its own schema change (e.g. a `closed` status) and its own ADR, not a
+   drive-by fix bundled into this one. Left unchanged; guarded by
+   `test_a_batch_past_its_deadline_still_absorbs_new_allocations`.
+4. **Whole-batch cancellation ("out of scope ... future ADR")** — the gap-closure brief is that
+   future operational need. Implemented conservatively: `purchasing.service.cancel_batch` (via
+   `POST /operator/purchase-batches/{id}/cancel`) only cancels a batch with zero active
+   (un-voided) allocations. It does not bulk-detach or cancel any live paid order — Decision
+   0.12's constraint is preserved by construction, not by a runtime check. Cancelling a batch that
+   still holds live orders requires cancelling those orders individually first (the existing
+   customer-cancellation path already voids each one's allocation as it goes). A batch that
+   reaches zero allocations that way, or was opened but never allocated into, can now be marked
+   cancelled instead of sitting `open` forever with no path to resolution.

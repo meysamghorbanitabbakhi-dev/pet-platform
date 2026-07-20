@@ -72,6 +72,7 @@ from app.modules.payments.models import PaymentAttempt
 from app.modules.payments.service import PaymentService, PaymentWorkflowError
 from app.modules.pet_knowledge.search import normalize_persian_search
 from app.modules.pets.models import Pet
+from app.modules.purchasing.service import PurchasingError
 from app.modules.reservations.models import Reservation
 from app.modules.reservations.service import (
     ReservationError,
@@ -780,6 +781,13 @@ async def payment_callback(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ZarinpalError as exc:
         raise HTTPException(status_code=502, detail="payment_verification_failed") from exc
+    except PurchasingError as exc:
+        # A misconfigured aggregated offer (no default_batch_threshold_quantity)
+        # reaching payment -- an operator-fixable data problem, not a
+        # customer error. The payment itself is not marked verified since
+        # nothing in this transaction committed; retry (or the reconcile
+        # route) succeeds once the offer is configured.
+        raise HTTPException(status_code=500, detail="purchase_batch_configuration_error") from exc
     finally:
         await gateway.aclose()
     return PaymentCallbackResponse(

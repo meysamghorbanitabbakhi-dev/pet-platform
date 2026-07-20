@@ -532,7 +532,12 @@ async def expire_stale_offers(
 
 
 async def promote_to_catalog(
-    session: AsyncSession, *, offer: ConciergeOffer, operator_id: UUID, rationale: str
+    session: AsyncSession,
+    *,
+    offer: ConciergeOffer,
+    operator_id: UUID,
+    rationale: str,
+    default_batch_threshold_quantity: int,
 ) -> Offer:
     """Operator-discretion catalog promotion (Decision 0.37) -- the
     criteria (request frequency, conversion, repeat demand, source
@@ -541,10 +546,16 @@ async def promote_to_catalog(
     complexity) are inherently qualitative; this records the operator's
     reasoned decision rather than fabricating an automatic score.
     Flips the lazily-created one-off Offer's mode from 'concierge_only' to
-    'full_payment' (making it browsable/searchable) and lifts the
-    one-off max_pending_quantity cap. Idempotent: promoting an
-    already-promoted offer returns the same catalog Offer. Caller must
-    have already row-locked `offer`.
+    'full_payment' (making it browsable/searchable), moves it onto the
+    aggregated sourcing route, and lifts the one-off max_pending_quantity
+    cap. The operator must also set a real pooling threshold in the same
+    call -- the offer is about to start accepting arbitrary customers, so
+    it can no longer rely on the single verified quantity the concierge
+    cycle priced (see purchasing.service's requirement that an aggregated
+    offer always carry a configured threshold before it can open a batch).
+    Idempotent: promoting an already-promoted offer returns the same
+    catalog Offer, ignoring this call's threshold value. Caller must have
+    already row-locked `offer`.
     """
     if offer.catalog_promoted_at is not None:
         if offer.promoted_offer_id is None:
@@ -561,6 +572,7 @@ async def promote_to_catalog(
     now = utc_now()
     catalog_offer.mode = "full_payment"
     catalog_offer.sourcing_route = "aggregated"
+    catalog_offer.default_batch_threshold_quantity = default_batch_threshold_quantity
     catalog_offer.max_pending_quantity = None
     offer.catalog_promoted_at = now
     offer.catalog_promoted_by_operator_id = operator_id

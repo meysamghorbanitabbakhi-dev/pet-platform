@@ -780,10 +780,12 @@ async def test_promote_to_catalog_flips_mode_and_lifts_the_quantity_cap() -> Non
             offer=offer,
             operator_id=seed.operator_id,
             rationale="تقاضای تکراری و تامین پایدار در سه ماه گذشته",
+            default_batch_threshold_quantity=20,
         )
         await session.commit()
     assert catalog_offer.mode == "full_payment"
     assert catalog_offer.sourcing_route == "aggregated"
+    assert catalog_offer.default_batch_threshold_quantity == 20
     assert catalog_offer.max_pending_quantity is None
     async with SessionFactory() as session:
         offer = await session.get(ConciergeOffer, offer_id)
@@ -798,7 +800,11 @@ async def test_promote_to_catalog_rejects_a_non_accepted_offer() -> None:
         assert offer is not None
         with pytest.raises(ConciergeOfferError, match="offer_not_accepted"):
             await promote_to_catalog(
-                session, offer=offer, operator_id=seed.operator_id, rationale="too early"
+                session,
+                offer=offer,
+                operator_id=seed.operator_id,
+                rationale="too early",
+                default_batch_threshold_quantity=20,
             )
 
 
@@ -1161,7 +1167,10 @@ async def test_http_operator_concierge_routes_require_operator_role(
     assert unavailable.status_code == 403
     promoted = await client.post(
         f"/api/v1/operator/concierge-offers/{offer_id}/promote",
-        json={"rationale": "a customer should never reach this"},
+        json={
+            "rationale": "a customer should never reach this",
+            "default_batch_threshold_quantity": 20,
+        },
     )
     assert promoted.status_code == 403
 

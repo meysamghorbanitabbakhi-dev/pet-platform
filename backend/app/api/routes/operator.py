@@ -79,7 +79,7 @@ from app.modules.pet_knowledge.service import (
 from app.modules.pet_knowledge.validation import canonical_bytes, validate_bundle
 from app.modules.pets.models import Pet
 from app.modules.purchasing.models import PurchaseBatch, PurchaseBatchAllocation, PurchaseBatchEvent
-from app.modules.purchasing.service import PurchasingError, commit_batch
+from app.modules.purchasing.service import PurchasingError, cancel_batch, commit_batch
 from app.modules.replenishment.models import (
     ReplenishmentReservation,
     ReplenishmentReservationEvent,
@@ -1512,6 +1512,10 @@ async def update_offer_sourcing_config(
     operator: CurrentOperator,
     session: SessionDependency,
 ) -> None:
+    if body.sourcing_route == "aggregated" and body.default_batch_threshold_quantity is None:
+        raise HTTPException(
+            status_code=422, detail="aggregated_route_requires_default_batch_threshold_quantity"
+        )
     offer = await session.get(Offer, offer_id, with_for_update=True)
     if offer is None:
         raise HTTPException(status_code=404, detail="offer_not_found")
@@ -1585,6 +1589,10 @@ class PurchaseBatchAdjustBody(BaseModel):
 class PurchaseBatchCommitBody(BaseModel):
     evidence_file_id: UUID
     commitment_reference: str | None = Field(default=None, max_length=300)
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+class PurchaseBatchCancelBody(BaseModel):
     reason: str = Field(min_length=5, max_length=1000)
 
 
@@ -1774,6 +1782,39 @@ async def commit_purchase_batch(
                 "evidence_file_id": str(evidence.id),
                 "commitment_reference": batch.commitment_reference,
             },
+        )
+    await session.commit()
+    return _purchase_batch_response(batch)
+
+
+@router.post("/purchase-batches/{batch_id}/cancel", response_model=PurchaseBatchResponse)
+async def cancel_purchase_batch(
+    batch_id: UUID,
+    body: PurchaseBatchCancelBody,
+    request: Request,
+    operator: CurrentOperator,
+    session: SessionDependency,
+) -> PurchaseBatchResponse:
+    batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="purchase_batch_not_found")
+    already_cancelled = batch.status == "cancelled"
+    try:
+        batch = await cancel_batch(
+            session, batch=batch, operator_id=operator.id, reason=body.reason
+        )
+    except PurchasingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not already_cancelled:
+        _audit(
+            session,
+            request,
+            operator.id,
+            "purchase_batch.cancelled",
+            "purchase_batch",
+            batch.id,
+            body.reason,
+            {"offer_id": str(batch.offer_id)},
         )
     await session.commit()
     return _purchase_batch_response(batch)
@@ -3346,6 +3387,8 @@ async def reconcile_payment(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ZarinpalError as exc:
         raise HTTPException(status_code=502, detail="payment_reconciliation_failed") from exc
+    except PurchasingError as exc:
+        raise HTTPException(status_code=500, detail="purchase_batch_configuration_error") from exc
     finally:
         await gateway.aclose()
     _audit(

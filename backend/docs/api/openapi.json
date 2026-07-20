@@ -1692,6 +1692,11 @@
       },
       "ConciergeOfferPromoteBody": {
         "properties": {
+          "default_batch_threshold_quantity": {
+            "exclusiveMinimum": 0.0,
+            "title": "Default Batch Threshold Quantity",
+            "type": "integer"
+          },
           "rationale": {
             "maxLength": 2000,
             "minLength": 5,
@@ -1700,7 +1705,8 @@
           }
         },
         "required": [
-          "rationale"
+          "rationale",
+          "default_batch_threshold_quantity"
         ],
         "title": "ConciergeOfferPromoteBody",
         "type": "object"
@@ -8842,6 +8848,21 @@
           "allocated_at"
         ],
         "title": "PurchaseBatchAllocationResponse",
+        "type": "object"
+      },
+      "PurchaseBatchCancelBody": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "PurchaseBatchCancelBody",
         "type": "object"
       },
       "PurchaseBatchCommitBody": {
@@ -16904,6 +16925,64 @@
           }
         ],
         "summary": "Adjust Purchase Batch",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/purchase-batches/{batch_id}/cancel": {
+      "post": {
+        "operationId": "cancel_purchase_batch_api_v1_operator_purchase_batches__batch_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseBatchCancelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Purchase Batch",
         "tags": [
           "operator"
         ]

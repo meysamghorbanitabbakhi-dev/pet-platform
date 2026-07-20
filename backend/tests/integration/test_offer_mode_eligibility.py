@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 
 import httpx
@@ -16,6 +17,7 @@ from app.modules.identity.models import AuthIdentity
 from app.modules.inventory.models import InventoryUnit
 from app.modules.replenishment.reservations import _find_available_offer
 from fastapi import FastAPI
+from sqlalchemy import update
 
 pytestmark = pytest.mark.skipif(
     os.getenv("K10_RUNTIME_TESTS") != "1",
@@ -27,6 +29,30 @@ pytestmark = pytest.mark.skipif(
 async def dispose_engine_between_event_loops() -> AsyncIterator[None]:
     yield
     await close_database()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _release_concierge_only_offers_after_module() -> Iterator[None]:
+    """Mirrors test_concierge_offers.py's identically-named fixture: rows
+    this module seeds directly with mode='concierge_only' would otherwise
+    permanently block any later test that downgrades the schema past
+    20260720_0035 in this shared database (that migration's downgrade
+    correctly re-narrows the mode CHECK constraint, and Postgres validates
+    it against existing rows) -- neutralize the value once this module's
+    tests finish rather than deleting rows."""
+    yield
+
+    async def _cleanup() -> None:
+        async with SessionFactory() as session:
+            await session.execute(
+                update(Offer)
+                .where(Offer.mode == "concierge_only")
+                .values(mode="full_payment")
+            )
+            await session.commit()
+        await close_database()
+
+    asyncio.run(_cleanup())
 
 
 @dataclass(slots=True)

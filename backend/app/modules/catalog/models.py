@@ -116,10 +116,11 @@ class Offer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         String(20), default="aggregated", nullable=False
     )
     # Default minimum-viable-quantity threshold for batches auto-opened
-    # against this offer (app.modules.purchasing.service). Null until an
-    # operator configures it; a batch opened with no configured default
-    # falls back to a threshold of 1 (i.e. no real aggregation benefit),
-    # never a guessed number -- see ADR-006.
+    # against this offer (app.modules.purchasing.service). Required before
+    # sourcing_route can be set to 'aggregated' (enforced at
+    # PATCH /offers/{id}/sourcing-config) -- opening a pooled batch with no
+    # real threshold configured gave "aggregation" no actual pooling
+    # effect, see ADR-006's 2026-07-20 amendment.
     default_batch_threshold_quantity: Mapped[int | None] = mapped_column(Integer)
     # 'full_payment' (default): the existing, only-live checkout path.
     # 'reserve': zero-charge reservation -> operator source/price
