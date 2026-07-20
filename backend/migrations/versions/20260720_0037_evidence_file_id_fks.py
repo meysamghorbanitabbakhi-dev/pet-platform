@@ -23,11 +23,12 @@ it) since new rows are created through evidence_file_id from here on. A
 follow-up migration can drop both evidence_path columns once this has run
 in production for a while with no fallback needed.
 
-Rollback limitation: downgrade restores evidence_path to NOT NULL, which
-will fail if any row inserted after this migration ran has a NULL
-evidence_path (expected, since the application no longer populates it) --
-downgrading past this revision requires either backfilling evidence_path
-by hand first or accepting data loss on those rows.
+Downgrade is lossless and always safe, including for rows inserted after
+this migration ran (which have evidence_file_id but a NULL
+evidence_path): it reverse-backfills evidence_path from
+evidence_file_id's storage_key -- the exact inverse of the upgrade
+backfill -- for every row before restoring the NOT NULL constraint and
+dropping evidence_file_id.
 """
 
 from collections.abc import Sequence
@@ -76,12 +77,21 @@ def upgrade() -> None:
     _add_backfill_and_lock(_REFERENCE_EVIDENCE)
 
 
-def downgrade() -> None:
-    op.alter_column(_REFERENCE_EVIDENCE, "evidence_path", nullable=False)
-    op.drop_constraint(
-        f"{_REFERENCE_EVIDENCE}_evidence_file_id_fkey", _REFERENCE_EVIDENCE, type_="foreignkey"
+def _restore_evidence_path_and_drop_fk(table: str) -> None:
+    # Inverse of the upgrade backfill: reconstruct evidence_path for any
+    # row that only ever had evidence_file_id populated (i.e. every row
+    # inserted after this migration's upgrade ran), so the NOT NULL
+    # restore below never fails on real, post-migration data.
+    op.execute(
+        f"UPDATE {table} SET evidence_path = {_FILES}.storage_key "
+        f"FROM {_FILES} WHERE {_FILES}.id = {table}.evidence_file_id "
+        f"AND {table}.evidence_path IS NULL"
     )
-    op.drop_column(_REFERENCE_EVIDENCE, "evidence_file_id")
-    op.alter_column(_ASSURANCES, "evidence_path", nullable=False)
-    op.drop_constraint(f"{_ASSURANCES}_evidence_file_id_fkey", _ASSURANCES, type_="foreignkey")
-    op.drop_column(_ASSURANCES, "evidence_file_id")
+    op.alter_column(table, "evidence_path", nullable=False)
+    op.drop_constraint(f"{table}_evidence_file_id_fkey", table, type_="foreignkey")
+    op.drop_column(table, "evidence_file_id")
+
+
+def downgrade() -> None:
+    _restore_evidence_path_and_drop_fk(_REFERENCE_EVIDENCE)
+    _restore_evidence_path_and_drop_fk(_ASSURANCES)

@@ -713,13 +713,24 @@ async def _race_decline(seed: LineSeed, exception_id: uuid.UUID) -> str:
 async def test_concurrent_accept_and_decline_never_both_succeed() -> None:
     accept_wins = 0
     decline_wins = 0
-    for _ in range(15):
+    for i in range(15):
         seed = await _seed_unsourced_line()
         exception_id = await _propose(seed)
 
-        accept_result, decline_result = await asyncio.gather(
-            _race_accept(seed, exception_id), _race_decline(seed, exception_id)
-        )
+        # asyncio.gather starts its first argument's coroutine before the
+        # second, so whichever side is listed first consistently reaches
+        # the row-lock SELECT first -- alternate the order so both sides
+        # actually get a turn at winning the race instead of leaving it to
+        # chance, which made this test flaky (one side could win all 15
+        # trials, failing the "both outcomes observed" assertion below).
+        if i % 2 == 0:
+            accept_result, decline_result = await asyncio.gather(
+                _race_accept(seed, exception_id), _race_decline(seed, exception_id)
+            )
+        else:
+            decline_result, accept_result = await asyncio.gather(
+                _race_decline(seed, exception_id), _race_accept(seed, exception_id)
+            )
         outcomes = {accept_result, decline_result}
         # Exactly one side wins; the other must observe the resolved state
         # and back off, never both actually applying their own outcome.

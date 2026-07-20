@@ -126,15 +126,73 @@ class PaymentService:
         *,
         provider_reference: str,
     ) -> Order:
+        """Verification is split into an unlocked read, the provider network
+        call (no row locks held for the duration of that I/O), and a short,
+        locked, replay-safe finalization transaction that re-checks
+        everything from scratch -- see _finalize_verified_payment."""
+        attempt = await session.scalar(
+            select(PaymentAttempt).where(PaymentAttempt.provider_reference == provider_reference)
+        )
+        if attempt is None:
+            raise PaymentWorkflowError("unknown payment authority")
+        if attempt.status == "verified":
+            order = await session.get(Order, attempt.order_id)
+            if order is None:
+                raise PaymentWorkflowError("payment order does not exist")
+            return order
+        order = await session.get(Order, attempt.order_id)
+        if order is None:
+            raise PaymentWorkflowError("payment order does not exist")
+        if attempt.amount_irr != order.merchandise_total_irr or attempt.currency != "IRR":
+            raise PaymentWorkflowError("payment amount snapshot mismatch")
+
+        verification = await gateway.verify(
+            provider_reference=provider_reference,
+            amount_irr=attempt.amount_irr,
+        )
+        return await self._finalize_verified_payment(
+            session,
+            provider_reference=provider_reference,
+            provider_transaction_id=verification.provider_transaction_id,
+            masked_card=verification.masked_card,
+            card_hash=verification.card_hash,
+            fee_irr=verification.fee_irr,
+        )
+
+    async def _finalize_verified_payment(
+        self,
+        session: AsyncSession,
+        *,
+        provider_reference: str,
+        provider_transaction_id: str | None,
+        masked_card: str | None,
+        card_hash: str | None,
+        fee_irr: int | None,
+    ) -> Order:
+        """Short, locked transaction: no network I/O happens here. Re-checks
+        attempt/order state from scratch so a concurrent verify/reconcile
+        that finished first is a safe, idempotent no-op, and preserves
+        exactly one SourcingJob and one order.payment_verified event per
+        order regardless of how many callers race to finalize it."""
+        # populate_existing is required here: verify() already loaded this
+        # attempt/order into the session's identity map with an unlocked
+        # read before the gateway call. Without it, SQLAlchemy would hand
+        # back the same (now stale) cached objects once the lock is
+        # granted instead of refreshing them with whatever a concurrent
+        # finalizer just committed, defeating the replay-safety check below.
         attempt = await session.scalar(
             select(PaymentAttempt)
             .where(PaymentAttempt.provider_reference == provider_reference)
             .with_for_update()
+            .execution_options(populate_existing=True)
         )
         if attempt is None:
             raise PaymentWorkflowError("unknown payment authority")
         order = await session.scalar(
-            select(Order).where(Order.id == attempt.order_id).with_for_update()
+            select(Order)
+            .where(Order.id == attempt.order_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
         if order is None:
             raise PaymentWorkflowError("payment order does not exist")
@@ -143,16 +201,12 @@ class PaymentService:
         if attempt.amount_irr != order.merchandise_total_irr or attempt.currency != "IRR":
             raise PaymentWorkflowError("payment amount snapshot mismatch")
 
-        verification = await gateway.verify(
-            provider_reference=provider_reference,
-            amount_irr=attempt.amount_irr,
-        )
         now = utc_now()
         attempt.status = "verified"
-        attempt.provider_transaction_id = verification.provider_transaction_id
-        attempt.masked_card = verification.masked_card
-        attempt.card_hash = verification.card_hash
-        attempt.fee_irr = verification.fee_irr
+        attempt.provider_transaction_id = provider_transaction_id
+        attempt.masked_card = masked_card
+        attempt.card_hash = card_hash
+        attempt.fee_irr = fee_irr
         attempt.verified_at = now
 
         if order.paid_at is None:
@@ -193,21 +247,31 @@ class PaymentService:
         *,
         attempt_id: UUID,
     ) -> ReconciliationResult:
-        attempt = await session.scalar(
-            select(PaymentAttempt).where(PaymentAttempt.id == attempt_id).with_for_update()
-        )
+        """Same discipline as verify(): the provider inquiry call happens
+        with no row lock held, and any resulting state change is applied
+        through a short, freshly re-locked, replay-safe write."""
+        attempt = await session.get(PaymentAttempt, attempt_id)
         if attempt is None or attempt.provider_reference is None:
             raise PaymentWorkflowError("payment attempt is not reconcilable")
         if attempt.status == "verified":
             return ReconciliationResult("verified", attempt.order_id)
-        inquiry = await gateway.inquiry(provider_reference=attempt.provider_reference)
+        provider_reference = attempt.provider_reference
+        order_id = attempt.order_id
+
+        inquiry = await gateway.inquiry(provider_reference=provider_reference)
+
         if inquiry.state in ("verified", "paid_unverified"):
-            order = await self.verify(
-                session, gateway, provider_reference=attempt.provider_reference
-            )
+            order = await self.verify(session, gateway, provider_reference=provider_reference)
             return ReconciliationResult("verified", order.id)
         if inquiry.state in ("failed", "reversed"):
-            attempt.status = "failed"
-            attempt.failure_code = inquiry.state
-            await session.commit()
-        return ReconciliationResult(inquiry.state, attempt.order_id)
+            locked_attempt = await session.scalar(
+                select(PaymentAttempt)
+                .where(PaymentAttempt.id == attempt_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+            if locked_attempt is not None and locked_attempt.status != "verified":
+                locked_attempt.status = "failed"
+                locked_attempt.failure_code = inquiry.state
+                await session.commit()
+        return ReconciliationResult(inquiry.state, order_id)

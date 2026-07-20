@@ -33,6 +33,7 @@ from app.modules.notifications.models import Notification
 from app.modules.notifications.service import enqueue_wallet_credit_notification
 from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderDelayAcknowledgement
+from app.modules.payments.models import PaymentAttempt
 from app.modules.payments.service import PaymentService
 from app.modules.pets.models import Pet
 from app.modules.sourcing.models import SourcingJob
@@ -266,6 +267,119 @@ async def test_k9_t1_to_t14_runtime_checkout_payment_replay_and_access(seed: See
         )
         assert conflict is not None and conflict.checkout_request_hash is not None
         assert await session.get(Pet, seed.other_pet.id) is not None
+
+
+async def test_ws5c_verify_does_not_hold_row_locks_during_gateway_io(seed: Seed) -> None:
+    gateway = FakePaymentGateway()
+    async with SessionFactory() as session:
+        order = await CheckoutService().create_order(
+            session,
+            customer_identity_id=seed.identity.id,
+            household_id=seed.household.id,
+            address_id=seed.address.id,
+            items=[CheckoutItem(seed.offer.id, 1)],
+            idempotency_key="ws5c-lock-checkout-key",
+        )
+        redirect = await PaymentService().initiate(
+            session,
+            gateway,
+            order_id=order.id,
+            customer_identity_id=seed.identity.id,
+            customer_mobile_e164=seed.identity.mobile_e164,
+            callback_url="https://app.test/callback",
+            idempotency_key="ws5c-lock-payment-key",
+        )
+
+    gateway_call_started = asyncio.Event()
+    proceed = asyncio.Event()
+
+    class SlowGateway(FakePaymentGateway):
+        async def verify(self, *, provider_reference: str, amount_irr: int) -> PaymentVerification:
+            gateway_call_started.set()
+            await proceed.wait()
+            return await super().verify(
+                provider_reference=provider_reference, amount_irr=amount_irr
+            )
+
+    slow_gateway = SlowGateway()
+
+    async def run_verify() -> Order:
+        async with SessionFactory() as session:
+            return await PaymentService().verify(
+                session, slow_gateway, provider_reference=f"fake-{order.id}"
+            )
+
+    verify_task = asyncio.create_task(run_verify())
+    await asyncio.wait_for(gateway_call_started.wait(), timeout=5)
+
+    # While the (slow, simulated-network) gateway call is in flight, the
+    # order and payment-attempt rows must not be locked -- a concurrent,
+    # unrelated NOWAIT lock attempt must succeed immediately rather than
+    # raising LockNotAvailable.
+    async with SessionFactory() as probe_session:
+        probed_order = await probe_session.scalar(
+            select(Order).where(Order.id == order.id).with_for_update(nowait=True)
+        )
+        assert probed_order is not None
+        probed_attempt = await probe_session.scalar(
+            select(PaymentAttempt)
+            .where(PaymentAttempt.id == redirect.attempt_id)
+            .with_for_update(nowait=True)
+        )
+        assert probed_attempt is not None
+        await probe_session.rollback()
+
+    proceed.set()
+    verified_order = await asyncio.wait_for(verify_task, timeout=5)
+    assert verified_order.id == order.id
+    assert slow_gateway.verifications == 1
+
+
+async def test_ws5c_concurrent_reconcile_preserves_single_sourcing_job(seed: Seed) -> None:
+    gateway = FakePaymentGateway()
+    async with SessionFactory() as session:
+        order = await CheckoutService().create_order(
+            session,
+            customer_identity_id=seed.identity.id,
+            household_id=seed.household.id,
+            address_id=seed.address.id,
+            items=[CheckoutItem(seed.offer.id, 1)],
+            idempotency_key="ws5c-reconcile-checkout-key",
+        )
+        redirect = await PaymentService().initiate(
+            session,
+            gateway,
+            order_id=order.id,
+            customer_identity_id=seed.identity.id,
+            customer_mobile_e164=seed.identity.mobile_e164,
+            callback_url="https://app.test/callback",
+            idempotency_key="ws5c-reconcile-payment-key",
+        )
+
+    async def reconcile() -> str:
+        async with SessionFactory() as session:
+            result = await PaymentService().reconcile(
+                session, gateway, attempt_id=redirect.attempt_id
+            )
+            return result.state
+
+    state_a, state_b = await asyncio.gather(reconcile(), reconcile())
+    assert state_a == state_b == "verified"
+    async with SessionFactory() as session:
+        assert (
+            await session.scalar(
+                select(func.count(SourcingJob.id)).where(SourcingJob.order_id == order.id)
+            )
+        ) == 1
+        events = (
+            await session.scalars(
+                select(OutboxEvent).where(
+                    OutboxEvent.event_type == "order.payment_verified",
+                    OutboxEvent.aggregate_id == str(order.id),
+                )
+            )
+        ).all()
+        assert len(events) == 1
 
 
 async def test_k9_t9_to_t14_api_replay_and_cross_household(seed: Seed, monkeypatch: Any) -> None:
