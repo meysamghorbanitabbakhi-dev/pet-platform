@@ -37,7 +37,7 @@ from app.api.dependencies import CurrentIdentity
 from app.api.pagination import Pagination, page
 from app.common.time import utc_now
 from app.core.config import Settings, get_settings
-from app.db.session import get_db_session
+from app.db.session import SessionFactory, get_db_session
 from app.integrations.payment.factory import (
     PaymentProviderNotConfiguredError,
     build_payment_gateway,
@@ -762,11 +762,26 @@ async def initiate_payment(
 
 @router.get("/payments/zarinpal/callback", response_model=PaymentCallbackResponse)
 async def payment_callback(
-    session: SessionDependency,
     settings: SettingsDependency,
     authority: Annotated[str, Query(alias="Authority", min_length=1, max_length=255)],
     callback_status: Annotated[str | None, Query(alias="Status")] = None,
 ) -> PaymentCallbackResponse:
+    """Deliberately does not take SessionDependency (the RLS-scoped app-role
+    session): the payment gateway calls this endpoint directly, with no
+    logged-in customer session to derive RLS context from, so a query
+    against orders_orders/payments_attempts here would have
+    app.identity_id unset -- the row-level-security policies on those
+    tables require customer_identity_id = app_identity_id(), which is
+    NULL in that case, so the finalize step's own row-locking SELECT
+    would find nothing and every real payment verification would
+    silently fail (confirmed directly: a raw UPDATE through the app-role
+    session with no RLS context set affects 0 rows). This is the same
+    "trusted system code, not scoped to a single identity" case
+    app/db/session.py already carves out for schedulers -- the gateway's
+    own signed provider_reference is what authorizes this write, not a
+    customer session, so it uses SessionFactory (the superuser role)
+    directly rather than the per-request dependency.
+    """
     if not callback_allows_verification(callback_status):
         return PaymentCallbackResponse(state="cancelled_or_failed")
     try:
@@ -774,9 +789,10 @@ async def payment_callback(
     except PaymentProviderNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail="payment_provider_not_configured") from exc
     try:
-        order = await PaymentService(
-            delivery_commitment_hours=settings.delivery_commitment_hours
-        ).verify(session, gateway, provider_reference=authority)
+        async with SessionFactory() as session:
+            order = await PaymentService(
+                delivery_commitment_hours=settings.delivery_commitment_hours
+            ).verify(session, gateway, provider_reference=authority)
     except PaymentWorkflowError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ZarinpalError as exc:

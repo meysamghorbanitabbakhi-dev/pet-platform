@@ -223,6 +223,7 @@ async def seed() -> Seed:
 
 async def test_k9_t1_to_t14_runtime_checkout_payment_replay_and_access(seed: Seed) -> None:
     gateway = FakePaymentGateway()
+
     async def checkout() -> Order:
         async with SessionFactory() as session:
             return await CheckoutService().create_order(
@@ -246,6 +247,7 @@ async def test_k9_t1_to_t14_runtime_checkout_payment_replay_and_access(seed: See
             callback_url="https://app.test/callback",
             idempotency_key="same-payment-key",
         )
+
     async def verify() -> Order:
         async with SessionFactory() as session:
             return await PaymentService().verify(
@@ -447,12 +449,12 @@ async def test_k9_t9_to_t14_api_replay_and_cross_household(seed: Seed, monkeypat
         await session.commit()
         assert (
             await session.scalar(
-                        select(func.count(Notification.id)).where(
-                            Notification.event_key == "catalog.offer_available",
-                            Notification.recipient_identity_id == seed.identity.id,
-                        )
+                select(func.count(Notification.id)).where(
+                    Notification.event_key == "catalog.offer_available",
+                    Notification.recipient_identity_id == seed.identity.id,
                 )
-            ) == 2
+            )
+        ) == 2
         assert (
             await session.scalar(
                 select(func.count(CustomerRequest.id)).where(
@@ -463,6 +465,72 @@ async def test_k9_t9_to_t14_api_replay_and_cross_household(seed: Seed, monkeypat
 
     settings.care_journey_delivery_enabled = False
     app.dependency_overrides.clear()
+
+
+async def test_payment_callback_verifies_over_http_with_no_customer_session(
+    seed: Seed, monkeypatch: Any
+) -> None:
+    """The real /payments/zarinpal/callback route is hit by the payment
+    gateway directly, with no bearer token and therefore no RLS context
+    (apply_rls_context is never invoked for this route). Every other
+    integration test in this module exercises PaymentService.verify()
+    by calling it directly against a SessionFactory (superuser) session,
+    which never goes through the RLS-scoped app-role session the real
+    HTTP route actually uses -- so those tests could not have caught a
+    regression here. Confirmed directly (outside this test, against the
+    live dev DB) that a raw UPDATE through the app-role session with no
+    RLS context set affects 0 rows; this test instead proves the actual
+    fix (payment_callback now uses SessionFactory, not the RLS-scoped
+    per-request session) end-to-end over real HTTP, with no
+    dependency_overrides for get_current_identity at all."""
+    app = create_app()
+    fake_gateway = FakePaymentGateway()
+    monkeypatch.setattr(
+        "app.api.routes.commerce.build_payment_gateway",
+        lambda settings: fake_gateway,
+    )
+    async with SessionFactory() as session:
+        order = await CheckoutService().create_order(
+            session,
+            customer_identity_id=seed.identity.id,
+            household_id=seed.household.id,
+            address_id=seed.address.id,
+            items=[CheckoutItem(seed.offer.id, 1)],
+            idempotency_key=f"http-callback-checkout-{uuid.uuid4().hex}",
+        )
+        await PaymentService().initiate(
+            session,
+            fake_gateway,
+            order_id=order.id,
+            customer_identity_id=seed.identity.id,
+            customer_mobile_e164=seed.identity.mobile_e164,
+            callback_url="https://app.test/callback",
+            idempotency_key=f"http-callback-payment-{uuid.uuid4().hex}",
+        )
+
+    # No app.dependency_overrides[get_current_identity] here -- this
+    # request carries no bearer token, exactly like the real gateway
+    # callback.
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/api/v1/payments/zarinpal/callback",
+            params={"Authority": f"fake-{order.id}", "Status": "OK"},
+        )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["state"] == "verified"
+    assert body["order_id"] == str(order.id)
+
+    async with SessionFactory() as session:
+        refreshed = await session.get(Order, order.id)
+        assert refreshed is not None
+        assert refreshed.status == "paid"
+        assert refreshed.paid_at is not None
+        attempt = await session.scalar(
+            select(PaymentAttempt).where(PaymentAttempt.order_id == order.id)
+        )
+        assert attempt is not None and attempt.status == "verified"
 
 
 async def test_k9_t10_t11_delay_ack_and_journey_effects_are_canonical(seed: Seed) -> None:
@@ -662,9 +730,7 @@ async def test_approved_journey_delivery_lifecycle_today_and_replay(seed: Seed) 
         assert str(dog_only.id) not in offer_ids
         assert str(invalid.id) not in offer_ids
         draft_detail = await client.get(f"/api/v1/pet-life/journey-definitions/{draft.id}")
-        invalid_detail = await client.get(
-            f"/api/v1/pet-life/journey-definitions/{invalid.id}"
-        )
+        invalid_detail = await client.get(f"/api/v1/pet-life/journey-definitions/{invalid.id}")
         assert draft_detail.status_code == 404
         assert invalid_detail.status_code == 404
         started = await client.post(
@@ -718,15 +784,11 @@ async def test_approved_journey_delivery_lifecycle_today_and_replay(seed: Seed) 
         assert replay.json()["completed"] is True
         assert replay.json()["diary_entry_id"] == first.json()["diary_entry_id"]
         assert replay.json()["garden_reward_id"] == first.json()["garden_reward_id"]
-        completed_detail = await client.get(
-            f"/api/v1/pet-life/journeys/{journey_id}"
-        )
+        completed_detail = await client.get(f"/api/v1/pet-life/journeys/{journey_id}")
         assert completed_detail.status_code == 200
         assert completed_detail.json()["status"] == "completed"
         assert completed_detail.json()["diary_entry_id"] == first.json()["diary_entry_id"]
-        assert (
-            completed_detail.json()["garden_reward_id"] == first.json()["garden_reward_id"]
-        )
+        assert completed_detail.json()["garden_reward_id"] == first.json()["garden_reward_id"]
         garden = await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/garden")
         assert {"xp", "streak", "decay", "purchase_reward"} & set(garden.json()) == set()
     app.dependency_overrides[get_current_identity] = lambda: seed.other_identity
@@ -1006,9 +1068,10 @@ async def test_pet_consent_purposes_are_independent(seed: Seed) -> None:
         )
         assert withdraw_photo.status_code == 204
 
-        listed = {item["id"]: item for item in (await client.get(
-            f"/api/v1/pet-life/pets/{seed.pet.id}/consents"
-        )).json()}
+        listed = {
+            item["id"]: item
+            for item in (await client.get(f"/api/v1/pet-life/pets/{seed.pet.id}/consents")).json()
+        }
         assert listed[photo_consent.json()["id"]]["status"] == "withdrawn"
         assert listed[medical_consent.json()["id"]]["status"] == "granted"
 
@@ -1401,9 +1464,7 @@ async def test_sms_preference_read_back_default_update_and_overnight_quiet_hours
     event_key = f"reorder-{uuid.uuid4().hex[:8]}"
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # Empty/default: no PUT has ever happened for this event_key.
-        default = await client.get(
-            f"/api/v1/pet-life/notifications/preferences/{event_key}/sms"
-        )
+        default = await client.get(f"/api/v1/pet-life/notifications/preferences/{event_key}/sms")
         assert default.status_code == 200
         assert default.json() == {
             "event_key": event_key,
@@ -1422,9 +1483,7 @@ async def test_sms_preference_read_back_default_update_and_overnight_quiet_hours
             },
         )
         assert put_daytime.status_code == 204
-        read_back = await client.get(
-            f"/api/v1/pet-life/notifications/preferences/{event_key}/sms"
-        )
+        read_back = await client.get(f"/api/v1/pet-life/notifications/preferences/{event_key}/sms")
         assert read_back.json() == {
             "event_key": event_key,
             "sms_enabled": False,
@@ -1531,9 +1590,7 @@ async def test_privacy_request_status_is_scoped_typed_and_paginated(seed: Seed) 
         assert empty.status_code == 200
         assert empty.json()["items"] == []
 
-        created = await client.post(
-            "/api/v1/privacy/requests", json={"request_type": "disable"}
-        )
+        created = await client.post("/api/v1/privacy/requests", json={"request_type": "disable"})
         assert created.status_code == 202
         request_id = created.json()["id"]
         assert created.json()["status"] == "requested"
@@ -1541,9 +1598,7 @@ async def test_privacy_request_status_is_scoped_typed_and_paginated(seed: Seed) 
         # Duplicate active-request behavior: a second create while one is
         # still active must not create a second row, and the list must
         # still show exactly one.
-        duplicate = await client.post(
-            "/api/v1/privacy/requests", json={"request_type": "disable"}
-        )
+        duplicate = await client.post("/api/v1/privacy/requests", json={"request_type": "disable"})
         assert duplicate.status_code == 202
         assert duplicate.json()["id"] == request_id
 
@@ -1564,9 +1619,7 @@ async def test_privacy_request_status_is_scoped_typed_and_paginated(seed: Seed) 
         assert detail.json()["status"] == "requested"
 
         # A different request_type is an independent request.
-        second = await client.post(
-            "/api/v1/privacy/requests", json={"request_type": "anonymize"}
-        )
+        second = await client.post("/api/v1/privacy/requests", json={"request_type": "anonymize"})
         assert second.status_code == 202
         assert second.json()["id"] != request_id
         assert second.json()["status"] == "awaiting_policy"
@@ -1578,10 +1631,7 @@ async def test_privacy_request_status_is_scoped_typed_and_paginated(seed: Seed) 
         paginated_second = await client.get("/api/v1/privacy/requests?limit=1&offset=1")
         assert len(paginated_second.json()["items"]) == 1
         assert paginated_second.json()["page"]["has_more"] is False
-        assert (
-            paginated_first.json()["items"][0]["id"]
-            != paginated_second.json()["items"][0]["id"]
-        )
+        assert paginated_first.json()["items"][0]["id"] != paginated_second.json()["items"][0]["id"]
 
         unknown = await client.get(f"/api/v1/privacy/requests/{uuid.uuid4()}")
         assert unknown.status_code == 404

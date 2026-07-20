@@ -18479,6 +18479,7 @@
     },
     "/api/v1/payments/zarinpal/callback": {
       "get": {
+        "description": "Deliberately does not take SessionDependency (the RLS-scoped app-role\nsession): the payment gateway calls this endpoint directly, with no\nlogged-in customer session to derive RLS context from, so a query\nagainst orders_orders/payments_attempts here would have\napp.identity_id unset -- the row-level-security policies on those\ntables require customer_identity_id = app_identity_id(), which is\nNULL in that case, so the finalize step's own row-locking SELECT\nwould find nothing and every real payment verification would\nsilently fail (confirmed directly: a raw UPDATE through the app-role\nsession with no RLS context set affects 0 rows). This is the same\n\"trusted system code, not scoped to a single identity\" case\napp/db/session.py already carves out for schedulers -- the gateway's\nown signed provider_reference is what authorizes this write, not a\ncustomer session, so it uses SessionFactory (the superuser role)\ndirectly rather than the per-request dependency.",
         "operationId": "payment_callback_api_v1_payments_zarinpal_callback_get",
         "parameters": [
           {
