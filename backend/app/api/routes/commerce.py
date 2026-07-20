@@ -673,6 +673,7 @@ async def approve_reservation(
             select(Offer, Supplier)
             .join(Supplier, Supplier.id == Offer.supplier_id)
             .where(Offer.id == reservation.offer_id)
+            .with_for_update(of=Offer)
         )
     ).first()
     if row is None:
