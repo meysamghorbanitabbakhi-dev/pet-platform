@@ -39,6 +39,32 @@ class InventoryService:
             raise InventoryError("remaining bounds are invalid")
         if remaining_high_grams <= 0:
             raise InventoryError("remaining quantity must be positive")
+
+        existing_active = await session.scalar(
+            select(FoodEstimate).where(
+                FoodEstimate.inventory_unit_id == unit.id,
+                FoodEstimate.status == "active",
+            )
+        )
+        if existing_active is not None:
+            # A caller reaching here with an active estimate already on
+            # record means this is a raw reopen of an already-opened unit
+            # (correct_estimate/exhaust_inventory always retire the active
+            # row themselves before calling in). Replay-safe only for an
+            # exact repeat of the same facts -- anything else must go
+            # through the correction endpoint, which explicitly retires
+            # the old estimate first (see PostgreSQL partial unique index
+            # one_active_estimate_per_unit, migration 20260720_0036).
+            same_facts = (
+                unit.remaining_quantity_grams == remaining_grams
+                and unit.remaining_low_grams == remaining_low_grams
+                and unit.remaining_high_grams == remaining_high_grams
+                and unit.remaining_input_mode == remaining_input_mode
+            )
+            if same_facts:
+                return existing_active
+            raise InventoryError("unit_already_opened_use_correction_endpoint")
+
         unit.state = "opened"
         unit.opened_at = unit.opened_at or utc_now()
         unit.remaining_quantity_grams = remaining_grams
