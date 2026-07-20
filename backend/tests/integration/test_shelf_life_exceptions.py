@@ -887,6 +887,46 @@ async def test_http_decline_is_non_enumerating_for_foreign_order(
     )
 
 
+async def test_http_accept_and_list_are_non_enumerating_for_foreign_order(
+    app_and_client: tuple[object, httpx.AsyncClient]
+) -> None:
+    app, client = app_and_client
+    seed = await _seed_unsourced_line()
+    exception_id = await _propose(seed)
+    async with SessionFactory() as session:
+        other_customer = AuthIdentity(
+            identity_type="customer", mobile_e164=f"+98921{seed.token[:7]}", status="active"
+        )
+        session.add(other_customer)
+        await session.commit()
+        other_customer_id = other_customer.id
+    async with SessionFactory() as session:
+        other_customer_obj = await session.get(AuthIdentity, other_customer_id)
+    app.dependency_overrides[get_current_identity] = lambda: other_customer_obj
+
+    nonexistent_list = await client.get(
+        f"/api/v1/orders/{uuid.uuid4()}/shelf-life-exceptions"
+    )
+    foreign_list = await client.get(f"/api/v1/orders/{seed.order_id}/shelf-life-exceptions")
+    assert nonexistent_list.status_code == foreign_list.status_code == 404
+    assert nonexistent_list.json()["error"]["code"] == foreign_list.json()["error"]["code"]
+
+    nonexistent_accept = await client.post(
+        f"/api/v1/orders/{uuid.uuid4()}/shelf-life-exceptions/{exception_id}/accept"
+    )
+    foreign_accept = await client.post(
+        f"/api/v1/orders/{seed.order_id}/shelf-life-exceptions/{exception_id}/accept"
+    )
+    assert nonexistent_accept.status_code == foreign_accept.status_code == 404
+    assert (
+        nonexistent_accept.json()["error"]["code"] == foreign_accept.json()["error"]["code"]
+    )
+
+    async with SessionFactory() as session:
+        exception = await session.get(ShelfLifeException, exception_id)
+        assert exception is not None and exception.status == "proposed"
+
+
 async def test_http_operator_attests_refund_for_a_declined_exception(
     app_and_client: tuple[object, httpx.AsyncClient]
 ) -> None:
