@@ -2228,7 +2228,7 @@ async def confirm_sourced_unit(
 
 class ShelfLifeExceptionProposeBody(BaseModel):
     proposed_exact_expiry_date: date
-    additional_discount_irr: int = Field(ge=0)
+    additional_discount_irr: int = Field(gt=0)
     evidence_file_id: UUID
     reason: str = Field(min_length=5, max_length=1000)
 
@@ -2294,6 +2294,7 @@ async def propose_order_line_shelf_life_exception(
     request: Request,
     operator: CurrentOperator,
     session: SessionDependency,
+    settings: SettingsDependency,
 ) -> OperatorShelfLifeExceptionResponse:
     row = (
         await session.execute(
@@ -2321,6 +2322,7 @@ async def propose_order_line_shelf_life_exception(
             additional_discount_irr=body.additional_discount_irr,
             reason=body.reason,
             evidence_file_id=evidence.id,
+            response_window_hours=settings.shelf_life_exception_response_window_hours,
         )
     except ShelfLifeExceptionError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

@@ -11,7 +11,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    UniqueConstraint,
     select,
 )
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -22,8 +21,6 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from app.modules.orders.models import Order, OrderLine
 from app.modules.system.outbox import DomainEvent, add_outbox_event
 from app.modules.trust.models import SourcedUnitEvidence, SupplierAssurance
-
-_DEFAULT_RESPONSE_WINDOW_HOURS = 72
 
 
 class ShelfLifeException(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -41,11 +38,18 @@ class ShelfLifeException(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     __tablename__ = "orders_shelf_life_exceptions"
     __table_args__ = (
-        UniqueConstraint("order_line_id", name="one_exception_per_order_line"),
+        # At most one *active* ('proposed') exception per order line at a
+        # time -- enforced by a partial unique index
+        # (uq_shelf_life_exceptions_one_active_per_order_line, see the
+        # 20260720_0038 migration), not declared here in SQLAlchemy
+        # metadata, matching this codebase's existing convention for
+        # partial indexes (see purchasing_batches' equivalent). A
+        # resolved (declined/expired) proposal does not block a revised
+        # re-proposal for the same line -- see ADR-007's amendment.
         CheckConstraint(
             "status IN ('proposed','accepted','declined','expired')", name="valid_status"
         ),
-        CheckConstraint("additional_discount_irr >= 0", name="nonnegative_discount"),
+        CheckConstraint("additional_discount_irr > 0", name="positive_discount"),
         CheckConstraint(
             "refund_status IN ('not_applicable','owed','operator_attested')",
             name="valid_refund_status",
@@ -59,7 +63,7 @@ class ShelfLifeException(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("orders_order_lines.id"), nullable=False, index=True
     )
     proposed_exact_expiry_date: Mapped[date] = mapped_column(Date, nullable=False)
-    additional_discount_irr: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    additional_discount_irr: Mapped[int] = mapped_column(Integer, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     evidence_file_id: Mapped[UUID] = mapped_column(
         ForeignKey("trust_evidence_files.id"), nullable=False
@@ -103,12 +107,18 @@ async def propose_shelf_life_exception(
     additional_discount_irr: int,
     reason: str,
     evidence_file_id: UUID,
-    response_window_hours: int = _DEFAULT_RESPONSE_WINDOW_HOURS,
+    response_window_hours: int,
 ) -> ShelfLifeException:
     """Propose an exception for a line whose real expiry falls short of the
     offer's guarantee. Rejects a proposal for a line that would actually
     pass the normal guarantee (confirm_sourced_unit is the right path for
-    that) or one that's already sourced or already has an exception."""
+    that), one that's already sourced, or one that already has an active
+    (still 'proposed') exception -- a resolved (declined/expired) prior
+    exception does not block a revised re-proposal, see ADR-007's
+    amendment. response_window_hours has no in-code default: the caller
+    (the operator route) is expected to supply
+    settings.shelf_life_exception_response_window_hours, keeping the
+    number operator-configurable rather than hardcoded here."""
     if order.delivery_commitment_at is None:
         raise ShelfLifeExceptionError("order_has_no_delivery_commitment")
     minimum_date = add_months(order.delivery_commitment_at.date(), minimum_shelf_life_months)
@@ -119,10 +129,18 @@ async def propose_shelf_life_exception(
     )
     if already_sourced is not None:
         raise ShelfLifeExceptionError("order_line_already_sourced")
-    existing = await session.scalar(
-        select(ShelfLifeException).where(ShelfLifeException.order_line_id == order_line.id)
+    if additional_discount_irr <= 0:
+        # Shipping a product that falls short of the promised guarantee
+        # without any compensation is not a real exception, it's just a
+        # broken guarantee -- see ADR-007's amendment.
+        raise ShelfLifeExceptionError("additional_discount_irr_must_be_positive")
+    active = await session.scalar(
+        select(ShelfLifeException).where(
+            ShelfLifeException.order_line_id == order_line.id,
+            ShelfLifeException.status == "proposed",
+        )
     )
-    if existing is not None:
+    if active is not None:
         raise ShelfLifeExceptionError("exception_already_exists_for_line")
     now = utc_now()
     exception = ShelfLifeException(

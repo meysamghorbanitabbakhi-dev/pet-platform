@@ -10574,7 +10574,7 @@
       "ShelfLifeExceptionProposeBody": {
         "properties": {
           "additional_discount_irr": {
-            "minimum": 0.0,
+            "exclusiveMinimum": 0.0,
             "title": "Additional Discount Irr",
             "type": "integer"
           },

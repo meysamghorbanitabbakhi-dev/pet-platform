@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     replenishment_reservation_approval_window_hours: int = Field(default=48, ge=1, le=168)
     concierge_offers_enabled: bool = False
     concierge_offer_default_validity_hours: int = Field(default=24, ge=12, le=48)
+    shelf_life_exception_response_window_hours: int = Field(default=72, ge=1, le=168)
     customer_request_acknowledgement_fa: str = (
         "درخواست شما ثبت شد. نتیجه بررسی از طریق پیامک یا داخل برنامه اطلاع‌رسانی می‌شود. "
         "ثبت درخواست به‌معنای تضمین موجودی، قیمت، زمان پاسخ یا تأمین نیست."

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -16,7 +16,8 @@ from app.main import create_app
 from app.modules.catalog.models import Offer, Product, Supplier
 from app.modules.households.models import Household
 from app.modules.identity.models import AuthIdentity
-from app.modules.inventory.projection import project_delivered_order
+from app.modules.inventory.models import InventoryUnit
+from app.modules.inventory.projection import DeliveryProjectionError, project_delivered_order
 from app.modules.orders.models import Order, OrderLine
 from app.modules.orders.refund_attestation import RefundAttestationError, attest_refund
 from app.modules.orders.shelf_life_exceptions import (
@@ -31,7 +32,7 @@ from app.modules.system.models import OperatorAuditLog
 from app.modules.trust.files import EvidenceFile
 from app.modules.trust.models import SourcedUnitEvidence, SupplierAssurance
 from fastapi import FastAPI
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 pytestmark = pytest.mark.skipif(
     os.getenv("K10_RUNTIME_TESTS") != "1",
@@ -43,6 +44,42 @@ pytestmark = pytest.mark.skipif(
 async def dispose_engine_between_event_loops() -> AsyncIterator[None]:
     yield
     await close_database()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _collapse_reproposed_exceptions_after_module() -> Iterator[None]:
+    """test_propose_after_decline_creates_a_fresh_exception deliberately
+    leaves two ShelfLifeException rows for the same order_line_id --
+    exactly the re-proposal behavior this module tests (ADR-007's
+    amendment). The old one_exception_per_order_line unique constraint no
+    longer exists, but migration 20260720_0038's downgrade path
+    intentionally fails closed if it would ever have to represent more
+    than one row per line, so leaving these around would permanently
+    break any later test that downgrades the schema in this shared
+    database -- same category of fragility as
+    test_concierge_offers.py's identically-shaped cleanup fixture.
+    Deletes every non-latest row per order line, keeping the most recent
+    (the one an operator would actually be acting on)."""
+    yield
+
+    async def _cleanup() -> None:
+        async with SessionFactory() as session:
+            await session.execute(
+                text(
+                    "DELETE FROM orders_shelf_life_exceptions WHERE id IN ("
+                    "  SELECT id FROM ("
+                    "    SELECT id, row_number() OVER ("
+                    "      PARTITION BY order_line_id ORDER BY proposed_at DESC"
+                    "    ) AS rank"
+                    "    FROM orders_shelf_life_exceptions"
+                    "  ) ranked WHERE rank > 1"
+                    ")"
+                )
+            )
+            await session.commit()
+        await close_database()
+
+    asyncio.run(_cleanup())
 
 
 @dataclass(slots=True)
@@ -185,7 +222,7 @@ async def _propose(
     seed: LineSeed,
     *,
     short_by_months: int = 4,
-    additional_discount_irr: int = 0,
+    additional_discount_irr: int = 100_000,
     response_window_hours: int = 72,
 ) -> uuid.UUID:
     too_short_expiry = date.today() + timedelta(
@@ -231,13 +268,17 @@ async def test_propose_rejects_an_expiry_that_actually_meets_the_guarantee() -> 
                 minimum_shelf_life_months=seed.minimum_shelf_life_months,
                 operator_id=seed.operator_id,
                 proposed_exact_expiry_date=fine_expiry,
-                additional_discount_irr=0,
+                additional_discount_irr=100_000,
                 reason="should not need an exception",
                 evidence_file_id=evidence_id,
+                response_window_hours=72,
             )
 
 
-async def test_propose_rejects_a_second_exception_for_the_same_line() -> None:
+async def test_propose_rejects_a_second_active_exception_for_the_same_line() -> None:
+    """While a proposal is still 'proposed' (live), a second one for the
+    same line is rejected -- distinct from re-proposing after the first
+    is resolved, see test_propose_after_decline_creates_a_fresh_exception."""
     seed = await _seed_unsourced_line()
     await _propose(seed)
     evidence_id = await _evidence_file(seed.operator_id)
@@ -245,7 +286,7 @@ async def test_propose_rejects_a_second_exception_for_the_same_line() -> None:
         line = await session.get(OrderLine, seed.order_line_id)
         order = await session.get(Order, seed.order_id)
         assert line is not None and order is not None
-        with pytest.raises(ShelfLifeExceptionError):
+        with pytest.raises(ShelfLifeExceptionError, match="exception_already_exists_for_line"):
             await propose_shelf_life_exception(
                 session,
                 order_line=line,
@@ -253,10 +294,73 @@ async def test_propose_rejects_a_second_exception_for_the_same_line() -> None:
                 minimum_shelf_life_months=seed.minimum_shelf_life_months,
                 operator_id=seed.operator_id,
                 proposed_exact_expiry_date=date.today() + timedelta(days=30),
-                additional_discount_irr=0,
+                additional_discount_irr=100_000,
                 reason="second attempt should be rejected",
                 evidence_file_id=evidence_id,
+                response_window_hours=72,
             )
+
+
+async def test_propose_rejects_a_zero_or_negative_discount() -> None:
+    seed = await _seed_unsourced_line()
+    evidence_id = await _evidence_file(seed.operator_id)
+    for bad_discount in (0, -1):
+        async with SessionFactory() as session:
+            line = await session.get(OrderLine, seed.order_line_id)
+            order = await session.get(Order, seed.order_id)
+            assert line is not None and order is not None
+            with pytest.raises(
+                ShelfLifeExceptionError, match="additional_discount_irr_must_be_positive"
+            ):
+                await propose_shelf_life_exception(
+                    session,
+                    order_line=line,
+                    order=order,
+                    minimum_shelf_life_months=seed.minimum_shelf_life_months,
+                    operator_id=seed.operator_id,
+                    proposed_exact_expiry_date=date.today() + timedelta(days=30),
+                    additional_discount_irr=bad_discount,
+                    reason="a shelf-life exception without compensation is not fair",
+                    evidence_file_id=evidence_id,
+                    response_window_hours=72,
+                )
+    async with SessionFactory() as session:
+        count = len(
+            (
+                await session.scalars(
+                    select(ShelfLifeException).where(
+                        ShelfLifeException.order_line_id == seed.order_line_id
+                    )
+                )
+            ).all()
+        )
+    assert count == 0
+
+
+async def test_propose_after_decline_creates_a_fresh_exception() -> None:
+    """ADR-007's amendment: a resolved (declined/expired) exception no
+    longer permanently blocks the line -- an operator can propose a
+    revised exception (e.g. a better discount) instead of the line being
+    stuck excluded from delivery forever."""
+    seed = await _seed_unsourced_line()
+    first_id = await _propose(seed, additional_discount_irr=50_000)
+    async with SessionFactory() as session:
+        exception = await session.get(ShelfLifeException, first_id, with_for_update=True)
+        line = await session.get(OrderLine, seed.order_line_id)
+        assert exception is not None and line is not None
+        await decline_shelf_life_exception(
+            session, exception=exception, order_line=line, customer_identity_id=seed.customer_id
+        )
+        await session.commit()
+
+    second_id = await _propose(seed, additional_discount_irr=200_000)
+    assert second_id != first_id
+    async with SessionFactory() as session:
+        first = await session.get(ShelfLifeException, first_id)
+        second = await session.get(ShelfLifeException, second_id)
+    assert first is not None and first.status == "declined"
+    assert second is not None and second.status == "proposed"
+    assert second.additional_discount_irr == 200_000
 
 
 async def test_propose_rejects_a_line_that_is_already_sourced() -> None:
@@ -295,18 +399,19 @@ async def test_propose_rejects_a_line_that_is_already_sourced() -> None:
                 minimum_shelf_life_months=seed.minimum_shelf_life_months,
                 operator_id=seed.operator_id,
                 proposed_exact_expiry_date=date.today() + timedelta(days=30),
-                additional_discount_irr=0,
+                additional_discount_irr=100_000,
                 reason="already sourced, should be rejected",
                 evidence_file_id=evidence_id,
+                response_window_hours=72,
             )
 
 
 # --- service-level: accept / decline --------------------------------------
 
 
-async def test_accept_creates_sourced_unit_evidence_and_no_refund_when_discount_is_zero() -> None:
+async def test_accept_creates_sourced_unit_evidence_and_marks_the_discount_owed() -> None:
     seed = await _seed_unsourced_line()
-    exception_id = await _propose(seed, additional_discount_irr=0)
+    exception_id = await _propose(seed, additional_discount_irr=120_000)
     async with SessionFactory() as session:
         exception = await session.get(ShelfLifeException, exception_id, with_for_update=True)
         line = await session.get(OrderLine, seed.order_line_id)
@@ -320,8 +425,11 @@ async def test_accept_creates_sourced_unit_evidence_and_no_refund_when_discount_
         )
         await session.commit()
     assert result.status == "accepted"
-    assert result.refund_status == "not_applicable"
-    assert result.refund_amount_irr is None
+    # additional_discount_irr is required to be positive at proposal time
+    # (ADR-007's amendment), so accept always owes a refund now -- there
+    # is no longer a zero-discount, nothing-owed acceptance path.
+    assert result.refund_status == "owed"
+    assert result.refund_amount_irr == 120_000
     async with SessionFactory() as session:
         evidence = await session.scalar(
             select(SourcedUnitEvidence).where(
@@ -606,6 +714,53 @@ async def test_delivery_projection_skips_a_declined_line_but_still_delivers_the_
     assert units[0].order_line_id == good_line_id
 
 
+async def test_delivery_projection_rejects_a_line_whose_confirmed_expiry_already_passed() -> None:
+    """A confirmed exact_expiry_date can be days old by the time delivery
+    actually happens -- e.g. a short-shelf-life exception's accepted
+    proposal, if fulfillment is slow. Marking the order delivered must
+    not materialize an inventory unit that is already expired on
+    arrival (Workstream 7)."""
+    seed = await _seed_unsourced_line(quantity=1)
+    async with SessionFactory() as session:
+        assurance = await session.scalar(
+            select(SupplierAssurance).where(SupplierAssurance.supplier_id == seed.supplier_id)
+        )
+        assert assurance is not None
+        line = await session.get(OrderLine, seed.order_line_id)
+        assert line is not None
+        session.add(
+            SourcedUnitEvidence(
+                order_line_id=line.id,
+                exact_expiry_date=date.today() - timedelta(days=1),
+                supplier_country_snapshot="FR",
+                authenticity_basis="supplier_verified",
+                supplier_assurance_id=assurance.id,
+                confirmed_at=utc_now() - timedelta(days=30),
+                recorded_by_operator_id=seed.operator_id,
+            )
+        )
+        order = await session.get(Order, seed.order_id)
+        assert order is not None
+        order.status = "delivered"
+        order.delivered_at = utc_now()
+        await session.commit()
+
+    async with SessionFactory() as session:
+        with pytest.raises(DeliveryProjectionError, match="expired"):
+            await project_delivered_order(
+                session, order_id=seed.order_id, household_id=seed.household_id
+            )
+    async with SessionFactory() as session:
+        unit_count = len(
+            (
+                await session.scalars(
+                    select(InventoryUnit).where(InventoryUnit.order_line_id == seed.order_line_id)
+                )
+            ).all()
+        )
+    assert unit_count == 0
+
+
 # --- refund attestation -----------------------------------------------------
 
 
@@ -645,24 +800,16 @@ async def test_attest_refund_transitions_owed_to_attested_and_is_idempotent() ->
 
 
 async def test_attest_refund_rejects_when_nothing_is_owed() -> None:
+    """A still-open ('proposed') exception has never had its refund_status
+    touched (stays the model default 'not_applicable') -- attesting a
+    refund against it must be rejected."""
     seed = await _seed_unsourced_line()
-    exception_id = await _propose(seed, additional_discount_irr=0)
-    async with SessionFactory() as session:
-        exception = await session.get(ShelfLifeException, exception_id, with_for_update=True)
-        line = await session.get(OrderLine, seed.order_line_id)
-        assert exception is not None and line is not None
-        await accept_shelf_life_exception(
-            session,
-            exception=exception,
-            order_line=line,
-            supplier_id=seed.supplier_id,
-            customer_identity_id=seed.customer_id,
-        )
-        await session.commit()
+    exception_id = await _propose(seed)
     evidence_id = await _evidence_file(seed.operator_id)
     async with SessionFactory() as session:
         exception = await session.get(ShelfLifeException, exception_id, with_for_update=True)
         assert exception is not None
+        assert exception.refund_status == "not_applicable"
         with pytest.raises(RefundAttestationError):
             attest_refund(
                 exception, operator_id=seed.operator_id, evidence_id=evidence_id, reference=None
