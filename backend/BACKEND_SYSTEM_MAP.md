@@ -36,7 +36,7 @@ K9 completes frontend integration contracts without resolving open product polic
 | Replenishment | Authoritative reorder assessment, 3-day safety buffer and durable 72-hour snooze with approved early-break rule; system-proposed replenishment reservations (scheduler-created from pessimistic depletion estimate, customer approve/decline, one row per unit ever) gated behind `replenishment_reservation_enabled=false` — added 2026-07-19 (Workstream 3, ADR-009) |
 | Today | Typed discriminated food states and deterministic single attention item with module failure isolation |
 | Availability | Idempotent subscribe/cancel/list, order_created=false and once-per-activation governed notification |
-| Support/concierge | Shared customer request domain, operator status workflow and no operational promises |
+| Support/concierge | Shared customer request domain, operator status workflow and no operational promises; verified concierge offer lifecycle (evidence-backed review, hybrid reference-price/landed-cost pricing, accept/decline/expire/refresh, operator-discretion catalog promotion) gated behind `concierge_offers_enabled=false` — added 2026-07-20 (Workstream 4, ADR-010) |
 | Journeys | Approved versioned definitions, explicit start, detail, check-ins, server-side completion and safety withdrawal boundary |
 | Diary/Garden | Typed diary detail, server-derived Garden state, placement and idempotent storage preserving memory |
 | Policies | Reserve, cancellation, refund, replacement, substitution, compensation, care delivery approval and push remain gated; semantic bounds and reorder buffer are MVP-approved |

@@ -49,6 +49,9 @@ export type ReplenishmentReservationApproveBody =
   Schema<"ReplenishmentReservationApproveBody">;
 export type ReplenishmentReservationDeclineBody =
   Schema<"ReplenishmentReservationDeclineBody">;
+export type ConciergeOfferResponse = Schema<"ConciergeOfferResponse">;
+export type ConciergeOfferAcceptBody = Schema<"ConciergeOfferAcceptBody">;
+export type ConciergeOfferDeclineBody = Schema<"ConciergeOfferDeclineBody">;
 export type InventoryAssignmentResponse = Schema<"InventoryAssignmentResponse">;
 export type JourneyDefinitionResponse = Schema<"JourneyDefinitionResponse">;
 export type JourneyDetailResponse = Schema<"JourneyDetailResponse">;

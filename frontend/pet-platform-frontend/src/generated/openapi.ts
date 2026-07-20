@@ -175,6 +175,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/concierge-offers/{offer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Concierge Offer */
+        get: operations["get_concierge_offer_api_v1_concierge_offers__offer_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/concierge-offers/{offer_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Concierge Offer */
+        post: operations["accept_concierge_offer_api_v1_concierge_offers__offer_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/concierge-offers/{offer_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Concierge Offer */
+        post: operations["decline_concierge_offer_api_v1_concierge_offers__offer_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/concierge-offers/{offer_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Concierge Offer */
+        post: operations["refresh_concierge_offer_api_v1_concierge_offers__offer_id__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customer-requests": {
         parameters: {
             query?: never;
@@ -202,6 +270,23 @@ export interface paths {
         };
         /** Customer Request Detail */
         get: operations["customer_request_detail_api_v1_customer_requests__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-requests/{request_id}/concierge-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Concierge Offers */
+        get: operations["list_concierge_offers_api_v1_customer_requests__request_id__concierge_offers_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -346,6 +431,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/concierge-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Operator List Concierge Offers */
+        get: operations["operator_list_concierge_offers_api_v1_operator_concierge_offers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/concierge-offers/{offer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Operator Get Concierge Offer */
+        get: operations["operator_get_concierge_offer_api_v1_operator_concierge_offers__offer_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/concierge-offers/{offer_id}/present": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operator Present Offer */
+        post: operations["operator_present_offer_api_v1_operator_concierge_offers__offer_id__present_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/concierge-offers/{offer_id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operator Promote Offer */
+        post: operations["operator_promote_offer_api_v1_operator_concierge_offers__offer_id__promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/concierge-offers/{offer_id}/unavailable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operator Mark Unavailable */
+        post: operations["operator_mark_unavailable_api_v1_operator_concierge_offers__offer_id__unavailable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/customer-requests": {
         parameters: {
             query?: never;
@@ -357,6 +527,23 @@ export interface paths {
         get: operations["operator_customer_requests_api_v1_operator_customer_requests_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/customer-requests/{request_id}/concierge-offers/start-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operator Start Review */
+        post: operations["operator_start_review_api_v1_operator_customer_requests__request_id__concierge_offers_start_review_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3304,6 +3491,192 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** ConciergeOfferAcceptBody */
+        ConciergeOfferAcceptBody: {
+            /**
+             * Address Id
+             * Format: uuid
+             */
+            address_id: string;
+        };
+        /** ConciergeOfferDeclineBody */
+        ConciergeOfferDeclineBody: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * ConciergeOfferOperatorResponse
+         * @description Operator-only full view, including internal landed-cost components
+         *     and supplier identity. Never returned from a customer-facing route.
+         */
+        ConciergeOfferOperatorResponse: {
+            /** Authenticity Basis */
+            authenticity_basis?: string | null;
+            /** Catalog Promoted At */
+            catalog_promoted_at?: string | null;
+            /** Catalog Promotion Rationale */
+            catalog_promotion_rationale?: string | null;
+            /**
+             * Customer Identity Id
+             * Format: uuid
+             */
+            customer_identity_id: string;
+            /** Customs Clearance Irr */
+            customs_clearance_irr?: number | null;
+            /** Decline Reason */
+            decline_reason?: string | null;
+            /** Domestic Delivery Irr */
+            domestic_delivery_irr?: number | null;
+            /** Estimated Delivery Days */
+            estimated_delivery_days?: number | null;
+            /** Exchange Rate Basis Irr Per Unit */
+            exchange_rate_basis_irr_per_unit?: number | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Handling Irr */
+            handling_irr?: number | null;
+            /**
+             * Household Id
+             * Format: uuid
+             */
+            household_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** International Transport Irr */
+            international_transport_irr?: number | null;
+            /** Minimum Shelf Life Months */
+            minimum_shelf_life_months?: number | null;
+            /** Payment Fees Irr */
+            payment_fees_irr?: number | null;
+            /** Platform Margin Irr */
+            platform_margin_irr?: number | null;
+            /** Presented At */
+            presented_at?: string | null;
+            /** Price Explanation Fa */
+            price_explanation_fa?: string | null;
+            /** Price Irr */
+            price_irr?: number | null;
+            /** Pricing Mode */
+            pricing_mode?: ("reference_price_savings" | "landed_cost_plus_margin") | null;
+            /** Promoted Offer Id */
+            promoted_offer_id?: string | null;
+            /** Quantity */
+            quantity: number;
+            /** Reference Price Irr */
+            reference_price_irr?: number | null;
+            /** Refreshed From Offer Id */
+            refreshed_from_offer_id?: string | null;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Responded At */
+            responded_at?: string | null;
+            /** Resulting Order Id */
+            resulting_order_id?: string | null;
+            /** Reviewing Started At */
+            reviewing_started_at?: string | null;
+            /** Risk Reserve Irr */
+            risk_reserve_irr?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "reviewing" | "offer_presented" | "accepted" | "declined" | "expired" | "unavailable" | "refresh_requested";
+            /** Supplier Cost Irr */
+            supplier_cost_irr?: number | null;
+            /** Supplier Id */
+            supplier_id?: string | null;
+            /** Title Fa */
+            title_fa?: string | null;
+            /** Unavailable Reason */
+            unavailable_reason?: string | null;
+            /** Unit Label Fa */
+            unit_label_fa?: string | null;
+            /** Validity Hours */
+            validity_hours?: number | null;
+            /** Verification Evidence File Id */
+            verification_evidence_file_id?: string | null;
+        };
+        /** ConciergeOfferPromoteBody */
+        ConciergeOfferPromoteBody: {
+            /** Rationale */
+            rationale: string;
+        };
+        /**
+         * ConciergeOfferResponse
+         * @description Customer-safe view: never includes supplier identity (only
+         *     country) or any internal landed-cost component -- see
+         *     ConciergeOfferOperatorResponse for the operator-only full view.
+         */
+        ConciergeOfferResponse: {
+            /** Authenticity Basis */
+            authenticity_basis?: string | null;
+            /**
+             * Auto Charged
+             * @default false
+             * @constant
+             */
+            auto_charged: false;
+            /** Decline Reason */
+            decline_reason?: string | null;
+            /** Estimated Delivery Days */
+            estimated_delivery_days?: number | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Minimum Shelf Life Months */
+            minimum_shelf_life_months?: number | null;
+            /** Presented At */
+            presented_at?: string | null;
+            /** Price Explanation Fa */
+            price_explanation_fa?: string | null;
+            /** Price Irr */
+            price_irr?: number | null;
+            /** Pricing Mode */
+            pricing_mode?: ("reference_price_savings" | "landed_cost_plus_margin") | null;
+            /** Quantity */
+            quantity: number;
+            /** Reference Price Irr */
+            reference_price_irr?: number | null;
+            /** Refreshed From Offer Id */
+            refreshed_from_offer_id?: string | null;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Responded At */
+            responded_at?: string | null;
+            /** Resulting Order Id */
+            resulting_order_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "reviewing" | "offer_presented" | "accepted" | "declined" | "expired" | "unavailable" | "refresh_requested";
+            /** Supplier Country Code */
+            supplier_country_code?: string | null;
+            /** Title Fa */
+            title_fa?: string | null;
+            /** Unavailable Reason */
+            unavailable_reason?: string | null;
+            /** Unit Label Fa */
+            unit_label_fa?: string | null;
+        };
+        /** ConciergeOfferUnavailableBody */
+        ConciergeOfferUnavailableBody: {
+            /** Reason */
+            reason: string;
+        };
         /** ConsentBody */
         ConsentBody: {
             /** Policy Version */
@@ -4654,6 +5027,62 @@ export interface components {
             /** Unit Label Fa */
             unit_label_fa: string;
         };
+        /** OfferPresentationBody */
+        OfferPresentationBody: {
+            /** Authenticity Basis */
+            authenticity_basis: string;
+            /** Customs Clearance Irr */
+            customs_clearance_irr?: number | null;
+            /** Domestic Delivery Irr */
+            domestic_delivery_irr?: number | null;
+            /** Estimated Delivery Days */
+            estimated_delivery_days: number;
+            /** Exchange Rate Basis Irr Per Unit */
+            exchange_rate_basis_irr_per_unit?: number | null;
+            /** Handling Irr */
+            handling_irr?: number | null;
+            /** International Transport Irr */
+            international_transport_irr?: number | null;
+            /** Minimum Shelf Life Months */
+            minimum_shelf_life_months: number;
+            /** Payment Fees Irr */
+            payment_fees_irr?: number | null;
+            /** Platform Margin Irr */
+            platform_margin_irr?: number | null;
+            /** Price Explanation Fa */
+            price_explanation_fa: string;
+            /** Price Irr */
+            price_irr: number;
+            /** Pricing Mode */
+            pricing_mode: string;
+            /**
+             * Quantity
+             * @default 1
+             */
+            quantity: number;
+            /** Reference Price Irr */
+            reference_price_irr?: number | null;
+            /** Risk Reserve Irr */
+            risk_reserve_irr?: number | null;
+            /** Supplier Cost Irr */
+            supplier_cost_irr?: number | null;
+            /**
+             * Supplier Id
+             * Format: uuid
+             */
+            supplier_id: string;
+            /** Title Fa */
+            title_fa: string;
+            /** Unit Label Fa */
+            unit_label_fa: string;
+            /** Validity Hours */
+            validity_hours?: number | null;
+            /**
+             * Verification Evidence File Id
+             * Format: uuid
+             */
+            verification_evidence_file_id: string;
+        };
         /** OfferSourcingConfigBody */
         OfferSourcingConfigBody: {
             /** Default Batch Threshold Quantity */
@@ -4678,6 +5107,12 @@ export interface components {
         OffsetPage_AvailabilitySubscriptionResponse_: {
             /** Items */
             items: components["schemas"]["AvailabilitySubscriptionResponse"][];
+            page: components["schemas"]["OffsetPageMetadata"];
+        };
+        /** OffsetPage[ConciergeOfferOperatorResponse] */
+        OffsetPage_ConciergeOfferOperatorResponse_: {
+            /** Items */
+            items: components["schemas"]["ConciergeOfferOperatorResponse"][];
             page: components["schemas"]["OffsetPageMetadata"];
         };
         /** OffsetPage[CustomerRequestResponse] */
@@ -5385,6 +5820,10 @@ export interface components {
             cancel_after_sourcing_enabled: boolean;
             /** Care Journey Delivery Enabled */
             care_journey_delivery_enabled: boolean;
+            /** Concierge Offer Default Validity Hours */
+            concierge_offer_default_validity_hours: number;
+            /** Concierge Offers Enabled */
+            concierge_offers_enabled: boolean;
             /** Concierge Requests Enabled */
             concierge_requests_enabled: boolean;
             /**
@@ -6975,6 +7414,138 @@ export interface operations {
             };
         };
     };
+    get_concierge_offer_api_v1_concierge_offers__offer_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConciergeOfferResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_concierge_offer_api_v1_concierge_offers__offer_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConciergeOfferAcceptBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConciergeOfferResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_concierge_offer_api_v1_concierge_offers__offer_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConciergeOfferDeclineBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConciergeOfferResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_concierge_offer_api_v1_concierge_offers__offer_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConciergeOfferResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_customer_requests_api_v1_customer_requests_get: {
         parameters: {
             query?: {
@@ -7060,6 +7631,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_concierge_offers_api_v1_customer_requests__request_id__concierge_offers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConciergeOfferResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -7315,6 +7917,175 @@ export interface operations {
             };
         };
     };
+    operator_list_concierge_offers_api_v1_operator_concierge_offers_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OffsetPage_ConciergeOfferOperatorResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    operator_get_concierge_offer_api_v1_operator_concierge_offers__offer_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConciergeOfferOperatorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    operator_present_offer_api_v1_operator_concierge_offers__offer_id__present_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferPresentationBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConciergeOfferOperatorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    operator_promote_offer_api_v1_operator_concierge_offers__offer_id__promote_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConciergeOfferPromoteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConciergeOfferOperatorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    operator_mark_unavailable_api_v1_operator_concierge_offers__offer_id__unavailable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConciergeOfferUnavailableBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConciergeOfferOperatorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     operator_customer_requests_api_v1_operator_customer_requests_get: {
         parameters: {
             query?: {
@@ -7334,6 +8105,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OffsetPage_CustomerRequestResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    operator_start_review_api_v1_operator_customer_requests__request_id__concierge_offers_start_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConciergeOfferOperatorResponse"];
                 };
             };
             /** @description Validation Error */

@@ -344,3 +344,33 @@ endpoints.
 | BFF routes | `src/app/api/bff/households/[householdId]/replenishment-reservations/route.ts`; `src/app/api/bff/replenishment-reservations/[reservationId]/route.ts`; `.../approve/route.ts`; `.../decline/route.ts` |
 | frontend tests | `src/lib/policy.test.ts` (fail-closed gate); `src/features/inventory/inventory-opening.test.tsx` (policy-hidden, approve-with-address, decline-with-reason); `src/features/today/today-dashboard.test.tsx` (banner shown/hidden by policy and by pending count) |
 | current status | Fully implemented end-to-end and gated off by default pending a launch decision; not reachable in production until `replenishment_reservation_enabled=true` is explicitly set. No customer-visible price is shown before approval (the price is determined live at approval time via the existing checkout path, same as a manual reorder) — this is a deliberate scope boundary, not a gap. |
+
+## Workstream 4 addendum (2026-07-20) — Verified concierge offers (net-new, beyond the 152-state canonical contract)
+
+Verified concierge offers (`concierge_offers_enabled`, disabled by default) are net-new product
+scope approved by the mission brief that authorized this pass, not a completion of any of the 152
+states above — same rationale as the Workstream 3 addendum directly above: the canonical screen
+graph is checksum-locked and was not, and should not be, modified to add rows for it.
+
+**Capability**: extends the existing `support_customer_requests` (`request_type=
+'concierge_sourcing'`) queue with an auditable offer lifecycle. An operator starts review,
+verifies authenticity/source/supplier country/shelf life/delivery estimate with attached evidence,
+and presents a payable offer using either a reference-price-savings or a
+landed-cost-plus-margin pricing mode — internal landed-cost components and supplier identity are
+structurally confined to the operator-only response type, never returned to the customer. Validity
+is 12-48h (default 24h); the customer explicitly accepts (a real, full-payment Order is created
+lazily via a one-off `Offer(mode='concierge_only')`, hidden from catalog browse/search until a
+deliberate operator promotion) or declines; an unanswered offer expires with no automatic
+re-verification, and the customer may request a refresh, which always opens a new cycle rather
+than reactivating the expired one.
+
+| item | detail |
+|---|---|
+| policy gate | `concierge_offers_enabled` (bool, default false); `concierge_offer_default_validity_hours` (int, default 24) — both on `GET /api/v1/system/policies`. Distinct from the pre-existing, already-live `concierge_requests_enabled`, which gates request *submission* only. |
+| backend operations | `GET /customer-requests/{request_id}/concierge-offers`; `GET /concierge-offers/{id}`; `POST .../accept` (body: `address_id`); `POST .../decline` (body: `reason`); `POST .../refresh`; five operator operations (start-review, present, unavailable, promote, queue/detail) |
+| backend implementation | `app/modules/concierge/models.py`, `app/modules/concierge/service.py`, `app/api/routes/concierge_offers.py`, `app/api/routes/commerce.py` (catalog-filter exclusion), `app/workers/scheduler.py`, `app/workers/outbox.py`, `app/modules/notifications/service.py`, `app/modules/system/event_registry.py`, migration `20260720_0035` |
+| backend tests | `tests/integration/test_concierge_offers.py` (32 tests: start-review idempotency and type-rejection, both pricing modes' required-field validation, validity-hours bounds, presented-offer immutability, unavailable, accept creating a real order with zero auto-charge, accept/decline idempotency, accept-after-expiry, refresh creating a new cycle without mutating the expired row, refresh idempotency, the expiry sweep, catalog promotion and cap-lifting, a concurrent accept-vs-decline race, HTTP gating, full HTTP lifecycle with the customer/operator response-shape difference, non-enumerating 404, operator queue status filtering, and accepted-offer catalog-hiding with direct-id reachability) |
+| frontend surface | `src/features/support/concierge-request-detail.tsx` (`ConciergeOfferSection`, `ConciergeOfferCard`, `AcceptOfferSheet`, `DeclineOfferSheet`) on the existing `/support/{requestId}` page, shown only for `request_type='concierge_sourcing'` |
+| BFF routes | `src/app/api/bff/customer-requests/[requestId]/concierge-offers/route.ts`; `src/app/api/bff/concierge-offers/[offerId]/accept/route.ts`; `.../decline/route.ts`; `.../refresh/route.ts` |
+| frontend tests | `src/lib/policy.test.ts` (fail-closed gate); `src/features/support/concierge-request-detail.test.tsx` (policy-hidden, presented-offer accept-with-address, decline-with-reason, refresh-when-expired) |
+| current status | Fully implemented end-to-end and gated off by default pending a launch decision; not reachable in production until `concierge_offers_enabled=true` is explicitly set. No operator-facing UI exists (this repository has never built one for any operator-only capability — reserve-now's operator endpoints, purchasing batches, and knowledge review are equally API-only); operators are expected to use the tested API surface directly, consistent with that established precedent, not a gap specific to this workstream. |

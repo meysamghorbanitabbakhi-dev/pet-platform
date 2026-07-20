@@ -7,6 +7,7 @@ import type {
   BreedListResponse,
   BreedSearchResponse,
   CareGuidanceResponse,
+  ConciergeOfferResponse,
   CustomerRequestPage,
   CustomerRequestResponse,
   DiaryEntryDetailResponse,
@@ -91,6 +92,8 @@ export const policyFixture: PolicyResponse = {
   replenishment_reservation_enabled: false,
   replenishment_reservation_lead_days: 14,
   replenishment_reservation_approval_window_hours: 48,
+  concierge_offers_enabled: false,
+  concierge_offer_default_validity_hours: 24,
   reserve_now_enabled: false,
   semantic_level_estimation_enabled: true,
   sourcing_start_rule:
@@ -669,6 +672,40 @@ export const customerRequestFixture: CustomerRequestResponse = {
   request_type: "support",
   status: "submitted",
   updated_at: "2026-07-17T08:00:00Z",
+};
+
+export const conciergeCustomerRequestFixture: CustomerRequestResponse = {
+  ...customerRequestFixture,
+  id: "cccc3333-cccc-4ccc-8ccc-ccccccccccc3",
+  message_fa: "لطفا این محصول مخصوص را برایم تهیه کنید",
+  product_query_fa: "غذای تجویزی کلیوی گربه",
+  request_type: "concierge_sourcing",
+};
+
+export const conciergeOfferFixture: ConciergeOfferResponse = {
+  id: "dddd4444-dddd-4ddd-8ddd-ddddddddddd4",
+  request_id: conciergeCustomerRequestFixture.id,
+  refreshed_from_offer_id: null,
+  status: "offer_presented",
+  title_fa: "غذای تجویزی کلیوی گربه - وارداتی",
+  unit_label_fa: "بسته ۲ کیلوگرمی",
+  quantity: 1,
+  authenticity_basis: "supplier_invoice_verified",
+  supplier_country_code: "DE",
+  minimum_shelf_life_months: 6,
+  estimated_delivery_days: 20,
+  pricing_mode: "reference_price_savings",
+  price_irr: 9_000_000,
+  reference_price_irr: 10_500_000,
+  price_explanation_fa:
+    "قیمت بر اساس مرجع بازار و صرفه‌جویی واقعی نسبت به آن محاسبه شده است.",
+  presented_at: "2026-07-19T08:00:00Z",
+  expires_at: "2026-07-20T08:00:00Z",
+  responded_at: null,
+  decline_reason: null,
+  unavailable_reason: null,
+  resulting_order_id: null,
+  auto_charged: false,
 };
 
 export const customerRequestPageFixture: CustomerRequestPage = {

@@ -8,6 +8,7 @@ import {
   enabled,
   isPolicyCompatible,
   shouldRenderCareJourneys,
+  shouldRenderConciergeOffers,
   shouldRenderReplenishmentReservations,
   shouldRenderReserveNow,
 } from "./policy";
@@ -20,6 +21,7 @@ describe("runtime policy gates", () => {
     );
     expect(shouldRenderReserveNow(undefined)).toBe(false);
     expect(shouldRenderReplenishmentReservations(undefined)).toBe(false);
+    expect(shouldRenderConciergeOffers(undefined)).toBe(false);
   });
 
   it("keeps required policy invariants explicit", () => {
@@ -27,7 +29,18 @@ describe("runtime policy gates", () => {
     expect(policyFixture.delivery_commitment_hours).toBe(366);
     expect(policyFixture.reserve_now_enabled).toBe(false);
     expect(policyFixture.replenishment_reservation_enabled).toBe(false);
+    expect(policyFixture.concierge_offers_enabled).toBe(false);
     expect(policyFixture.full_payment_only).toBe(true);
+  });
+
+  it("only renders concierge offers when the runtime policy enables them", () => {
+    expect(shouldRenderConciergeOffers(policyFixture)).toBe(false);
+    expect(
+      shouldRenderConciergeOffers({
+        ...policyFixture,
+        concierge_offers_enabled: true,
+      }),
+    ).toBe(true);
   });
 
   it("only renders replenishment reservations when the runtime policy enables them", () => {

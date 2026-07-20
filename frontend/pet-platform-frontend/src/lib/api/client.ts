@@ -14,6 +14,9 @@ import type {
   BreedSelectionBody,
   CareGuidanceResponse,
   CheckoutBody,
+  ConciergeOfferAcceptBody,
+  ConciergeOfferDeclineBody,
+  ConciergeOfferResponse,
   ConsentBody,
   CustomerRequestBody,
   CustomerRequestPage,
@@ -344,6 +347,39 @@ export function listCustomerRequests() {
 export function getCustomerRequest(requestId: string) {
   return bff<CustomerRequestResponse>(
     `/api/bff/customer-requests/${requestId}`,
+  );
+}
+
+export function listConciergeOffers(requestId: string) {
+  return bff<ConciergeOfferResponse[]>(
+    `/api/bff/customer-requests/${requestId}/concierge-offers`,
+  );
+}
+
+export function acceptConciergeOffer(
+  offerId: string,
+  body: ConciergeOfferAcceptBody,
+) {
+  return bff<ConciergeOfferResponse>(
+    `/api/bff/concierge-offers/${offerId}/accept`,
+    { method: "POST", body },
+  );
+}
+
+export function declineConciergeOffer(
+  offerId: string,
+  body: ConciergeOfferDeclineBody,
+) {
+  return bff<ConciergeOfferResponse>(
+    `/api/bff/concierge-offers/${offerId}/decline`,
+    { method: "POST", body },
+  );
+}
+
+export function refreshConciergeOffer(offerId: string) {
+  return bff<ConciergeOfferResponse>(
+    `/api/bff/concierge-offers/${offerId}/refresh`,
+    { method: "POST" },
   );
 }
 

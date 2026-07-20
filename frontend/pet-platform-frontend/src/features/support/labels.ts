@@ -45,3 +45,36 @@ export function requestTypeLabel(value: string): string {
 export function promiseLabel(key: string): string {
   return promiseLabels[key] ?? key;
 }
+
+const offerStatusLabels: Record<string, string> = {
+  accepted: "پذیرفته شد و سفارش ایجاد شد",
+  declined: "رد شد",
+  expired: "مهلت پاسخ به پایان رسید",
+  offer_presented: "پیشنهاد آماده بررسی است",
+  refresh_requested: "درخواست بررسی دوباره ثبت شد",
+  reviewing: "در حال بررسی و راستی‌آزمایی",
+  unavailable: "قابل تامین نیست",
+};
+
+const offerStatusTones: Record<
+  string,
+  "positive" | "info" | "warning" | "error" | "muted"
+> = {
+  accepted: "positive",
+  declined: "muted",
+  expired: "muted",
+  offer_presented: "warning",
+  refresh_requested: "info",
+  reviewing: "info",
+  unavailable: "muted",
+};
+
+export function offerStatusLabel(value: string): string {
+  return offerStatusLabels[value] ?? value;
+}
+
+export function offerStatusTone(
+  value: string,
+): "positive" | "info" | "warning" | "error" | "muted" {
+  return offerStatusTones[value] ?? "muted";
+}

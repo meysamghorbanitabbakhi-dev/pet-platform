@@ -66,6 +66,9 @@ import type {
   ReplenishmentReservationApproveBody,
   ReplenishmentReservationDeclineBody,
   ReplenishmentReservationResponse,
+  ConciergeOfferAcceptBody,
+  ConciergeOfferDeclineBody,
+  ConciergeOfferResponse,
   TodayResponse,
 } from "@/lib/api-types";
 import type {
@@ -796,6 +799,66 @@ export async function getCustomerRequestBackend(
   return withAuth((headers) =>
     backendClient.GET("/api/v1/customer-requests/{request_id}", {
       params: { path: { request_id: requestId } },
+      headers,
+    }),
+  );
+}
+
+export async function listConciergeOffersBackend(
+  requestId: string,
+): Promise<ConciergeOfferResponse[]> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.listConciergeOffers(requestId);
+  return withAuth((headers) =>
+    backendClient.GET(
+      "/api/v1/customer-requests/{request_id}/concierge-offers",
+      {
+        params: { path: { request_id: requestId } },
+        headers,
+      },
+    ),
+  );
+}
+
+export async function acceptConciergeOfferBackend(
+  offerId: string,
+  body: ConciergeOfferAcceptBody,
+): Promise<ConciergeOfferResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.acceptConciergeOffer(offerId, body);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/concierge-offers/{offer_id}/accept", {
+      params: { path: { offer_id: offerId } },
+      body,
+      headers,
+    }),
+  );
+}
+
+export async function declineConciergeOfferBackend(
+  offerId: string,
+  body: ConciergeOfferDeclineBody,
+): Promise<ConciergeOfferResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi)
+    return developmentApi.declineConciergeOffer(offerId, body);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/concierge-offers/{offer_id}/decline", {
+      params: { path: { offer_id: offerId } },
+      body,
+      headers,
+    }),
+  );
+}
+
+export async function refreshConciergeOfferBackend(
+  offerId: string,
+): Promise<ConciergeOfferResponse> {
+  const developmentApi = await loadDevelopmentApi();
+  if (developmentApi) return developmentApi.refreshConciergeOffer(offerId);
+  return withAuth((headers) =>
+    backendClient.POST("/api/v1/concierge-offers/{offer_id}/refresh", {
+      params: { path: { offer_id: offerId } },
       headers,
     }),
   );

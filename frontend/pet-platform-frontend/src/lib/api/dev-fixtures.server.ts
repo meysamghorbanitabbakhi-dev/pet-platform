@@ -7,6 +7,8 @@ import type {
   BodyAssessmentBody,
   BreedSelectionBody,
   CheckoutBody,
+  ConciergeOfferAcceptBody,
+  ConciergeOfferDeclineBody,
   ConsentBody,
   CustomerRequestBody,
   GardenPlacementBody,
@@ -236,6 +238,46 @@ export async function loadDevelopmentApi() {
     getCustomerRequest: async (_requestId: string) => {
       void _requestId;
       return fixtures.customerRequestFixture;
+    },
+    listConciergeOffers: async (_requestId: string) => {
+      void _requestId;
+      return fixtures.conciergeOfferFixture
+        ? [fixtures.conciergeOfferFixture]
+        : [];
+    },
+    acceptConciergeOffer: async (
+      _offerId: string,
+      _body: ConciergeOfferAcceptBody,
+    ) => {
+      void _offerId;
+      void _body;
+      return {
+        ...fixtures.conciergeOfferFixture,
+        status: "accepted" as const,
+        responded_at: "2026-07-19T12:00:00Z",
+        resulting_order_id: fixtures.ids.orderPaid,
+      };
+    },
+    declineConciergeOffer: async (
+      _offerId: string,
+      _body: ConciergeOfferDeclineBody,
+    ) => {
+      void _offerId;
+      void _body;
+      return {
+        ...fixtures.conciergeOfferFixture,
+        status: "declined" as const,
+        responded_at: "2026-07-19T12:00:00Z",
+      };
+    },
+    refreshConciergeOffer: async (_offerId: string) => {
+      void _offerId;
+      return {
+        ...fixtures.conciergeOfferFixture,
+        id: "11111111-2222-4222-8222-222222222222",
+        status: "refresh_requested" as const,
+        refreshed_from_offer_id: fixtures.conciergeOfferFixture.id,
+      };
     },
     getWallet: async (_householdId: string) => {
       void _householdId;

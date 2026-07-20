@@ -149,3 +149,30 @@ Reservations themselves are created and refreshed by a scheduler job (not a cust
 endpoint), and refreshed or invalidated in place by the pre-existing
 `POST /pet-life/inventory/{unit_id}/estimate/correct` and
 `POST /pet-life/inventory/{unit_id}/exhaust` endpoints — see ADR-009.
+
+## Verified concierge offers (2026-07-20, Workstream 4 — gated off, `concierge_offers_enabled=false`)
+
+Extends the existing `support_customer_requests` (`request_type='concierge_sourcing'`) queue with
+an auditable, verified-offer lifecycle: operator review → evidence-backed presentation (hybrid
+reference-price-savings or landed-cost-plus-margin pricing, Decision 0.34) → customer explicit
+accept (real full-payment order via a one-off catalog offer, hidden until a deliberate operator
+promotion) or decline, with no deposit or auto-charge concept anywhere in the schema. Fully built,
+tested, and has customer-facing frontend UI on the existing request-detail page, but every
+endpoint below returns `409 concierge_offers_disabled` while the flag is off — see
+`docs/runbooks/concierge-offer-rollout.md` and ADR-010 before ever turning it on. Note
+`concierge_requests_enabled` (already live) is a separate, pre-existing flag gating request
+*submission*, unaffected by this one.
+
+| Method | Endpoint | Capability |
+|---|---|---|
+| GET | `/customer-requests/{request_id}/concierge-offers` | Customer list of a request's offer cycles (most recent first); customer-safe fields only |
+| GET | `/concierge-offers/{offer_id}` | Customer detail; non-enumerating 404 for a missing or foreign offer |
+| POST | `/concierge-offers/{offer_id}/accept` | Customer accepts; lazily creates a one-off `Offer(mode='concierge_only')` and a real, full-payment `Order` at the presented (locked) price; idempotent, returns the same offer/order on replay |
+| POST | `/concierge-offers/{offer_id}/decline` | Customer declines the presented offer; idempotent |
+| POST | `/concierge-offers/{offer_id}/refresh` | Customer requests a fresh look at an *expired* offer; creates a new cycle, never reactivates the old row; idempotent while a cycle is already active |
+| POST | `/operator/customer-requests/{request_id}/concierge-offers/start-review` | Operator begins (or resumes, for a refresh cycle) verification; idempotent |
+| POST | `/operator/concierge-offers/{offer_id}/present` | Operator presents a verified, evidence-backed, priced offer with a 12-48h validity window; idempotent and immutable once presented |
+| POST | `/operator/concierge-offers/{offer_id}/unavailable` | Operator determines the request cannot be sourced at all, skipping the customer entirely; idempotent |
+| POST | `/operator/concierge-offers/{offer_id}/promote` | Operator-discretion catalog promotion of an already-accepted offer's one-off `Offer` (Decision 0.37); idempotent |
+| GET | `/operator/concierge-offers` | Operator queue, filterable by `status` |
+| GET | `/operator/concierge-offers/{offer_id}` | Operator detail, including internal landed-cost components and supplier identity — never returned from a customer-facing route |
