@@ -4026,6 +4026,129 @@
         "title": "JourneyStopBody",
         "type": "object"
       },
+      "KPIResultResponse": {
+        "properties": {
+          "computable": {
+            "title": "Computable",
+            "type": "boolean"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "data_limitation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Limitation"
+          },
+          "denominator": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "late_event_handling": {
+            "title": "Late Event Handling",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "numerator": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numerator"
+          },
+          "status_inclusion": {
+            "title": "Status Inclusion",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "validation_query": {
+            "title": "Validation Query",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "window": {
+            "title": "Window",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "description",
+          "version",
+          "computable",
+          "numerator",
+          "denominator",
+          "value",
+          "unit",
+          "currency",
+          "data_limitation",
+          "window",
+          "timezone",
+          "status_inclusion",
+          "late_event_handling",
+          "validation_query"
+        ],
+        "title": "KPIResultResponse",
+        "type": "object"
+      },
       "KnowledgeActivationActionBody": {
         "properties": {
           "reason": {
@@ -14337,6 +14460,135 @@
           }
         ],
         "summary": "List Knowledge Review Tasks",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/kpis": {
+      "get": {
+        "operationId": "list_kpis_api_v1_operator_kpis_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window_start",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Window Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window_end",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Window End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/KPIResultResponse"
+                  },
+                  "title": "Response List Kpis Api V1 Operator Kpis Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Kpis",
+        "tags": [
+          "operator"
+        ]
+      }
+    },
+    "/api/v1/operator/kpis/{key}": {
+      "get": {
+        "operationId": "get_kpi_api_v1_operator_kpis__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window_start",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Window Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window_end",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Window End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KPIResultResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Kpi",
         "tags": [
           "operator"
         ]

@@ -76,6 +76,8 @@ from app.modules.pet_knowledge.validation import canonical_bytes, validate_bundl
 from app.modules.pets.models import Pet
 from app.modules.purchasing.models import PurchaseBatch, PurchaseBatchAllocation, PurchaseBatchEvent
 from app.modules.purchasing.service import PurchasingError, commit_batch
+from app.modules.reporting.kpi import KPI_REGISTRY, KPIDefinition
+from app.modules.reporting.service import KPIResult, compute_all_kpis, compute_kpi
 from app.modules.reservations.models import Reservation
 from app.modules.reservations.service import (
     ReservationError,
@@ -2868,6 +2870,78 @@ async def replay_outbox_event(
     )
     await session.commit()
     return _outbox_event_response(record)
+
+
+class KPIResultResponse(BaseModel):
+    key: str
+    name: str
+    description: str
+    version: int
+    computable: bool
+    numerator: float | None
+    denominator: float | None
+    value: float | None
+    unit: str
+    currency: str | None
+    data_limitation: str | None
+    window: str
+    timezone: str
+    status_inclusion: str
+    late_event_handling: str
+    validation_query: str
+
+
+def _kpi_response(definition: KPIDefinition, result: KPIResult) -> KPIResultResponse:
+    return KPIResultResponse(
+        key=definition.key,
+        name=definition.name,
+        description=definition.description,
+        version=definition.version,
+        computable=result.computable,
+        numerator=result.numerator,
+        denominator=result.denominator,
+        value=result.value,
+        unit=result.unit,
+        currency=definition.currency,
+        data_limitation=result.data_limitation,
+        window=definition.window,
+        timezone=definition.timezone,
+        status_inclusion=definition.status_inclusion,
+        late_event_handling=definition.late_event_handling,
+        validation_query=definition.validation_query,
+    )
+
+
+@router.get("/kpis", response_model=list[KPIResultResponse])
+async def list_kpis(
+    _: CurrentOperator,
+    session: SessionDependency,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[KPIResultResponse]:
+    if window_end <= window_start:
+        raise HTTPException(status_code=422, detail="window_end_must_be_after_window_start")
+    results = await compute_all_kpis(session, window_start=window_start, window_end=window_end)
+    return [
+        _kpi_response(KPI_REGISTRY[result.key], result)
+        for result in results
+    ]
+
+
+@router.get("/kpis/{key}", response_model=KPIResultResponse)
+async def get_kpi(
+    key: str,
+    _: CurrentOperator,
+    session: SessionDependency,
+    window_start: datetime,
+    window_end: datetime,
+) -> KPIResultResponse:
+    if key not in KPI_REGISTRY:
+        raise HTTPException(status_code=404, detail="kpi_not_found")
+    if window_end <= window_start:
+        raise HTTPException(status_code=422, detail="window_end_must_be_after_window_start")
+    result = await compute_kpi(session, key, window_start=window_start, window_end=window_end)
+    return _kpi_response(KPI_REGISTRY[key], result)
 
 
 @router.get("/audit/export")
