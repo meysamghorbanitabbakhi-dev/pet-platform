@@ -385,3 +385,42 @@ than reactivating the expired one.
 | BFF routes | `src/app/api/bff/customer-requests/[requestId]/concierge-offers/route.ts`; `src/app/api/bff/concierge-offers/[offerId]/accept/route.ts`; `.../decline/route.ts`; `.../refresh/route.ts` |
 | frontend tests | `src/lib/policy.test.ts` (fail-closed gate); `src/features/support/concierge-request-detail.test.tsx` (policy-hidden, presented-offer accept-with-address, decline-with-reason, refresh-when-expired) |
 | current status | Fully implemented end-to-end and gated off by default pending a launch decision; not reachable in production until `concierge_offers_enabled=true` is explicitly set. No operator-facing UI exists (this repository has never built one for any operator-only capability — reserve-now's operator endpoints, purchasing batches, and knowledge review are equally API-only); operators are expected to use the tested API surface directly, consistent with that established precedent, not a gap specific to this workstream. |
+
+## Workstream 11 addendum (2026-07-20) — real-backend E2E expansion, audited existing coverage, honest scope limits
+
+Investigated this pass's three asks against what actually exists, not what was assumed missing:
+
+1. **"Missing customer/operator surfaces from WS3-7."** Checked each: replenishment reservations
+   (WS4) already has full customer UI (`inventory-opening.tsx`'s approve/decline actions,
+   `today-dashboard.tsx`'s banner). Concierge offers (WS5) already has full customer UI (see the
+   Workstream 4 addendum directly above). Shelf-life exceptions (WS7) already has full customer UI
+   and BFF routes (`order-detail-view.tsx`, `src/app/api/bff/orders/[orderId]/shelf-life-exceptions/`).
+   Reserve-now (WS3) is the one genuine gap — only a policy-flag check exists
+   (`checkout-review.tsx:141`), no reservation propose/approve customer flow. Not built this pass:
+   `reserve_now_enabled` stays `false` by explicit accepted-facts policy (same status as before),
+   and building a full propose→operator-reconfirm→customer-approve UI for a feature staying
+   disabled has no near-term payoff proportional to the effort — recorded as open scope, not
+   silently dropped.
+2. **Real-backend E2E for "all 11 journeys."** Two specs existed before this pass (T8 onboarding,
+   anonymous shop discovery). Added `checkout.spec.ts` (T10: shop → offer detail → cart → address →
+   review → order creation → the real Zarinpal-not-configured 503 boundary — `ZARINPAL_MERCHANT_ID`
+   is empty in every environment set up so far, backend "production readiness" notes) and
+   `operator-kpis.spec.ts` (operator OTP login → `/operator/kpis`, real RLS `app_is_operator()`
+   bypass proven against a live backend — no journey in the table above covers the operator surface
+   at all, so this is new coverage, not a duplicate). `seed.ts` seeds catalog data directly via
+   `docker exec ... psql` against the harness's own ephemeral Postgres (this repo has no operator
+   console UI or Node Postgres client library; real E2E still holds since every step after seeding
+   goes through the actual API/UI) and retires it afterward so `shop-discovery.spec.ts`'s
+   empty-catalog assertion keeps working in the same run. Fixed a real compatibility gap surfaced
+   by this: `scripts/e2e-real-backend.mjs` didn't know about `DATABASE_APP_URL` (backend
+   ADR-011's amendment, Workstream 9) — every authenticated real-backend test would have failed
+   without it. **4 of 11 journeys now have real-backend coverage; T9, T11-T18 do not** — each would
+   need its own seed data and selector work following the pattern established here, not a
+   mechanical repeat, and is recorded as explicit open scope.
+3. **Manual screen-reader/responsive accessibility audit.** Not attempted, and said so rather than
+   fabricating one: executing a screen reader is not something achievable without eyes/ears, and no
+   claim to the contrary belongs in this table. `@axe-core/playwright` (already a dependency, used
+   in the two pre-existing specs) runs against every page state in all four real-backend specs now,
+   which is the honest automated substitute — it catches a real, meaningful subset of accessibility
+   defects (missing labels, contrast, ARIA misuse) but is not equivalent to a human screen-reader
+   pass or manual keyboard/responsive-viewport walkthrough, which remain unattempted.
