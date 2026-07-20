@@ -225,7 +225,7 @@ class IdResponse(BaseModel):
 async def create_household(
     body: HouseholdBody, identity: CurrentIdentity, session: SessionDependency
 ) -> IdResponse:
-    household = Household(name=body.name)
+    household = Household(name=body.name, created_by_identity_id=identity.id)
     session.add(household)
     await session.flush()
     session.add(

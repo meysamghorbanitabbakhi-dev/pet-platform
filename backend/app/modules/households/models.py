@@ -12,6 +12,20 @@ class Household(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "households_households"
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Set at creation (create_household route) for exactly one purpose:
+    # letting the row-level-security SELECT policy recognize a household
+    # its creator can see immediately, before the HouseholdMembership row
+    # that would otherwise establish that exists -- Postgres evaluates an
+    # INSERT ... RETURNING clause's visibility against the table's SELECT
+    # policy, and the membership row is necessarily still absent at that
+    # exact moment (see ADR-011's amendment). NULL for households created
+    # before this column existed -- never backfilled with a guess, since
+    # "who created this household" cannot be honestly reconstructed for
+    # them (a household can have several members, and pre-existing rows
+    # never recorded who acted first).
+    created_by_identity_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("identity_auth_identities.id")
+    )
 
 
 class HouseholdMembership(UUIDPrimaryKeyMixin, TimestampMixin, Base):

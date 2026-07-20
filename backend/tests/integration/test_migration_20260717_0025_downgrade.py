@@ -11,7 +11,7 @@ import app.db.models  # noqa: F401
 import pytest
 from alembic import command
 from alembic.config import Config
-from app.db.session import SessionFactory, close_database
+from app.db.session import SessionFactory, app_engine, close_database
 from app.integrations.price_intelligence.service import PriceIntelligenceService
 from sqlalchemy import text
 
@@ -107,6 +107,14 @@ def test_downgrade_fails_closed_with_unmatched_rows_then_succeeds_after_cleanup(
     # steps separate it from whatever the current head happens to be.
     config = _alembic_config()
     original_head = _run(_current_alembic_version())
+    # This downgrade range now crosses 20260720_0040, whose own downgrade
+    # drops the RLS app role (see ADR-011's amendment) -- Postgres refuses
+    # DROP ROLE while any session, even a pooled-idle one, is still
+    # logged in as it. Earlier test modules in this same pytest process
+    # may have left app_engine's pool holding exactly such connections;
+    # dispose it before the first downgrade attempt so this test doesn't
+    # depend on what ran before it in the suite.
+    _run(app_engine.dispose())
     try:
         _run(_seed_unmatched_row())
         assert _run(_count_unmatched_rows()) >= 1
