@@ -1,14 +1,15 @@
 # Pet Platform — Gap-Closure Program Continuation: Engineering Handoff
 
-**Branch:** `gap-closure-program` · **Head commit at time of writing:** `18c9153` · **This
-segment's commits:** 25, on top of `bc97b7a` (the last commit in the prior, already-merged PR #1)
+**Branch:** `gap-closure-program` · **Head commit at time of writing:** `c43ee23` · **This
+segment's commits:** 27, on top of `bc97b7a` (the last commit in the prior, already-merged PR #1)
 
-**Update (2026-07-21):** nine commits landed after this document's original 15-commit version
+**Update (2026-07-21):** eleven commits landed after this document's original 15-commit version
 (`0dd626c`): three closing the Section 10.3/10.4 gap this document originally listed as "not
 attempted," one fixing the `test_migration_20260717_0025_downgrade.py` fragility this document
-flagged as a CI-pipeline blocker, and five building and validating an actual CI pipeline (see its
-own dedicated update note near the end). The body below is otherwise unmodified from when it was
-first written, including the acceptance-gate
+flagged as a CI-pipeline blocker, five building and validating an actual CI pipeline, and two
+partially closing the Section 12/13 pagination gap (see the dedicated update notes near the end for
+all of these). The body below is otherwise unmodified from when it was first written, including the
+acceptance-gate
 table row for 10.3, which is superseded by the dedicated update section near the end rather than
 edited in place, so the history of what was true at each point stays legible.
 
@@ -230,6 +231,36 @@ was started, no browser testing was performed, and no new E2E specs were written
 predates every migration and RLS-policy change in this segment (five new RLS migrations, one new
 `CHECK` constraint, one new column) and should not be treated as current; a fresh recovery rehearsal
 against this segment's actual schema has not been performed.
+
+**Update (2026-07-21) — pagination gap partially closed, commits `03b84c5`/`c43ee23`.** An audit
+(spawned as a dedicated Explore-agent task, not assumed from the schema) of every list-returning
+endpoint found three with no limit/offset at all: `GET /catalog/offers` (storewide catalog size),
+`GET /pets/{id}/diary` (one row per life event per pet, forever), and `GET /households/{id}/
+inventory` (one row per purchase/consumption cycle per household, forever) — genuinely unbounded,
+distinct from the ~10 other endpoints already found to be hard-capped-but-not-offset-paginated (a
+separate, lower-severity inconsistency, left as-is). Fixed with `.limit(500)`/`.limit(200)`
+respectively, matching this codebase's own existing convention for bounding list endpoints (no new
+abstraction introduced). Full offset/cursor pagination (response-envelope change to `{items, page}`,
+matching `OffsetPage[T]`/`CursorPage[T]`'s existing pattern already used by `/catalog/offers/search`
+and `/orders`) was deliberately not built for these three: only one frontend page
+(`src/app/shop/page.tsx`) consumes the unpaginated offers list today, with no pagination UI at all,
+so closing the real danger (unbounded query) now and building real pagination UX as its own
+dedicated frontend pass is the better-scoped split, matching how this program has scoped other large
+UI-shaped follow-ups (e.g. reserve-now's customer UI).
+
+Caught a real, load-bearing regression while verifying this: the shared development database has
+accumulated 28,000+ offer rows from this program's own testing history, and
+`test_offer_list_and_search_exclude_reserve_and_concierge_only` (`test_offer_mode_eligibility.py`)
+depended on its own fixture offer appearing in the now-capped, alphabetically-ordered list — no
+longer guaranteed at this volume. Fixed by rewriting the test to use the already-paginated
+`/catalog/offers/search` scoped by the fixture's own unique SKU token, which exercises the identical
+mode-based exclusion logic deterministically regardless of accumulated data. One additional,
+already-documented, pre-existing order-dependent `test_kpi_reporting.py` flake was observed during
+verification (confirmed passing 10/10 in isolation) — not touched, per this program's standing
+exclusion of commercial-events/KPI-correctness work.
+
+**Still not done**: load testing, recovery rehearsal, and configuration validation (the rest of
+Section 12-13) remain genuinely not attempted this segment.
 
 **CI pipeline (backend + frontend gates):** not built this segment. All verification in this segment
 was performed by direct `docker exec` invocation against a long-lived interactive development
