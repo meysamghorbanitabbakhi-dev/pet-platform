@@ -488,13 +488,16 @@ export function MeterBand({
   confidence: "low" | "medium" | "high" | null;
   loading?: boolean;
 }) {
-  if (loading) return <Skeleton className="meter" label="در حال بارگذاری برآورد" />;
+  if (loading)
+    return <Skeleton className="meter" label="در حال بارگذاری برآورد" />;
   const known = confidence !== null;
   return (
     <div
       className={clsx("meter", !known && "meter--unknown")}
       role={known ? "progressbar" : "img"}
-      aria-label={known ? confidenceLabelFa[confidence] : "برآورد هنوز نامشخص است"}
+      aria-label={
+        known ? confidenceLabelFa[confidence] : "برآورد هنوز نامشخص است"
+      }
       aria-valuemin={known ? 0 : undefined}
       aria-valuemax={known ? 100 : undefined}
       aria-valuenow={known ? confidenceFill[confidence] : undefined}

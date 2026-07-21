@@ -15,8 +15,7 @@ export function AuthLockedScreen() {
             تایید کد به دلیل تلاش‌های ناموفق پیاپی موقتاً قفل شده است.
           </Banner>
           <p className="caption">
-            برای ادامه، کمی صبر کنید و سپس دوباره شماره موبایل خود را وارد
-            کنید.
+            برای ادامه، کمی صبر کنید و سپس دوباره شماره موبایل خود را وارد کنید.
           </p>
           <Link className="button button--primary" href="/auth/mobile">
             بازگشت به ورود

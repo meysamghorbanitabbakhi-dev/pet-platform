@@ -1,5 +1,10 @@
 import type { JourneyStopBody } from "@/lib/api-types";
-import { jsonError, jsonNoContent, readJson, requireCsrf } from "@/lib/api/bff-route";
+import {
+  jsonError,
+  jsonNoContent,
+  readJson,
+  requireCsrf,
+} from "@/lib/api/bff-route";
 import { stopJourneyBackend } from "@/lib/api/backend";
 
 export async function POST(
@@ -11,7 +16,10 @@ export async function POST(
 
   try {
     const { journeyId } = await context.params;
-    await stopJourneyBackend(journeyId, await readJson<JourneyStopBody>(request));
+    await stopJourneyBackend(
+      journeyId,
+      await readJson<JourneyStopBody>(request),
+    );
     return jsonNoContent();
   } catch (error) {
     return jsonError(error);

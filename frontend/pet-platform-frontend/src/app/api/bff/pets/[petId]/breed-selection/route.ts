@@ -1,5 +1,10 @@
 import type { BreedSelectionBody } from "@/lib/api-types";
-import { jsonError, jsonNoContent, readJson, requireCsrf } from "@/lib/api/bff-route";
+import {
+  jsonError,
+  jsonNoContent,
+  readJson,
+  requireCsrf,
+} from "@/lib/api/bff-route";
 import { selectPetBreedBackend } from "@/lib/api/backend";
 
 export async function PUT(
@@ -11,7 +16,10 @@ export async function PUT(
 
   try {
     const { petId } = await context.params;
-    await selectPetBreedBackend(petId, await readJson<BreedSelectionBody>(request));
+    await selectPetBreedBackend(
+      petId,
+      await readJson<BreedSelectionBody>(request),
+    );
     return jsonNoContent();
   } catch (error) {
     return jsonError(error);

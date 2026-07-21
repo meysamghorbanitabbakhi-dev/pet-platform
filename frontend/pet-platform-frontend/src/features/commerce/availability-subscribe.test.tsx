@@ -44,7 +44,11 @@ describe("AvailabilitySubscribe", () => {
     );
     const user = userEvent.setup();
 
-    renderWithQuery(<AvailabilitySubscribe offerId={availabilitySubscriptionFixture.offer_id} />);
+    renderWithQuery(
+      <AvailabilitySubscribe
+        offerId={availabilitySubscriptionFixture.offer_id}
+      />,
+    );
 
     const button = await screen.findByRole("button", {
       name: "اطلاع بده وقتی موجود شد",
@@ -70,7 +74,9 @@ describe("AvailabilitySubscribe", () => {
     const user = userEvent.setup();
 
     renderWithQuery(
-      <AvailabilitySubscribe offerId={availabilitySubscriptionFixture.offer_id} />,
+      <AvailabilitySubscribe
+        offerId={availabilitySubscriptionFixture.offer_id}
+      />,
     );
 
     expect(
@@ -95,7 +101,9 @@ describe("AvailabilitySubscribe", () => {
     const user = userEvent.setup();
 
     renderWithQuery(
-      <AvailabilitySubscribe offerId={availabilitySubscriptionFixture.offer_id} />,
+      <AvailabilitySubscribe
+        offerId={availabilitySubscriptionFixture.offer_id}
+      />,
     );
     await user.click(
       await screen.findByRole("button", { name: "اطلاع بده وقتی موجود شد" }),

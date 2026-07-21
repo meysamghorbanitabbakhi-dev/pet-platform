@@ -50,9 +50,7 @@ describe("OfferDetail facts", () => {
       primaryMedia.public_reference,
     );
     expect(screen.getByText("موجود برای پرداخت کامل")).toBeInTheDocument();
-    expect(
-      screen.getByText("تاییدشده توسط تامین‌کننده"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("تاییدشده توسط تامین‌کننده")).toBeInTheDocument();
     expect(screen.getByText("فرانسه")).toBeInTheDocument();
     expect(screen.getByText("۶ ماه")).toBeInTheDocument();
   });

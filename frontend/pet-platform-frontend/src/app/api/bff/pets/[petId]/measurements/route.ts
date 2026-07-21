@@ -1,6 +1,9 @@
 import type { MeasurementBody } from "@/lib/api-types";
 import { jsonError, jsonOk, readJson, requireCsrf } from "@/lib/api/bff-route";
-import { listMeasurementsBackend, recordMeasurementBackend } from "@/lib/api/backend";
+import {
+  listMeasurementsBackend,
+  recordMeasurementBackend,
+} from "@/lib/api/backend";
 
 export async function GET(
   _request: Request,
@@ -24,7 +27,10 @@ export async function POST(
   try {
     const { petId } = await context.params;
     return jsonOk(
-      await recordMeasurementBackend(petId, await readJson<MeasurementBody>(request)),
+      await recordMeasurementBackend(
+        petId,
+        await readJson<MeasurementBody>(request),
+      ),
     );
   } catch (error) {
     return jsonError(error);

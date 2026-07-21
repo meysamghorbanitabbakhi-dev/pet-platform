@@ -47,7 +47,9 @@ describe("ConciergeNewRequest", () => {
   it("shows the backend's own no-guarantee acknowledgement text before submission", async () => {
     renderWithQuery(<ConciergeNewRequest />);
     expect(
-      await screen.findByText(policyFixture.customer_request_acknowledgement_fa),
+      await screen.findByText(
+        policyFixture.customer_request_acknowledgement_fa,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -91,7 +93,9 @@ describe("ConciergeNewRequest", () => {
       ),
     );
     await waitFor(() =>
-      expect(push).toHaveBeenCalledWith(`/support/${customerRequestFixture.id}`),
+      expect(push).toHaveBeenCalledWith(
+        `/support/${customerRequestFixture.id}`,
+      ),
     );
   });
 });

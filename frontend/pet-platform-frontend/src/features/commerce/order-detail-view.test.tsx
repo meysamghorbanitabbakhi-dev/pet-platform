@@ -261,13 +261,12 @@ describe("OrderDetailView", () => {
     renderWithQuery(<OrderDetailView orderId="order-1" />);
     await user.click(await screen.findByRole("button", { name: "لغو سفارش" }));
 
-    const confirmButton = screen.getByRole("button", { name: "تایید لغو سفارش" });
+    const confirmButton = screen.getByRole("button", {
+      name: "تایید لغو سفارش",
+    });
     expect(confirmButton).toBeDisabled();
 
-    await user.type(
-      screen.getByLabelText("دلیل لغو"),
-      "قیمت بهتری پیدا کردم",
-    );
+    await user.type(screen.getByLabelText("دلیل لغو"), "قیمت بهتری پیدا کردم");
     expect(confirmButton).toBeEnabled();
     await user.click(confirmButton);
 

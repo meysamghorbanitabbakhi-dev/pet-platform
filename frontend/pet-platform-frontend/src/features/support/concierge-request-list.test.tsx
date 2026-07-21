@@ -4,7 +4,10 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listCustomerRequests } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
-import { customerRequestFixture, customerRequestPageFixture } from "@/test/fixtures/gate-fixtures";
+import {
+  customerRequestFixture,
+  customerRequestPageFixture,
+} from "@/test/fixtures/gate-fixtures";
 import { ConciergeRequestList } from "./concierge-request-list";
 
 const replace = vi.fn();
@@ -33,11 +36,16 @@ describe("ConciergeRequestList", () => {
   });
 
   it("links each real request to its own detail page with a customer-safe status label", async () => {
-    vi.mocked(listCustomerRequests).mockResolvedValue(customerRequestPageFixture);
+    vi.mocked(listCustomerRequests).mockResolvedValue(
+      customerRequestPageFixture,
+    );
     renderWithQuery(<ConciergeRequestList />);
 
     const link = await screen.findByRole("link", { name: /پشتیبانی/ });
-    expect(link).toHaveAttribute("href", `/support/${customerRequestFixture.id}`);
+    expect(link).toHaveAttribute(
+      "href",
+      `/support/${customerRequestFixture.id}`,
+    );
     expect(screen.getByText("ثبت‌شده")).toBeInTheDocument();
   });
 
@@ -54,7 +62,9 @@ describe("ConciergeRequestList", () => {
   });
 
   it("redirects to the session-expired screen on a 401", async () => {
-    vi.mocked(listCustomerRequests).mockRejectedValue(new ApiError("expired", 401));
+    vi.mocked(listCustomerRequests).mockRejectedValue(
+      new ApiError("expired", 401),
+    );
     renderWithQuery(<ConciergeRequestList />);
 
     await waitFor(() =>

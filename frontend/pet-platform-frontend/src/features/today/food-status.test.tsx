@@ -32,7 +32,10 @@ describe("Today food status", () => {
       <NextEventCard
         today={{
           ...returningTodayFixture,
-          primary_attention: { journey_id: "journey-42", type: "active_journey" },
+          primary_attention: {
+            journey_id: "journey-42",
+            type: "active_journey",
+          },
         }}
       />,
     );

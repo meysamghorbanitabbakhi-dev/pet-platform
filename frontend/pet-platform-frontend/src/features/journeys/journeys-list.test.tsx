@@ -93,9 +93,7 @@ describe("JourneysList", () => {
 
     renderWithQuery(<JourneysList />);
 
-    expect(
-      (await screen.findAllByRole("status")).length,
-    ).toBeGreaterThan(0);
+    expect((await screen.findAllByRole("status")).length).toBeGreaterThan(0);
     resolveOffers(journeyOffersFixture);
     expect(
       await screen.findByText(journeyOffersFixture[0].title_fa),

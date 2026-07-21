@@ -70,9 +70,7 @@ export function AvailabilitySubscribe({ offerId }: { offerId: string }) {
 
   if (existing?.status === "notified") {
     return (
-      <Banner tone="info">
-        موجودی این محصول به شما اطلاع داده شده است.
-      </Banner>
+      <Banner tone="info">موجودی این محصول به شما اطلاع داده شده است.</Banner>
     );
   }
 

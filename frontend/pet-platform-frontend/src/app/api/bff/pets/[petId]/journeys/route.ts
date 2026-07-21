@@ -12,7 +12,10 @@ export async function POST(
   try {
     const { petId } = await context.params;
     return jsonOk(
-      await startJourneyBackend(petId, await readJson<JourneyStartBody>(request)),
+      await startJourneyBackend(
+        petId,
+        await readJson<JourneyStartBody>(request),
+      ),
     );
   } catch (error) {
     return jsonError(error);

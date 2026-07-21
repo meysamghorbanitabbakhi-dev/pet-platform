@@ -94,7 +94,10 @@ export function NextEventCard({ today }: { today: TodayResponse }) {
   const attention = today.primary_attention;
   if (attention?.type === "active_journey") {
     return (
-      <Link className="card stack" href={`/journeys/active/${attention.journey_id}`}>
+      <Link
+        className="card stack"
+        href={`/journeys/active/${attention.journey_id}`}
+      >
         <div className="eyebrow">رویداد بعدی</div>
         <h2 className="title">یک مسیر مراقبتی فعال دارید</h2>
         <p className="caption">
