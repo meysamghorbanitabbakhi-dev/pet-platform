@@ -14,8 +14,9 @@ from app.main import create_app
 from app.modules.food_estimation.models import FoodEstimate
 from app.modules.households.models import Household, HouseholdMembership
 from app.modules.identity.models import AuthIdentity
-from app.modules.inventory.models import InventoryUnit
+from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit
 from app.modules.inventory.service import InventoryError, InventoryService
+from app.modules.pets.models import Pet
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -196,10 +197,104 @@ async def test_new_estimate_records_algorithm_version_and_request_hash() -> None
         )
     assert estimate.algorithm_version == "v1"
     assert estimate.request_hash is not None and len(estimate.request_hash) == 64
+    assert estimate.resolved_context_hash is not None
+    assert len(estimate.resolved_context_hash) == 64
     assert estimate.provenance is not None
     assert estimate.provenance["schema_version"] == 2
     assert estimate.provenance["daily_portion_grams_requested"] == 100
     assert estimate.provenance["daily_portion_grams_applied"] == 100
+
+
+async def test_resolved_context_hash_distinguishes_same_total_different_assignments() -> None:
+    """Two different sets of per-pet ConsumptionAssignment rows that
+    happen to resolve to the same total daily_portion_grams must not be
+    indistinguishable after the fact -- resolved_context_hash covers the
+    actual contributing assignment ids/timestamps/values, not just the
+    derived total (request_hash, deliberately, does not: it hashes the
+    raw request, which for both cases below is identical -- caller left
+    daily_portion_grams unset)."""
+    _, household_id, unit_id_a = await _seed_unit()
+    _, _, unit_id_b = await _seed_unit()
+    async with SessionFactory() as session:
+        pet_a1 = Pet(household_id=household_id, name="A1", species="cat", status="active")
+        pet_a2 = Pet(household_id=household_id, name="A2", species="cat", status="active")
+        pet_b1 = Pet(household_id=household_id, name="B1", species="cat", status="active")
+        session.add_all([pet_a1, pet_a2, pet_b1])
+        await session.flush()
+        # Configuration A: two pets splitting 60/40.
+        session.add_all(
+            [
+                ConsumptionAssignment(
+                    inventory_unit_id=unit_id_a, pet_id=pet_a1.id, daily_portion_grams=60
+                ),
+                ConsumptionAssignment(
+                    inventory_unit_id=unit_id_a, pet_id=pet_a2.id, daily_portion_grams=40
+                ),
+            ]
+        )
+        # Configuration B: a single pet eating the same total, 100.
+        session.add(
+            ConsumptionAssignment(
+                inventory_unit_id=unit_id_b, pet_id=pet_b1.id, daily_portion_grams=100
+            )
+        )
+        await session.commit()
+
+    async with SessionFactory() as session:
+        estimate_a = await InventoryService().open_and_estimate(
+            session,
+            inventory_unit_id=unit_id_a,
+            remaining_grams=900,
+            remaining_low_grams=900,
+            remaining_high_grams=900,
+            remaining_input_mode="grams",
+            remaining_provenance={},
+            feeding_context="exclusive",
+            daily_portion_grams=None,
+        )
+    async with SessionFactory() as session:
+        estimate_b = await InventoryService().open_and_estimate(
+            session,
+            inventory_unit_id=unit_id_b,
+            remaining_grams=900,
+            remaining_low_grams=900,
+            remaining_high_grams=900,
+            remaining_input_mode="grams",
+            remaining_provenance={},
+            feeding_context="exclusive",
+            daily_portion_grams=None,
+        )
+
+    # Same resolved total (100) and identical raw request in both cases --
+    # request_hash is deliberately the same, but resolved_context_hash
+    # must differ since the actual contributing assignments differ.
+    assert estimate_a.provenance is not None and estimate_b.provenance is not None
+    assert estimate_a.provenance["daily_portion_grams_applied"] == 100
+    assert estimate_b.provenance["daily_portion_grams_applied"] == 100
+    assert estimate_a.request_hash == estimate_b.request_hash
+    assert estimate_a.resolved_context_hash != estimate_b.resolved_context_hash
+
+
+async def test_remaining_provenance_rejects_a_reserved_key_collision() -> None:
+    """remaining_provenance is spread into FoodEstimate.provenance
+    alongside canonical keys this function itself writes
+    (schema_version, feeding_context, etc.) -- a caller-supplied dict
+    reusing one of those names must be rejected outright, not silently
+    overwrite the canonical value."""
+    _, _, unit_id = await _seed_unit()
+    async with SessionFactory() as session:
+        with pytest.raises(InventoryError, match="reserved key"):
+            await InventoryService().open_and_estimate(
+                session,
+                inventory_unit_id=unit_id,
+                remaining_grams=900,
+                remaining_low_grams=900,
+                remaining_high_grams=900,
+                remaining_input_mode="grams",
+                remaining_provenance={"schema_version": "forged"},
+                feeding_context="exclusive",
+                daily_portion_grams=100,
+            )
 
 
 async def test_exhaust_retires_the_active_estimate() -> None:
@@ -289,8 +384,6 @@ async def _race_open(unit_id: uuid.UUID, *, delay: float = 0.0) -> str:
 async def test_concurrent_open_attempts_never_produce_two_active_rows() -> None:
     for _ in range(5):
         _, _, unit_id = await _seed_unit()
-        results = await asyncio.gather(
-            _race_open(unit_id), _race_open(unit_id, delay=0.01)
-        )
+        results = await asyncio.gather(_race_open(unit_id), _race_open(unit_id, delay=0.01))
         assert "opened" in results
         assert len(await _active_estimates(unit_id)) == 1
