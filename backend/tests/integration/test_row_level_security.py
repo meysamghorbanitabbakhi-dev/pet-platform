@@ -23,6 +23,7 @@ from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderLine
 from app.modules.orders.resolutions import OrderResolution
 from app.modules.payments.models import PaymentAttempt
+from app.modules.pet_health.models import HealthMeasurement, MeasurementReminder, PetConsent
 from app.modules.pets.models import Pet
 from fastapi import FastAPI
 from sqlalchemy import select, text
@@ -769,6 +770,67 @@ async def test_diary_garden_and_journey_rows_are_invisible_across_households() -
     assert invisible_rewards == []
     assert invisible_journeys == []
     assert invisible_check_ins == []
+
+
+async def test_pet_health_records_are_invisible_across_households() -> None:
+    seed = await _seed_two_households()
+    async with SessionFactory() as session:
+        pet = Pet(household_id=seed.household_a_id, name="Rex", species="dog", status="active")
+        session.add(pet)
+        await session.flush()
+        measurement = HealthMeasurement(
+            pet_id=pet.id,
+            measurement_type="weight",
+            value=5,
+            unit="kg",
+            measured_at=utc_now(),
+            source="owner_reported",
+            entered_by_identity_id=seed.customer_a.id,
+            confidence="medium",
+        )
+        consent = PetConsent(
+            pet_id=pet.id,
+            granted_by_identity_id=seed.customer_a.id,
+            purpose="body_photographs",
+            policy_version="v1",
+            granted_at=utc_now(),
+        )
+        reminder = MeasurementReminder(
+            pet_id=pet.id,
+            measurement_type="weight",
+            due_at=utc_now(),
+            created_by_identity_id=seed.customer_a.id,
+        )
+        session.add_all([measurement, consent, reminder])
+        await session.commit()
+        measurement_id, consent_id, reminder_id = measurement.id, consent.id, reminder.id
+
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.household_ids', :v, true)"),
+            {"v": str(seed.household_b_id)},
+        )
+        invisible_measurements = list(
+            (
+                await session.scalars(
+                    select(HealthMeasurement).where(HealthMeasurement.id == measurement_id)
+                )
+            ).all()
+        )
+        invisible_consents = list(
+            (await session.scalars(select(PetConsent).where(PetConsent.id == consent_id))).all()
+        )
+        invisible_reminders = list(
+            (
+                await session.scalars(
+                    select(MeasurementReminder).where(MeasurementReminder.id == reminder_id)
+                )
+            ).all()
+        )
+    assert invisible_measurements == []
+    assert invisible_consents == []
+    assert invisible_reminders == []
 
 
 async def test_app_role_is_not_a_superuser_and_cannot_bypass_rls() -> None:
