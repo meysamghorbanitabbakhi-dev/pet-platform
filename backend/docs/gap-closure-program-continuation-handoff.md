@@ -1,7 +1,14 @@
 # Pet Platform — Gap-Closure Program Continuation: Engineering Handoff
 
-**Branch:** `gap-closure-program` · **Head commit at time of writing:** `0dd626c` · **This
-segment's commits:** 15, on top of `bc97b7a` (the last commit in the prior, already-merged PR #1)
+**Branch:** `gap-closure-program` · **Head commit at time of writing:** `45b9637` · **This
+segment's commits:** 19, on top of `bc97b7a` (the last commit in the prior, already-merged PR #1)
+
+**Update (2026-07-21):** three commits landed after this document's original 15-commit version
+(`0dd626c`), closing the Section 10.3/10.4 gap this document originally listed as "not attempted."
+See the dedicated update section near the end for what changed; the body below is otherwise
+unmodified from when it was first written, including the acceptance-gate table row for 10.3, which
+is superseded by that update section rather than edited in place, so the history of what was true
+at each point stays legible.
 
 **Important correction to prior status:** PR #1 (`gap-closure-program: WS1-12`,
 https://github.com/meysamghorbanitabbakhi-dev/pet-platform/pull/1) was **already merged to `main`**
@@ -274,11 +281,62 @@ offers to `individual`) documents its own reasoning for why that reclassificatio
 
 ## Recommended next steps, in priority order
 
-1. Decide whether to open a new pull request for these 15 commits (PR #1 is already merged; this
+1. Decide whether to open a new pull request for these commits (PR #1 is already merged; this
    branch is currently ahead of `main` with no open PR of its own).
-2. RLS request-context threat model (Section 10.3) — the remaining, most security-relevant gap.
+2. ~~RLS request-context threat model (Section 10.3)~~ — done, see update section below.
 3. The `test_migration_20260717_0025_downgrade.py` fragility noted above, before wiring this suite
    into real CI.
 4. Reserve-now customer UI, if/when the flag is approved for launch.
 5. Frontend/E2E expansion, load testing, and configuration validation (Sections 11-13) as their own
    dedicated pass.
+
+## Update (2026-07-21) — Section 10.3/10.4 closed: RLS threat model and readiness checks
+
+Three commits added on top of this document's original `0dd626c` head:
+
+| SHA | Summary |
+|---|---|
+| `cd26faa` | Harden `/health/ready` with app-role connectivity, migration-head, RLS-no-bypass, and RLS-request-context checks (Section 10.4) |
+| `f96e202` | Document the RLS request-context threat model and readiness-check rationale as an amendment to ADR-011 (Section 10.3) |
+| `45b9637` | Apply `ruff format` to the two files touched by `cd26faa` (`ruff format --check` had not actually been run before that commit; caught here, no behavioral change) |
+
+**What was investigated (10.3):** an exhaustive grep confirmed only two call sites in the entire
+`app/` tree ever set the RLS session GUCs (`apply_rls_context` in `app/api/dependencies.py`,
+`_apply_rls_context` in `app/db/session.py`), and a second exhaustive grep confirmed no
+SQL-injection-exploitable raw-SQL construction exists anywhere in the runtime app. Conclusion:
+"can the app role forge `app.is_operator`" is currently a structural/theoretical risk with no live
+exploit path, not an active vulnerability — and it rests entirely on the absence of any injection
+path, not a database-enforced restriction. A `SECURITY DEFINER` wrapper around `set_config` was
+considered and rejected as a fix, since a role with genuine arbitrary-SQL-execution capability
+could call the wrapper too; it would move the trust boundary rather than remove it. This is
+recorded as an accepted, monitored risk in ADR-011's new amendment, not silently closed and not
+falsely claimed fixed. Pooled-connection context clearing was confirmed to already be a structural
+Postgres guarantee (`SET LOCAL`/`set_config(..., true)` semantics, cleared at every
+`COMMIT`/`ROLLBACK` regardless of connection reuse) requiring no additional code.
+
+**What was built (10.4):** `/health/ready` previously checked only the superuser database
+connection, Redis, and storage — none of which would catch a misconfigured `database_app_url`
+role, a database left on an older migration revision than the code expects, or RLS being silently
+bypassed. Four checks were added, each backed by a new function: `database_app_role`
+(`ping_app_database`), `migration_head` (`check_migration_head`, comparing the live
+`alembic_version` table against `alembic.script.ScriptDirectory`'s computed head), `rls_no_bypass`
+(`check_app_role_cannot_bypass_rls`, the live counterpart to the existing
+`test_app_role_is_not_a_superuser_and_cannot_bypass_rls`), and `rls_request_context`
+(`check_rls_request_context`, round-tripping a synthetic probe identity through `set_config` and
+back through `app_is_operator()`/`app_identity_id()`/`app_household_ids()` on a real app-role
+connection).
+
+**Verification:** `tests/integration/test_health_readiness.py` (15 new tests) exercises every new
+check against the real database, plus separately proves the two checks with meaningful comparison
+logic (`check_migration_head`, and the pure `_assert_role_is_not_privileged`/
+`_assert_request_context_round_trip` guards) actually reject a bad state — not merely that they
+pass on an already-correct environment. The `check_migration_head` guard's raise was temporarily
+disabled and its corresponding test confirmed to fail predictably before the guard was restored,
+matching this program's established stash/revert verification methodology. Full backend suite
+(445 tests, up from 430) green at exit 0 at head commit `45b9637`, database confirmed at migration
+head `20260721_0050` (unchanged this update — no new migration was needed). `ruff check`, `ruff
+format --check`, and `mypy` all clean on every changed file as of `45b9637` (`ruff format --check`
+was not run before `cd26faa`, found two files it would have reformatted, fixed in `45b9637`).
+
+Section 10.3/10.4 acceptance-gate status is now **PASS** (was `NOT ATTEMPTED`), superseding the
+row in the original acceptance-gate table above.
