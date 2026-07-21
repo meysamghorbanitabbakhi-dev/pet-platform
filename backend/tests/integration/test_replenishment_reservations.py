@@ -91,9 +91,7 @@ async def _seed_unit_with_estimate(
         session.add_all([customer, supplier, product, household])
         await session.flush()
         session.add(
-            HouseholdMembership(
-                household_id=household.id, identity_id=customer.id, role="owner"
-            )
+            HouseholdMembership(household_id=household.id, identity_id=customer.id, role="owner")
         )
         address = HouseholdAddress(
             household_id=household.id,
@@ -202,6 +200,41 @@ async def test_create_returns_none_beyond_lead_days() -> None:
 
 async def test_create_returns_none_without_available_offer() -> None:
     seed = await _seed_unit_with_estimate(low_days=5, offer_status="unavailable")
+    assert await _create(seed) is None
+
+
+async def test_create_returns_none_when_the_product_is_inactive() -> None:
+    """_find_available_offer uses the shared catalog eligibility policy
+    (app.modules.catalog.eligibility) -- a reorderable-looking offer whose
+    product has since been deactivated must never be auto-recommended."""
+    seed = await _seed_unit_with_estimate(low_days=5)
+    async with SessionFactory() as session:
+        product = await session.get(Product, seed.product_id)
+        assert product is not None
+        product.status = "retired"
+        await session.commit()
+    assert await _create(seed) is None
+
+
+async def test_create_returns_none_when_the_supplier_is_inactive() -> None:
+    seed = await _seed_unit_with_estimate(low_days=5)
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.offer_id)
+        assert offer is not None
+        supplier = await session.get(Supplier, offer.supplier_id)
+        assert supplier is not None
+        supplier.active = False
+        await session.commit()
+    assert await _create(seed) is None
+
+
+async def test_create_returns_none_outside_the_offers_sale_window() -> None:
+    seed = await _seed_unit_with_estimate(low_days=5)
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.offer_id)
+        assert offer is not None
+        offer.available_from = utc_now() + timedelta(days=1)
+        await session.commit()
     assert await _create(seed) is None
 
 
@@ -425,9 +458,7 @@ async def test_approve_is_idempotent_and_returns_the_same_order() -> None:
     async with SessionFactory() as session:
         order_count = len(
             (
-                await session.scalars(
-                    select(Order).where(Order.household_id == seed.household_id)
-                )
+                await session.scalars(select(Order).where(Order.household_id == seed.household_id))
             ).all()
         )
     assert order_count == 1
@@ -688,12 +719,8 @@ async def test_concurrent_approve_and_decline_never_both_succeed() -> None:
 
         give_approve_a_head_start = trial % 2 == 0
         approve_result, decline_result = await asyncio.gather(
-            _race_approve(
-                seed, reservation_id, delay=0.0 if give_approve_a_head_start else 0.05
-            ),
-            _race_decline(
-                seed, reservation_id, delay=0.05 if give_approve_a_head_start else 0.0
-            ),
+            _race_approve(seed, reservation_id, delay=0.0 if give_approve_a_head_start else 0.05),
+            _race_decline(seed, reservation_id, delay=0.05 if give_approve_a_head_start else 0.0),
         )
         outcomes = {approve_result, decline_result}
         assert outcomes in ({"approved", "rejected"}, {"declined", "rejected"})
@@ -841,12 +868,8 @@ async def test_http_replenishment_reservation_is_non_enumerating_for_a_foreign_h
         outsider_obj = await session.get(AuthIdentity, outsider_id)
     app.dependency_overrides[get_current_identity] = lambda: outsider_obj
 
-    nonexistent = await client.get(
-        f"/api/v1/pet-life/replenishment-reservations/{uuid.uuid4()}"
-    )
-    foreign = await client.get(
-        f"/api/v1/pet-life/replenishment-reservations/{reservation_id}"
-    )
+    nonexistent = await client.get(f"/api/v1/pet-life/replenishment-reservations/{uuid.uuid4()}")
+    foreign = await client.get(f"/api/v1/pet-life/replenishment-reservations/{reservation_id}")
     assert nonexistent.status_code == foreign.status_code == 404
     assert nonexistent.json()["error"]["code"] == foreign.json()["error"]["code"]
 
