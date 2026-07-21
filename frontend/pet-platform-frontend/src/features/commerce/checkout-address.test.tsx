@@ -67,9 +67,7 @@ describe("CheckoutAddress", () => {
       await screen.findByRole("button", { name: "استفاده از این آدرس" }),
     );
 
-    await waitFor(() =>
-      expect(push).toHaveBeenCalledWith("/checkout/review"),
-    );
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/checkout/review"));
   });
 
   it("submits a new address through the real backend and proceeds to review", async () => {
@@ -79,10 +77,7 @@ describe("CheckoutAddress", () => {
 
     renderWithQuery(<CheckoutAddress />);
 
-    await user.type(
-      await screen.findByLabelText("نام گیرنده"),
-      "مالک خانه",
-    );
+    await user.type(await screen.findByLabelText("نام گیرنده"), "مالک خانه");
     await user.type(screen.getByLabelText("موبایل گیرنده"), "09121234567");
     await user.type(screen.getByLabelText("استان"), "تهران");
     await user.type(screen.getByLabelText("شهر"), "تهران");

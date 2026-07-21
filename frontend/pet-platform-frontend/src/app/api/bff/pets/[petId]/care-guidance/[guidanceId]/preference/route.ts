@@ -1,5 +1,10 @@
 import type { GuidancePreferenceBody } from "@/lib/api-types";
-import { jsonError, jsonNoContent, readJson, requireCsrf } from "@/lib/api/bff-route";
+import {
+  jsonError,
+  jsonNoContent,
+  readJson,
+  requireCsrf,
+} from "@/lib/api/bff-route";
 import { setGuidancePreferenceBackend } from "@/lib/api/backend";
 
 export async function PUT(

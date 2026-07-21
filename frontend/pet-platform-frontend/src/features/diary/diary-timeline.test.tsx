@@ -4,7 +4,10 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getMeContext, listDiary } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
-import { diaryListFixture, meContextFixture } from "@/test/fixtures/gate-fixtures";
+import {
+  diaryListFixture,
+  meContextFixture,
+} from "@/test/fixtures/gate-fixtures";
 import { DiaryTimeline } from "./diary-timeline";
 
 const replace = vi.fn();

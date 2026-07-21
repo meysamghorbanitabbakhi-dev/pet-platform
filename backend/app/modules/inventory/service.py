@@ -16,6 +16,27 @@ from app.modules.system.idempotency import canonical_request_hash
 # folds this into the hash so a formula change never gets silently
 # masked as "the same request, safe to replay."
 _ALGORITHM_VERSION = "v1"
+_PROVENANCE_SCHEMA_VERSION = 2
+
+# The keys open_and_estimate itself writes into FoodEstimate.provenance --
+# reserved so a caller-supplied remaining_provenance dict can never
+# silently overwrite one of them (Python's **dict spread lets a later
+# key win with no error). No current caller's remaining_provenance is
+# attacker-controlled (app.api.routes.pet_life builds it entirely
+# server-side), but this is the actual integrity boundary, not "no
+# current route happens to trigger it."
+_RESERVED_PROVENANCE_KEYS = frozenset(
+    {
+        "schema_version",
+        "remaining_input_mode",
+        "remaining_grams",
+        "remaining_low_grams",
+        "remaining_high_grams",
+        "feeding_context",
+        "daily_portion_grams_requested",
+        "daily_portion_grams_applied",
+    }
+)
 
 
 class InventoryError(Exception):
@@ -69,6 +90,11 @@ class InventoryService:
             raise InventoryError("remaining bounds are invalid")
         if remaining_high_grams <= 0:
             raise InventoryError("remaining quantity must be positive")
+        colliding_keys = _RESERVED_PROVENANCE_KEYS & remaining_provenance.keys()
+        if colliding_keys:
+            raise InventoryError(
+                f"remaining_provenance may not set reserved key(s): {sorted(colliding_keys)}"
+            )
 
         # Hashes the request as the caller actually submitted it (the raw
         # daily_portion_grams, before the "derive it from pet assignments
@@ -121,8 +147,9 @@ class InventoryService:
             raise InventoryError("daily portion must be positive")
         if feeding_context != "exclusive":
             daily_portion_grams = None
+        contributing_assignments: list[ConsumptionAssignment] = []
         if daily_portion_grams is None and feeding_context == "exclusive":
-            assignments = list(
+            contributing_assignments = list(
                 (
                     await session.scalars(
                         select(ConsumptionAssignment).where(
@@ -132,7 +159,7 @@ class InventoryService:
                     )
                 ).all()
             )
-            known_total = sum(item.daily_portion_grams or 0 for item in assignments)
+            known_total = sum(item.daily_portion_grams or 0 for item in contributing_assignments)
             daily_portion_grams = known_total or None
 
         if daily_portion_grams is None:
@@ -142,6 +169,38 @@ class InventoryService:
             high_days = max(low_days, remaining_high_grams // daily_portion_grams)
             confidence = "medium"
             basis = "owner_confirmed_portion"
+        # Independent of request_hash (replay-safety over the raw
+        # request): covers the fully resolved calculation context,
+        # including exactly which ConsumptionAssignment rows/versions
+        # contributed to a derived daily_portion_grams -- two different
+        # assignment configurations that happen to resolve to the same
+        # total are otherwise indistinguishable after the fact. Sorted
+        # by id for a deterministic, canonical ordering regardless of
+        # query result order.
+        resolved_context_hash = canonical_request_hash(
+            {
+                "algorithm_version": _ALGORITHM_VERSION,
+                "schema_version": _PROVENANCE_SCHEMA_VERSION,
+                "remaining_grams": remaining_grams,
+                "remaining_low_grams": remaining_low_grams,
+                "remaining_high_grams": remaining_high_grams,
+                "remaining_input_mode": remaining_input_mode,
+                "feeding_context": feeding_context,
+                "daily_portion_grams_requested": requested_daily_portion_grams,
+                "daily_portion_grams_applied": daily_portion_grams,
+                "contributing_assignments": sorted(
+                    (
+                        {
+                            "id": str(item.id),
+                            "updated_at": item.updated_at.isoformat(),
+                            "daily_portion_grams": item.daily_portion_grams,
+                        }
+                        for item in contributing_assignments
+                    ),
+                    key=lambda item: item["id"],
+                ),
+            }
+        )
         estimate = FoodEstimate(
             inventory_unit_id=unit.id,
             low_days=low_days,
@@ -154,8 +213,10 @@ class InventoryService:
             last_confirmed_at=unit.opened_at,
             algorithm_version=_ALGORITHM_VERSION,
             request_hash=request_hash,
+            resolved_context_hash=resolved_context_hash,
             provenance={
-                "schema_version": 2,
+                **remaining_provenance,
+                "schema_version": _PROVENANCE_SCHEMA_VERSION,
                 "remaining_input_mode": remaining_input_mode,
                 "remaining_grams": remaining_grams,
                 "remaining_low_grams": remaining_low_grams,
@@ -163,7 +224,6 @@ class InventoryService:
                 "feeding_context": feeding_context,
                 "daily_portion_grams_requested": requested_daily_portion_grams,
                 "daily_portion_grams_applied": daily_portion_grams,
-                **remaining_provenance,
             },
         )
         session.add(estimate)

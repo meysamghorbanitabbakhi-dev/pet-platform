@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import AsyncIterator
 
 from sqlalchemy import event, text
@@ -79,6 +80,86 @@ async def get_db_session() -> AsyncIterator[AsyncSession]:
 async def ping_database() -> None:
     async with engine.connect() as connection:
         await connection.execute(text("SELECT 1"))
+
+
+async def ping_app_database() -> None:
+    """Distinct from ping_database: proves the deliberately-unprivileged
+    database_app_url role (the one every real request actually connects
+    as) can authenticate and connect, not just the migration/scheduler
+    superuser role -- a credential rotation or misconfiguration limited to
+    the app role would otherwise leave readiness reporting healthy while
+    every customer-facing request fails."""
+    async with app_engine.connect() as connection:
+        await connection.execute(text("SELECT 1"))
+
+
+def _assert_role_is_not_privileged(rolsuper: bool, rolbypassrls: bool) -> None:
+    if rolsuper or rolbypassrls:
+        raise RuntimeError(
+            "database_app_url role can bypass row-level security "
+            f"(rolsuper={rolsuper}, rolbypassrls={rolbypassrls})"
+        )
+
+
+async def check_app_role_cannot_bypass_rls() -> None:
+    """Live counterpart to test_app_role_is_not_a_superuser_and_cannot_bypass_rls:
+    Postgres unconditionally bypasses row security for superusers and roles
+    granted BYPASSRLS, with no policy able to override that, so a connection-
+    string mistake that ever pointed database_app_url at such a role would
+    silently make every RLS policy in the database a no-op."""
+    async with app_engine.connect() as connection:
+        result = await connection.execute(
+            text("SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user")
+        )
+        rolsuper, rolbypassrls = result.one()
+    _assert_role_is_not_privileged(rolsuper, rolbypassrls)
+
+
+def _assert_request_context_round_trip(
+    is_operator: bool,
+    identity_id: uuid.UUID | None,
+    household_ids: list[uuid.UUID],
+    expected_identity: uuid.UUID,
+    expected_household: uuid.UUID,
+) -> None:
+    if is_operator is not False:
+        raise RuntimeError(f"app_is_operator() round-trip mismatch: got {is_operator!r}")
+    if identity_id != expected_identity:
+        raise RuntimeError(
+            f"app_identity_id() round-trip mismatch: expected {expected_identity} got {identity_id}"
+        )
+    if household_ids != [expected_household]:
+        raise RuntimeError(
+            f"app_household_ids() round-trip mismatch: expected [{expected_household}] "
+            f"got {household_ids}"
+        )
+
+
+async def check_rls_request_context() -> None:
+    """Proves the set_config plumbing that apply_rls_context
+    (app/api/dependencies.py) and _apply_rls_context (this module) rely on
+    actually round-trips through a real app-role connection end-to-end --
+    not just that the code path is wired up, but that Postgres's
+    app_is_operator()/app_identity_id()/app_household_ids() functions read
+    back exactly what was set via a synthetic, non-operator probe identity
+    that owns no real data."""
+    probe_identity = uuid.uuid4()
+    probe_household = uuid.uuid4()
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.identity_id', :v, true)"), {"v": str(probe_identity)}
+        )
+        await session.execute(
+            text("SELECT set_config('app.household_ids', :v, true)"), {"v": str(probe_household)}
+        )
+        result = await session.execute(
+            text("SELECT app_is_operator(), app_identity_id(), app_household_ids()")
+        )
+        is_operator, identity_id, household_ids = result.one()
+    _assert_request_context_round_trip(
+        is_operator, identity_id, household_ids, probe_identity, probe_household
+    )
 
 
 async def close_database() -> None:

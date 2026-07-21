@@ -27,11 +27,13 @@ from app.modules.purchasing.models import PurchaseBatch, PurchaseBatchAllocation
 from app.modules.purchasing.service import (
     PurchasingError,
     allocate_order_line_to_batch,
+    cancel_empty_batch,
     commit_batch,
     is_order_cancellation_eligible,
 )
 from app.modules.trust.files import EvidenceFile
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 pytestmark = pytest.mark.skipif(
     os.getenv("K10_RUNTIME_TESTS") != "1",
@@ -266,6 +268,7 @@ async def test_threshold_reached_is_recorded_exactly_once_when_crossed() -> None
 
     async with SessionFactory() as session:
         batch = await session.get(PurchaseBatch, alloc_a.purchase_batch_id)
+        assert batch is not None
         event_count = (
             await session.execute(
                 select(func.count(PurchaseBatchEvent.id)).where(
@@ -274,7 +277,7 @@ async def test_threshold_reached_is_recorded_exactly_once_when_crossed() -> None
                 )
             )
         ).scalar_one()
-    assert batch is not None and batch.threshold_reached_at is not None
+    assert batch.threshold_reached_at is not None
     assert event_count == 1
 
 
@@ -283,18 +286,42 @@ async def test_no_configured_threshold_refuses_to_open_a_batch() -> None:
     silently open a batch with threshold=1 ("no real aggregation benefit,
     not a guessed number"). That let a misconfigured aggregated offer
     commit supplier money after a single order, defeating the point of
-    pooling -- PATCH /offers/{id}/sourcing-config now refuses to set
-    sourcing_route='aggregated' without a threshold, and this is the
-    defensive guard for any offer that reaches allocation in that state
-    anyway (pre-existing rows, direct DB writes)."""
-    seed = await _seed_offer(default_batch_threshold_quantity=None)
-    line = await _add_line(seed, quantity=1)
-
+    pooling. Defense in depth, checked here at every layer that can
+    still reach it: PATCH /offers/{id}/sourcing-config and POST /offers
+    both refuse to set sourcing_route='aggregated' without a threshold
+    (app/api/routes/operator.py); CheckoutService's own preflight refuses
+    checkout for an offer already misconfigured this way; and now the
+    database itself rejects the row outright (migration 20260721_0045's
+    aggregated_route_requires_threshold CHECK constraint) -- verified
+    directly here rather than only by allocate_order_line_to_batch's own
+    (now DB-unreachable) guard, since the ORM can no longer construct
+    this row at all to exercise that guard in isolation."""
+    token = uuid.uuid4().hex[:10]
     async with SessionFactory() as session:
-        offer = await session.get(Offer, seed.offer_id)
-        assert offer is not None
-        with pytest.raises(PurchasingError, match="default_batch_threshold_quantity"):
-            await allocate_order_line_to_batch(session, order_line=line, offer=offer)
+        supplier = Supplier(
+            internal_name=f"no-threshold-supplier-{token}", country_code="IR", active=True
+        )
+        product = Product(name_fa=f"no-threshold-product-{token}", status="active")
+        session.add_all([supplier, product])
+        await session.flush()
+        offer = Offer(
+            product_id=product.id,
+            supplier_id=supplier.id,
+            sku=f"NOTHRESH-{token}",
+            title_fa="no threshold",
+            unit_label_fa="کیسه",
+            price_irr=1_000_000,
+            status="active",
+            stock_posture="sourced_after_payment",
+            sourcing_capacity_status="open",
+            minimum_shelf_life_months=6,
+            sourcing_route="aggregated",
+            default_batch_threshold_quantity=None,
+        )
+        session.add(offer)
+        with pytest.raises(IntegrityError, match="aggregated_route_requires_threshold"):
+            await session.commit()
+        await session.rollback()
 
 
 async def test_concurrent_allocation_opens_exactly_one_aggregated_batch() -> None:
@@ -415,6 +442,186 @@ async def test_commit_batch_rejects_a_cancelled_batch() -> None:
                 evidence_file_id=uuid.uuid4(),
                 commitment_reference=None,
                 reason="should be rejected",
+            )
+
+
+async def test_cancel_empty_batch_cancels_a_truly_empty_open_batch() -> None:
+    """No coverage existed at all for cancel_empty_batch (nor its HTTP
+    route) before this test -- the exact "no tests" gap the mission's
+    evidence standard exists to catch."""
+    seed = await _seed_offer(sourcing_route="individual")
+    line = await _add_line(seed, quantity=1)
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.offer_id)
+        assert offer is not None
+        allocation = await allocate_order_line_to_batch(session, order_line=line, offer=offer)
+        await session.commit()
+        batch_id = allocation.purchase_batch_id
+
+    # Void the only allocation directly (simulating the customer-
+    # cancellation path already having released it) so the batch is
+    # genuinely empty -- the exact precondition cancel_empty_batch requires.
+    async with SessionFactory() as session:
+        alloc = await session.get(PurchaseBatchAllocation, allocation.id, with_for_update=True)
+        batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+        assert alloc is not None and batch is not None
+        alloc.voided_at = utc_now()
+        batch.allocated_quantity = 0
+        await session.commit()
+
+    async with SessionFactory() as session:
+        operator = AuthIdentity(
+            identity_type="operator", mobile_e164=f"+98921{seed.token[:7]}", status="active"
+        )
+        session.add(operator)
+        await session.commit()
+        operator_id = operator.id
+
+    async with SessionFactory() as session:
+        batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+        assert batch is not None
+        result = await cancel_empty_batch(
+            session, batch=batch, operator_id=operator_id, reason="offer discontinued"
+        )
+        await session.commit()
+    assert result.status == "cancelled"
+    assert result.cancelled_at is not None
+    assert result.cancelled_by_operator_id == operator_id
+
+    async with SessionFactory() as session:
+        event_count = (
+            await session.execute(
+                select(func.count(PurchaseBatchEvent.id)).where(
+                    PurchaseBatchEvent.purchase_batch_id == batch_id,
+                    PurchaseBatchEvent.event_type == "cancelled",
+                )
+            )
+        ).scalar_one()
+    assert event_count == 1
+
+
+async def test_cancel_empty_batch_is_idempotent_on_replay() -> None:
+    seed = await _seed_offer(sourcing_route="individual")
+    line = await _add_line(seed, quantity=1)
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.offer_id)
+        assert offer is not None
+        allocation = await allocate_order_line_to_batch(session, order_line=line, offer=offer)
+        await session.commit()
+        batch_id = allocation.purchase_batch_id
+
+    async with SessionFactory() as session:
+        alloc = await session.get(PurchaseBatchAllocation, allocation.id, with_for_update=True)
+        batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+        assert alloc is not None and batch is not None
+        alloc.voided_at = utc_now()
+        batch.allocated_quantity = 0
+        await session.commit()
+
+    async with SessionFactory() as session:
+        operator = AuthIdentity(
+            identity_type="operator", mobile_e164=f"+98923{seed.token[:7]}", status="active"
+        )
+        session.add(operator)
+        await session.commit()
+        operator_id = operator.id
+
+    async with SessionFactory() as session:
+        batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+        assert batch is not None
+        first = await cancel_empty_batch(
+            session, batch=batch, operator_id=operator_id, reason="first"
+        )
+        await session.commit()
+    async with SessionFactory() as session:
+        batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+        assert batch is not None
+        # Replay must be a genuine no-op (early return before any write),
+        # proven by passing an operator_id with no corresponding row at
+        # all -- if replay ever attempted a real write, this would fail
+        # the same foreign-key constraint the first call's real write is
+        # bound by.
+        second = await cancel_empty_batch(
+            session, batch=batch, operator_id=uuid.uuid4(), reason="replay"
+        )
+        await session.commit()
+    assert second.cancelled_at == first.cancelled_at
+
+    async with SessionFactory() as session:
+        event_count = (
+            await session.execute(
+                select(func.count(PurchaseBatchEvent.id)).where(
+                    PurchaseBatchEvent.purchase_batch_id == batch_id,
+                    PurchaseBatchEvent.event_type == "cancelled",
+                )
+            )
+        ).scalar_one()
+    assert event_count == 1
+
+
+async def test_cancel_empty_batch_rejects_a_batch_with_active_allocations() -> None:
+    seed = await _seed_offer(sourcing_route="individual")
+    line = await _add_line(seed, quantity=1)
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.offer_id)
+        assert offer is not None
+        allocation = await allocate_order_line_to_batch(session, order_line=line, offer=offer)
+        await session.commit()
+        batch_id = allocation.purchase_batch_id
+
+    async with SessionFactory() as session:
+        batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+        assert batch is not None
+        assert batch.allocated_quantity == 1
+        with pytest.raises(PurchasingError):
+            await cancel_empty_batch(
+                session, batch=batch, operator_id=uuid.uuid4(), reason="should be rejected"
+            )
+
+
+async def test_cancel_empty_batch_rejects_an_already_committed_batch() -> None:
+    seed = await _seed_offer(sourcing_route="individual")
+    line = await _add_line(seed, quantity=1)
+    async with SessionFactory() as session:
+        offer = await session.get(Offer, seed.offer_id)
+        assert offer is not None
+        allocation = await allocate_order_line_to_batch(session, order_line=line, offer=offer)
+        operator = AuthIdentity(
+            identity_type="operator", mobile_e164=f"+98922{seed.token[:7]}", status="active"
+        )
+        session.add(operator)
+        await session.flush()
+        evidence = EvidenceFile(
+            storage_key=f"evidence/{seed.token}-commit.pdf",
+            original_filename="commitment.pdf",
+            media_type="application/pdf",
+            size_bytes=10,
+            checksum_sha256="b" * 64,
+            uploaded_by_operator_id=operator.id,
+        )
+        session.add(evidence)
+        await session.commit()
+        batch_id, operator_id, evidence_id = allocation.purchase_batch_id, operator.id, evidence.id
+
+    async with SessionFactory() as session:
+        batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+        assert batch is not None
+        await commit_batch(
+            session,
+            batch=batch,
+            operator_id=operator_id,
+            evidence_file_id=evidence_id,
+            commitment_reference=None,
+            reason="committed",
+        )
+        await session.commit()
+
+    async with SessionFactory() as session:
+        batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
+        assert batch is not None
+        with pytest.raises(PurchasingError):
+            await cancel_empty_batch(
+                session, batch=batch, operator_id=uuid.uuid4(), reason="should be rejected"
             )
 
 
@@ -561,17 +768,13 @@ async def test_real_checkout_and_payment_verify_allocates_the_order_line_to_a_ba
             idempotency_key=f"e2e-payment-{token}",
         )
     async with SessionFactory() as session:
-        await PaymentService().verify(
-            session, gateway, provider_reference=f"fake-{order.id}"
-        )
+        await PaymentService().verify(session, gateway, provider_reference=f"fake-{order.id}")
 
     async with SessionFactory() as session:
         line = await session.scalar(select(OrderLine).where(OrderLine.order_id == order.id))
         assert line is not None
         allocation = await session.scalar(
-            select(PurchaseBatchAllocation).where(
-                PurchaseBatchAllocation.order_line_id == line.id
-            )
+            select(PurchaseBatchAllocation).where(PurchaseBatchAllocation.order_line_id == line.id)
         )
         assert allocation is not None
         batch = await session.get(PurchaseBatch, allocation.purchase_batch_id)

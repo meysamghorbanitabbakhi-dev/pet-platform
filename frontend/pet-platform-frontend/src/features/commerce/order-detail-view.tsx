@@ -197,12 +197,14 @@ function ShelfLifeExceptions({
   }
 
   const acceptMutation = useMutation({
-    mutationFn: (exceptionId: string) => acceptShelfLifeException(orderId, exceptionId),
+    mutationFn: (exceptionId: string) =>
+      acceptShelfLifeException(orderId, exceptionId),
     onSuccess: invalidate,
     onSettled: () => setRespondingId(null),
   });
   const declineMutation = useMutation({
-    mutationFn: (exceptionId: string) => declineShelfLifeException(orderId, exceptionId),
+    mutationFn: (exceptionId: string) =>
+      declineShelfLifeException(orderId, exceptionId),
     onSuccess: invalidate,
     onSettled: () => setRespondingId(null),
   });
@@ -218,8 +220,8 @@ function ShelfLifeExceptions({
             <Banner tone="warning">
               <p>
                 تامین‌کننده کالایی با تاریخ انقضای{" "}
-                {formatIranDate(exception.proposed_exact_expiry_date)} ارسال کرده
-                که کوتاه‌تر از تعهد اولیه سفارش است.
+                {formatIranDate(exception.proposed_exact_expiry_date)} ارسال
+                کرده که کوتاه‌تر از تعهد اولیه سفارش است.
                 {exception.additional_discount_irr > 0
                   ? ` در صورت پذیرش، مبلغ ${formatTomanFromIrr(exception.additional_discount_irr)} بازگردانده می‌شود.`
                   : ""}
@@ -236,8 +238,12 @@ function ShelfLifeExceptions({
               ) : null}
               <div className="cluster">
                 <Button
-                  loading={acceptMutation.isPending && respondingId === exception.id}
-                  disabled={acceptMutation.isPending || declineMutation.isPending}
+                  loading={
+                    acceptMutation.isPending && respondingId === exception.id
+                  }
+                  disabled={
+                    acceptMutation.isPending || declineMutation.isPending
+                  }
                   onClick={() => {
                     setRespondingId(exception.id);
                     acceptMutation.mutate(exception.id);
@@ -247,8 +253,12 @@ function ShelfLifeExceptions({
                 </Button>
                 <Button
                   variant="ghost"
-                  loading={declineMutation.isPending && respondingId === exception.id}
-                  disabled={acceptMutation.isPending || declineMutation.isPending}
+                  loading={
+                    declineMutation.isPending && respondingId === exception.id
+                  }
+                  disabled={
+                    acceptMutation.isPending || declineMutation.isPending
+                  }
                   onClick={() => {
                     setRespondingId(exception.id);
                     declineMutation.mutate(exception.id);
@@ -327,8 +337,9 @@ function OrderSummary({
       ) : null}
       {order.cancellation ? (
         <Banner tone="info">
-          این سفارش در تاریخ {formatIranDateTime(order.cancellation.cancelled_at)}{" "}
-          لغو شد. مبلغ {formatTomanFromIrr(order.cancellation.refund_amount_irr)}{" "}
+          این سفارش در تاریخ{" "}
+          {formatIranDateTime(order.cancellation.cancelled_at)} لغو شد. مبلغ{" "}
+          {formatTomanFromIrr(order.cancellation.refund_amount_irr)}{" "}
           {order.cancellation.refund_status === "operator_attested"
             ? "بازگردانده شد."
             : "بازگردانده خواهد شد؛ بازگشت وجه به صورت دستی توسط تیم پشتیبانی انجام می‌شود و هنوز پرداخت نشده است."}
@@ -403,10 +414,10 @@ function OrderSummary({
         <Sheet title="لغو سفارش" onClose={() => setCancelSheetOpen(false)}>
           <div className="stack">
             <p className="caption">
-              این سفارش هنوز به تعهد خرید نهایی از تامین‌کننده نرسیده و قابل
-              لغو است. پس از لغو، وجه پرداختی به صورت دستی توسط تیم پشتیبانی
-              بازگردانده می‌شود و این کار بلافاصله انجام نمی‌شود. لطفاً دلیل
-              لغو را بنویسید.
+              این سفارش هنوز به تعهد خرید نهایی از تامین‌کننده نرسیده و قابل لغو
+              است. پس از لغو، وجه پرداختی به صورت دستی توسط تیم پشتیبانی
+              بازگردانده می‌شود و این کار بلافاصله انجام نمی‌شود. لطفاً دلیل لغو
+              را بنویسید.
             </p>
             <div className="field">
               <label htmlFor="cancel-reason">دلیل لغو</label>

@@ -50,3 +50,13 @@ class FoodEstimate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # original daily_portion_grams was never captured in `provenance`,
     # so reconstructing a hash for them would be a guess, not a fact.
     request_hash: Mapped[str | None] = mapped_column(String(64))
+    # A second, independent hash over the *resolved* calculation context
+    # (algorithm/schema version, feeding context, requested AND applied
+    # daily_portion_grams, remaining quantities, and the specific
+    # ConsumptionAssignment ids/versions/timestamps that contributed to
+    # a derived portion) -- distinct from request_hash, which is scoped
+    # to replay-safety over the raw request only and deliberately
+    # excludes resolution. See migration 20260721_0046. NULL for rows
+    # written before this column existed, for the same reason
+    # request_hash is nullable for legacy rows.
+    resolved_context_hash: Mapped[str | None] = mapped_column(String(64))

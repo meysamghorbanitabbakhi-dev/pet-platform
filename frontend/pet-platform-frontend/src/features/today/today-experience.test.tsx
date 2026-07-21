@@ -53,9 +53,7 @@ describe("TodayExperience", () => {
 
     renderWithQuery(<TodayExperience />);
 
-    expect(
-      await screen.findByText("خطا در دریافت امروز"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("خطا در دریافت امروز")).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   });
 
@@ -71,9 +69,7 @@ describe("TodayExperience", () => {
     await user.click(screen.getByRole("button", { name: "تلاش دوباره" }));
 
     await waitFor(() =>
-      expect(
-        screen.queryByText("خطا در دریافت امروز"),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByText("خطا در دریافت امروز")).not.toBeInTheDocument(),
     );
     expect(getMeContext).toHaveBeenCalledTimes(2);
   });

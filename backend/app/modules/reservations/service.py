@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.common.time import utc_now
-from app.modules.catalog.models import Offer, Supplier
+from app.modules.catalog.models import Offer, Product, Supplier
 from app.modules.households.models import HouseholdAddress
 from app.modules.orders.models import Order, OrderLine
 from app.modules.reservations.models import Reservation, ReservationEvent
@@ -57,6 +57,9 @@ async def request_reservation(
     CheckoutService.create_order."""
     if offer.mode != "reserve":
         raise ReservationError("offer_is_not_reservable")
+    product = await session.get(Product, offer.product_id)
+    if product is None or product.status != "active":
+        raise ReservationError("offer_unavailable")
     if offer.status != "active" or offer.sourcing_capacity_status != "open":
         raise ReservationError("offer_unavailable")
     now = utc_now()
@@ -185,9 +188,7 @@ async def operator_decline_reservation(
     reservation.status = "operator_declined"
     reservation.decline_reason = reason
     session.add(
-        _event(
-            reservation.id, "operator_declined", now, operator_id=operator_id, reason=reason
-        )
+        _event(reservation.id, "operator_declined", now, operator_id=operator_id, reason=reason)
     )
     await session.flush()
     return reservation
@@ -274,6 +275,9 @@ async def approve_and_convert_reservation(
     # race-free against a concurrent capacity change.
     if reservation.reconfirmed_available is not True:
         raise ReservationError("reservation_not_available")
+    product = await session.get(Product, offer.product_id)
+    if product is None or product.status != "active" or not supplier.active:
+        raise ReservationError("offer_unavailable")
     if offer.status != "active" or offer.sourcing_capacity_status != "open":
         raise ReservationError("offer_unavailable")
     if offer.available_from is not None and now < offer.available_from:
@@ -341,12 +345,8 @@ async def approve_and_convert_reservation(
             payload={"order_id": str(order.id), "amount_irr": line_total, "currency": "IRR"},
         ),
     )
-    session.add(
-        _event(reservation.id, "approved", now, customer_id=customer_identity_id)
-    )
-    session.add(
-        _event(reservation.id, "converted", now, customer_id=customer_identity_id)
-    )
+    session.add(_event(reservation.id, "approved", now, customer_id=customer_identity_id))
+    session.add(_event(reservation.id, "converted", now, customer_id=customer_identity_id))
     await session.flush()
     return reservation, order
 

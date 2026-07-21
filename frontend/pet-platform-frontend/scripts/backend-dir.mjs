@@ -11,7 +11,8 @@ export function resolveBackendDir() {
     resolve(frontendDir, "..", "backend"),
   ].filter(Boolean);
   for (const candidate of attempted) {
-    if (existsSync(resolve(candidate, "release-contract.json"))) return candidate;
+    if (existsSync(resolve(candidate, "release-contract.json")))
+      return candidate;
   }
   throw new Error(
     `Unable to resolve backend directory. Attempted:\n${attempted.map((path) => `- ${path}`).join("\n")}`,

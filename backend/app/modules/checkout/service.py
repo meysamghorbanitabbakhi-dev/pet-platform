@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.time import utc_now
-from app.modules.catalog.models import Offer, Supplier
+from app.modules.catalog.models import Offer, Product, Supplier
 from app.modules.households.models import HouseholdAddress
 from app.modules.orders.models import Order, OrderLine
 from app.modules.system.idempotency import canonical_request_hash
@@ -138,13 +138,14 @@ class CheckoutService:
         offer_ids = {item.offer_id for item in items}
         rows = (
             await session.execute(
-                select(Offer, Supplier)
+                select(Offer, Product, Supplier)
+                .join(Product, Product.id == Offer.product_id)
                 .join(Supplier, Supplier.id == Offer.supplier_id)
                 .where(Offer.id.in_(offer_ids))
                 .with_for_update(of=Offer)
             )
         ).all()
-        offers = {offer.id: (offer, supplier) for offer, supplier in rows}
+        offers = {offer.id: (offer, product, supplier) for offer, product, supplier in rows}
         if len(offers) != len(offer_ids):
             raise CheckoutError("one or more offers do not exist")
 
@@ -169,11 +170,23 @@ class CheckoutService:
                 "postal_code": address.postal_code,
             },
         )
-        session.add(order)
+        # A concurrent call with the same idempotency_key can race past the
+        # `existing is None` check above (neither has committed yet) and
+        # both attempt this insert; the loser hits the unique constraint on
+        # flush. That failure is caught inside a SAVEPOINT (begin_nested),
+        # not via session.rollback() -- this function participates in the
+        # caller's own transaction (see the docstring above) and does not
+        # own it, so a plain rollback here would discard anything the
+        # caller already did earlier in that same transaction (e.g.
+        # concierge's freshly-created Product/Offer, replenishment's
+        # already-mutated reservation), not just this insert attempt. A
+        # savepoint's rollback is scoped to only the work done since it was
+        # opened.
         try:
-            await session.flush()
+            async with session.begin_nested():
+                session.add(order)
+                await session.flush()
         except IntegrityError as exc:
-            await session.rollback()
             replay = await session.scalar(
                 select(Order).where(
                     Order.customer_identity_id == customer_identity_id,
@@ -184,7 +197,7 @@ class CheckoutService:
                 return replay
             raise CheckoutError("idempotency key was already used for another request") from exc
         for item in items:
-            offer, supplier = offers[item.offer_id]
+            offer, product, supplier = offers[item.offer_id]
             # Ordinary checkout (the default allowed_modes) is the
             # full_payment path only. 'reserve' offers must go through
             # app.modules.reservations (operator price/availability
@@ -200,6 +213,8 @@ class CheckoutService:
             # verification and pricing entirely.
             if offer.mode not in allowed_modes:
                 raise CheckoutError(f"offer {offer.id} is not eligible for this checkout path")
+            if product.status != "active" or not supplier.active:
+                raise CheckoutError(f"offer {offer.id} is unavailable")
             if offer.status != "active" or offer.stock_posture != "sourced_after_payment":
                 raise CheckoutError(f"offer {offer.id} is unavailable")
             if offer.sourcing_capacity_status != "open":
@@ -208,6 +223,24 @@ class CheckoutService:
                 raise CheckoutError(f"offer {offer.id} is not available yet")
             if offer.available_until is not None and now >= offer.available_until:
                 raise CheckoutError(f"offer {offer.id} availability ended")
+            # Checkout preflight for the aggregated-sourcing invariant: an
+            # offer left on the aggregated route with no
+            # default_batch_threshold_quantity configured cannot actually
+            # open a purchase batch (app.modules.purchasing.service raises
+            # PurchasingError the moment payment verification tries to
+            # allocate into one). Rejecting it here, before the order or
+            # any payment exists, means a misconfigured offer fails
+            # checkout with a clear, actionable error instead of the
+            # customer discovering it only after their payment is
+            # verified.
+            if (
+                offer.sourcing_route == "aggregated"
+                and offer.default_batch_threshold_quantity is None
+            ):
+                raise CheckoutError(
+                    f"offer {offer.id} is on the aggregated sourcing route with no "
+                    "default_batch_threshold_quantity configured"
+                )
             if offer.max_pending_quantity is not None:
                 pending = await session.scalar(
                     select(func.coalesce(func.sum(OrderLine.quantity), 0))

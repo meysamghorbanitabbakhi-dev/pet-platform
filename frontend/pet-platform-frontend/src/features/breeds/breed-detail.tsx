@@ -3,7 +3,13 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { Banner, Button, Card, ErrorState, Skeleton } from "@/components/primitives";
+import {
+  Banner,
+  Button,
+  Card,
+  ErrorState,
+  Skeleton,
+} from "@/components/primitives";
 import { getBreedDetail, selectPetBreed } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 
@@ -56,7 +62,10 @@ export function BreedDetail({
         <ErrorState
           title="این نژاد در دسترس نیست"
           action={
-            <Button variant="secondary" onClick={() => void detailQuery.refetch()}>
+            <Button
+              variant="secondary"
+              onClick={() => void detailQuery.refetch()}
+            >
               تلاش دوباره
             </Button>
           }
@@ -103,7 +112,9 @@ export function BreedDetail({
         <Card className="stack">
           <h2 className="title">نکات تاییدشده</h2>
           {detail.claims.length === 0 ? (
-            <p className="caption">نکته تاییدشده‌ای برای این نژاد ثبت نشده است.</p>
+            <p className="caption">
+              نکته تاییدشده‌ای برای این نژاد ثبت نشده است.
+            </p>
           ) : (
             <ul className="stack">
               {detail.claims.map((claim) => (
@@ -111,7 +122,8 @@ export function BreedDetail({
                   <p>{claim.text_fa}</p>
                   {claim.sources.length ? (
                     <p className="caption">
-                      منبع: {claim.sources.map((source) => source.title).join("، ")}
+                      منبع:{" "}
+                      {claim.sources.map((source) => source.title).join("، ")}
                     </p>
                   ) : null}
                 </li>

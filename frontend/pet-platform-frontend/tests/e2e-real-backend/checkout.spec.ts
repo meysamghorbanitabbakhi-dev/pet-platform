@@ -26,7 +26,10 @@ test("T10 shop discovery through order creation reaches the real payment gateway
     await page.getByLabel("شماره موبایل").fill("09122345678");
     await page.getByRole("button", { name: "درخواست کد" }).click();
     await expect(page).toHaveURL(/\/auth\/otp$/);
-    const code = await waitForOtpCode(mobile, { since: requestedAt, timeoutMs: 15_000 });
+    const code = await waitForOtpCode(mobile, {
+      since: requestedAt,
+      timeoutMs: 15_000,
+    });
     await page.getByLabel("کد تایید").fill(code);
     await page.getByRole("button", { name: "تایید و ادامه" }).click();
     await expect(page).toHaveURL(/\/onboarding\/household$/);
@@ -44,20 +47,28 @@ test("T10 shop discovery through order creation reaches the real payment gateway
     await page.getByLabel("استان").fill("تهران");
     await page.getByLabel("شهر").fill("تهران");
     await page.getByLabel("آدرس کامل").fill("خیابان ولیعصر پلاک ۱۲");
-    await page.getByRole("button", { name: "ثبت آدرس و رفتن به امروز" }).click();
+    await page
+      .getByRole("button", { name: "ثبت آدرس و رفتن به امروز" })
+      .click();
     await expect(page).toHaveURL(/\/today$/);
 
     await page.goto("/shop");
-    await expect(page.getByRole("heading", { name: "کشف محصول" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "کشف محصول" }),
+    ).toBeVisible();
     await page.getByRole("link", { name: offer.title, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/shop/offer/${offer.offerId}$`));
-    await expect(page.getByRole("heading", { name: offer.title })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: offer.title }),
+    ).toBeVisible();
 
     const addToCartResults = await new AxeBuilder({ page }).analyze();
     expect(addToCartResults.violations).toEqual([]);
 
     await page.getByRole("button", { name: "افزودن به سبد" }).click();
-    await expect(page.getByRole("button", { name: "به سبد افزوده شد" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "به سبد افزوده شد" }),
+    ).toBeVisible();
     await page.getByRole("link", { name: "مشاهده سبد" }).click();
     await expect(page).toHaveURL(/\/cart$/);
     await expect(page.getByText(offer.title)).toBeVisible();
@@ -67,7 +78,9 @@ test("T10 shop discovery through order creation reaches the real payment gateway
     await page.getByRole("button", { name: "استفاده از این آدرس" }).click();
     await expect(page).toHaveURL(/\/checkout\/review$/);
 
-    await page.getByRole("button", { name: "ساخت سفارش و پرداخت کامل" }).click();
+    await page
+      .getByRole("button", { name: "ساخت سفارش و پرداخت کامل" })
+      .click();
     await expect(page).toHaveURL(/\/checkout\/payment\/redirect/);
     await expect(page.getByText("درگاه پرداخت پیکربندی نشده است")).toBeVisible({
       timeout: 10_000,
@@ -84,7 +97,9 @@ test("T10 shop discovery through order creation reaches the real payment gateway
     // real row is present, not text that was never going to be there.
     await page.goto("/orders");
     await expect(page.getByText("هنوز سفارشی ثبت نشده است")).toHaveCount(0);
-    await expect(page.getByLabel("فهرست سفارش‌ها").getByRole("listitem")).toHaveCount(1);
+    await expect(
+      page.getByLabel("فهرست سفارش‌ها").getByRole("listitem"),
+    ).toHaveCount(1);
   } finally {
     // This harness's ephemeral Postgres has no per-spec-file reset (see
     // seed.ts) -- retire even on failure, or a thrown assertion above

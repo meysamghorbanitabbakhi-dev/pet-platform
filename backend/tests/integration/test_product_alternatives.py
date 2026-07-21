@@ -68,6 +68,7 @@ async def alt_seed() -> AltSeed:
                     status="active",
                     stock_posture="sourced_after_payment",
                     sourcing_capacity_status="open",
+                    sourcing_route="individual",
                     minimum_shelf_life_months=6,
                 ),
                 Offer(
@@ -80,6 +81,7 @@ async def alt_seed() -> AltSeed:
                     status="unavailable",
                     stock_posture="unavailable",
                     sourcing_capacity_status="open",
+                    sourcing_route="individual",
                     minimum_shelf_life_months=6,
                 ),
             ]

@@ -150,9 +150,7 @@ class RemainingLevelInput(BaseModel):
     level: Literal["full", "more_than_half", "less_than_half", "near_empty"]
 
 
-RemainingInput = Annotated[
-    RemainingGramsInput | RemainingLevelInput, Field(discriminator="mode")
-]
+RemainingInput = Annotated[RemainingGramsInput | RemainingLevelInput, Field(discriminator="mode")]
 
 
 class OpenInventoryBody(BaseModel):
@@ -670,9 +668,9 @@ async def reorder_snooze(
     )
     now = utc_now()
     snooze = await session.scalar(
-        select(ReorderSnooze).where(
-            ReorderSnooze.inventory_unit_id == unit.id, ReorderSnooze.identity_id == identity.id
-        ).with_for_update()
+        select(ReorderSnooze)
+        .where(ReorderSnooze.inventory_unit_id == unit.id, ReorderSnooze.identity_id == identity.id)
+        .with_for_update()
     )
     if snooze is None:
         snooze = ReorderSnooze(
@@ -822,9 +820,7 @@ async def _household_access_for_replenishment_reservation(
             session, identity_id=identity_id, household_id=household_id
         )
     except HouseholdAccessError as exc:
-        raise HTTPException(
-            status_code=404, detail="replenishment_reservation_not_found"
-        ) from exc
+        raise HTTPException(status_code=404, detail="replenishment_reservation_not_found") from exc
 
 
 def _replenishment_reservation_response(
@@ -1309,6 +1305,7 @@ async def list_diary(
                 select(DiaryEntry)
                 .where(DiaryEntry.pet_id == pet_id)
                 .order_by(DiaryEntry.happened_at.desc())
+                .limit(200)
             )
         ).all()
     )
@@ -1499,6 +1496,7 @@ async def list_household_inventory(
                 select(InventoryUnit)
                 .where(InventoryUnit.household_id == household_id)
                 .order_by(InventoryUnit.created_at.desc())
+                .limit(200)
             )
         ).all()
     )
@@ -1763,22 +1761,23 @@ async def _reorder_options(
             )
         ).all()
     )
+    now = utc_now()
+
+    def _is_available(offer: Offer) -> bool:
+        return (
+            offer.status == "active"
+            and offer.stock_posture == "sourced_after_payment"
+            and offer.sourcing_capacity_status == "open"
+            and (offer.available_from is None or offer.available_from <= now)
+            and (offer.available_until is None or offer.available_until > now)
+        )
+
     return [
         ReorderOptionResponse(
             offer_id=offer.id,
             sku=offer.sku,
-            available=(
-                offer.status == "active"
-                and offer.stock_posture == "sourced_after_payment"
-                and offer.sourcing_capacity_status == "open"
-            ),
-            reason_key=(
-                None
-                if offer.status == "active"
-                and offer.stock_posture == "sourced_after_payment"
-                and offer.sourcing_capacity_status == "open"
-                else "offer_unavailable_or_capacity_paused"
-            ),
+            available=_is_available(offer),
+            reason_key=(None if _is_available(offer) else "offer_unavailable_or_capacity_paused"),
         )
         for offer in offers
     ]
@@ -1898,9 +1897,7 @@ def _public_journey_content(content: dict[str, object]) -> JourneyContentRespons
             else []
         ),
         eligibility=JourneyEligibilityResponse(
-            eligible_species=[
-                item for item in eligible_species if item in ("dog", "cat")
-            ]
+            eligible_species=[item for item in eligible_species if item in ("dog", "cat")]
             if isinstance(eligible_species, list)
             else None
         ),

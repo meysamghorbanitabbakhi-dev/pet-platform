@@ -25,7 +25,10 @@ test("operator logs in via the real OTP flow and reaches the real KPI dashboard"
   await page.getByLabel("شماره موبایل").fill("09123456789");
   await page.getByRole("button", { name: "درخواست کد" }).click();
   await expect(page).toHaveURL(/\/auth\/otp$/);
-  const code = await waitForOtpCode(mobileE164, { since: requestedAt, timeoutMs: 15_000 });
+  const code = await waitForOtpCode(mobileE164, {
+    since: requestedAt,
+    timeoutMs: 15_000,
+  });
   await page.getByLabel("کد تایید").fill(code);
   await page.getByRole("button", { name: "تایید و ادامه" }).click();
   // Wait for the post-verify redirect to actually start (routeFromMeContext
@@ -36,7 +39,9 @@ test("operator logs in via the real OTP flow and reaches the real KPI dashboard"
   await expect(page).not.toHaveURL(/\/auth\/otp$/, { timeout: 10_000 });
 
   await page.goto("/operator/kpis");
-  await expect(page.getByRole("heading", { name: "شاخص‌های عملکرد" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "شاخص‌های عملکرد" }),
+  ).toBeVisible();
   // The exact negative this test exists to catch: a customer identity (or
   // a misconfigured RLS/authorization layer) landing here would render
   // the 403 empty state instead.

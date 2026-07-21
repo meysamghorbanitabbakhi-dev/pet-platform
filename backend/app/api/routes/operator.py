@@ -79,7 +79,7 @@ from app.modules.pet_knowledge.service import (
 from app.modules.pet_knowledge.validation import canonical_bytes, validate_bundle
 from app.modules.pets.models import Pet
 from app.modules.purchasing.models import PurchaseBatch, PurchaseBatchAllocation, PurchaseBatchEvent
-from app.modules.purchasing.service import PurchasingError, cancel_batch, commit_batch
+from app.modules.purchasing.service import PurchasingError, cancel_empty_batch, commit_batch
 from app.modules.replenishment.models import (
     ReplenishmentReservation,
     ReplenishmentReservationEvent,
@@ -136,6 +136,16 @@ class OfferBody(BaseModel):
     available_from: datetime | None = None
     available_until: datetime | None = None
     max_pending_quantity: int | None = Field(default=None, gt=0)
+    # Same choice, and the same validation, as PATCH /offers/{id}/sourcing-config
+    # -- required here too rather than left to default to
+    # sourcing_route='aggregated' with no threshold configured, which
+    # would create an offer immediately orderable but unable to actually
+    # open a purchase batch (app.modules.purchasing.service raises
+    # PurchasingError the first time a payment tries to allocate into
+    # one). An operator must make this decision explicitly at creation
+    # time, not discover it after a customer has already paid.
+    sourcing_route: str = Field(default="aggregated", pattern=r"^(aggregated|individual)$")
+    default_batch_threshold_quantity: int | None = Field(default=None, gt=0)
     reason: str = Field(min_length=5, max_length=1000)
 
 
@@ -371,9 +381,7 @@ class BenchmarkDefinitionBody(BaseModel):
 
 
 @router.post("/knowledge-releases/validate", response_model=dict[str, object])
-async def validate_knowledge_release(
-    body: dict[str, Any], _: CurrentOperator
-) -> dict[str, object]:
+async def validate_knowledge_release(body: dict[str, Any], _: CurrentOperator) -> dict[str, object]:
     result = validate_bundle(body)
     return {
         "valid": result.valid,
@@ -477,9 +485,7 @@ async def import_knowledge_guidance(
     claim_ids = set(
         (
             await session.scalars(
-                select(KnowledgeClaim.external_id).where(
-                    KnowledgeClaim.release_id == release.id
-                )
+                select(KnowledgeClaim.external_id).where(KnowledgeClaim.release_id == release.id)
             )
         ).all()
     )
@@ -842,9 +848,7 @@ async def get_knowledge_activation_run(
     return _activation_item(run)
 
 
-@router.post(
-    "/knowledge-activation-runs/{run_id}/preflight", response_model=dict[str, object]
-)
+@router.post("/knowledge-activation-runs/{run_id}/preflight", response_model=dict[str, object])
 async def refresh_knowledge_activation_preflight(
     run_id: UUID,
     body: KnowledgeActivationActionBody,
@@ -886,9 +890,7 @@ async def refresh_knowledge_activation_preflight(
     return _activation_item(run)
 
 
-@router.post(
-    "/knowledge-activation-runs/{run_id}/execute", response_model=dict[str, object]
-)
+@router.post("/knowledge-activation-runs/{run_id}/execute", response_model=dict[str, object])
 async def execute_knowledge_activation_run(
     run_id: UUID,
     body: KnowledgeActivationActionBody,
@@ -921,9 +923,7 @@ async def execute_knowledge_activation_run(
     return _activation_item(run)
 
 
-@router.post(
-    "/knowledge-activation-runs/{run_id}/rollback", response_model=dict[str, object]
-)
+@router.post("/knowledge-activation-runs/{run_id}/rollback", response_model=dict[str, object])
 async def rollback_knowledge_activation_run(
     run_id: UUID,
     body: KnowledgeActivationActionBody,
@@ -980,9 +980,7 @@ async def record_knowledge_claim_review(
         raise HTTPException(status_code=422, detail="next_review_must_follow_review")
     if not body.credential_verified_privately:
         raise HTTPException(status_code=422, detail="certified_reviewer_verification_required")
-    claim.review_status = (
-        "veterinary_approved" if body.decision == "approved" else "rejected"
-    )
+    claim.review_status = "veterinary_approved" if body.decision == "approved" else "rejected"
     claim.app_eligible = body.decision == "approved"
     session.add(
         KnowledgeReview(
@@ -1179,9 +1177,7 @@ async def publish_knowledge_release(
     if approved_count == 0:
         raise HTTPException(status_code=409, detail="approved_claim_required_for_publication")
     current = await session.scalar(
-        select(KnowledgeRelease)
-        .where(KnowledgeRelease.status == "published")
-        .with_for_update()
+        select(KnowledgeRelease).where(KnowledgeRelease.status == "published").with_for_update()
     )
     if current is not None:
         if body.supersedes_release_id != current.id:
@@ -1245,9 +1241,7 @@ async def materialize_knowledge_benchmarks(
         raise HTTPException(status_code=404, detail="knowledge_release_not_found")
     if release.status != "published":
         raise HTTPException(status_code=409, detail="published_release_required")
-    result = await materialize_release_benchmarks(
-        session, release=release, operator_id=operator.id
-    )
+    result = await materialize_release_benchmarks(session, release=release, operator_id=operator.id)
     audit_metadata: dict[str, object] = dict(result)
     _audit(
         session,
@@ -1405,6 +1399,10 @@ async def create_offer(
         and body.available_until <= body.available_from
     ):
         raise HTTPException(status_code=422, detail="invalid_availability_window")
+    if body.sourcing_route == "aggregated" and body.default_batch_threshold_quantity is None:
+        raise HTTPException(
+            status_code=422, detail="aggregated_route_requires_default_batch_threshold_quantity"
+        )
     if (
         await session.get(Product, body.product_id) is None
         or await session.get(Supplier, body.supplier_id) is None
@@ -1434,6 +1432,8 @@ async def create_offer(
         available_until=body.available_until,
         max_pending_quantity=body.max_pending_quantity,
         sourcing_capacity_status="open",
+        sourcing_route=body.sourcing_route,
+        default_batch_threshold_quantity=body.default_batch_threshold_quantity,
     )
     session.add(offer)
     await session.flush()
@@ -1795,12 +1795,16 @@ async def cancel_purchase_batch(
     operator: CurrentOperator,
     session: SessionDependency,
 ) -> PurchaseBatchResponse:
+    """Cancels an empty (no active allocations) open batch -- see
+    cancel_empty_batch's docstring. Rejects with 409 for a batch that
+    still holds active allocations; cancel each of those orders through
+    the customer-cancellation path first, which releases its allocation."""
     batch = await session.get(PurchaseBatch, batch_id, with_for_update=True)
     if batch is None:
         raise HTTPException(status_code=404, detail="purchase_batch_not_found")
     already_cancelled = batch.status == "cancelled"
     try:
-        batch = await cancel_batch(
+        batch = await cancel_empty_batch(
             session, batch=batch, operator_id=operator.id, reason=body.reason
         )
     except PurchasingError as exc:
@@ -2176,9 +2180,7 @@ async def confirm_sourced_unit(
     line, order, offer, supplier = row
     if order.delivery_commitment_at is None:
         raise HTTPException(status_code=409, detail="order_has_no_delivery_commitment")
-    minimum_date = add_months(
-        order.delivery_commitment_at.date(), offer.minimum_shelf_life_months
-    )
+    minimum_date = add_months(order.delivery_commitment_at.date(), offer.minimum_shelf_life_months)
     if body.exact_expiry_date < minimum_date:
         raise HTTPException(status_code=409, detail="shelf_life_guarantee_not_met")
     assurance = await session.scalar(
@@ -2693,9 +2695,7 @@ def _replenishment_reservation_response(
     )
 
 
-@router.get(
-    "/replenishment-reservations", response_model=list[ReplenishmentReservationResponse]
-)
+@router.get("/replenishment-reservations", response_model=list[ReplenishmentReservationResponse])
 async def list_replenishment_reservations(
     _: CurrentOperator,
     session: SessionDependency,
@@ -2707,9 +2707,7 @@ async def list_replenishment_reservations(
     valid_statuses = ("pending_approval", "approved", "declined", "expired", "invalidated")
     if status_filter is not None and status_filter not in valid_statuses:
         raise HTTPException(status_code=422, detail="invalid_status_filter")
-    query = select(ReplenishmentReservation).order_by(
-        ReplenishmentReservation.created_at.desc()
-    )
+    query = select(ReplenishmentReservation).order_by(ReplenishmentReservation.created_at.desc())
     if status_filter is not None:
         query = query.where(ReplenishmentReservation.status == status_filter)
     rows = list((await session.scalars(query.limit(200))).all())
@@ -2769,9 +2767,7 @@ async def invalidate_replenishment_reservation(
 ) -> ReplenishmentReservationResponse:
     if not settings.replenishment_reservation_enabled:
         raise HTTPException(status_code=409, detail="replenishment_reservation_disabled")
-    reservation = await session.get(
-        ReplenishmentReservation, reservation_id, with_for_update=True
-    )
+    reservation = await session.get(ReplenishmentReservation, reservation_id, with_for_update=True)
     if reservation is None:
         raise HTTPException(status_code=404, detail="replenishment_reservation_not_found")
     already_invalidated = reservation.status == "invalidated"
@@ -2937,9 +2933,7 @@ async def operational_telemetry(_: CurrentOperator, session: SessionDependency) 
             select(func.count()).select_from(OutboxEvent).where(OutboxEvent.status == "failed")
         ),
         "outbox_dead_letter": await session.scalar(
-            select(func.count())
-            .select_from(OutboxEvent)
-            .where(OutboxEvent.status == "dead_letter")
+            select(func.count()).select_from(OutboxEvent).where(OutboxEvent.status == "dead_letter")
         ),
         "notifications_failed": await session.scalar(
             select(func.count()).select_from(Notification).where(Notification.status == "failed")
@@ -3118,10 +3112,7 @@ async def list_kpis(
     if window_end <= window_start:
         raise HTTPException(status_code=422, detail="window_end_must_be_after_window_start")
     results = await compute_all_kpis(session, window_start=window_start, window_end=window_end)
-    return [
-        _kpi_response(KPI_REGISTRY[result.key], result)
-        for result in results
-    ]
+    return [_kpi_response(KPI_REGISTRY[result.key], result) for result in results]
 
 
 @router.get("/kpis/{key}", response_model=KPIResultResponse)

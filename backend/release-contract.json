@@ -1,7 +1,7 @@
 {
   "alembic": {
     "heads": [
-      "20260720_0042"
+      "20260721_0050"
     ]
   },
   "openapi": {
@@ -423,7 +423,7 @@
       ]
     },
     "schema_count": 241,
-    "sha256": "bc9dc8159134031a791316ccd11237cef11f02f771f3784677693279fce5e1e5"
+    "sha256": "62a7b2bfbf77f28205ac352edc77c10128d48491a3c9e2545e105e21bd285694"
   },
   "policy_defaults": {
     "care_journey_delivery_enabled": true,

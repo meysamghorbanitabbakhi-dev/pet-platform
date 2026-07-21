@@ -20,7 +20,10 @@
 
 ## Acceptance checks
 
-- `/health/live` is 200 and `/health/ready` confirms database, Redis, and storage.
+- `/health/live` is 200 and `/health/ready` confirms database, Redis, storage, the
+  `DATABASE_APP_URL` role's connectivity, the applied migration head, that the app role cannot
+  bypass row-level security, and that the RLS request-context plumbing round-trips end to end
+  (gap-closure program, Section 10.4).
 - Policy output says IRR, 366 delivery-commitment hours, full payment, reserve disabled.
 - OTP request and validation work with the real SMS provider.
 - A sandbox payment can be requested, callback-verified, and reconciled idempotently.

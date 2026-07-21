@@ -4,7 +4,10 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { initiatePayment } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
-import { clearCheckoutAttempt, clearLatestOrderId } from "@/lib/checkout-attempt";
+import {
+  clearCheckoutAttempt,
+  clearLatestOrderId,
+} from "@/lib/checkout-attempt";
 import { paymentRedirectFixture } from "@/test/fixtures/gate-fixtures";
 import { PaymentRedirect } from "./payment-redirect";
 

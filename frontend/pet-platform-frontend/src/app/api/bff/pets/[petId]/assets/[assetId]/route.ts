@@ -1,5 +1,8 @@
 import { jsonError, jsonNoContent, requireCsrf } from "@/lib/api/bff-route";
-import { deletePetAssetBackend, downloadPetAssetBackend } from "@/lib/api/backend";
+import {
+  deletePetAssetBackend,
+  downloadPetAssetBackend,
+} from "@/lib/api/backend";
 
 export async function GET(
   _request: Request,
@@ -12,8 +15,11 @@ export async function GET(
     // storage location itself.
     return new Response(backendResponse.body, {
       headers: {
-        "Content-Type": backendResponse.headers.get("content-type") ?? "application/octet-stream",
-        "Content-Disposition": backendResponse.headers.get("content-disposition") ?? "inline",
+        "Content-Type":
+          backendResponse.headers.get("content-type") ??
+          "application/octet-stream",
+        "Content-Disposition":
+          backendResponse.headers.get("content-disposition") ?? "inline",
       },
     });
   } catch (error) {

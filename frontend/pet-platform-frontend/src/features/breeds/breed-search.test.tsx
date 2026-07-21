@@ -4,7 +4,10 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listBreeds, searchBreeds } from "@/lib/api/client";
-import { breedListFixture, breedSearchFixture } from "@/test/fixtures/gate-fixtures";
+import {
+  breedListFixture,
+  breedSearchFixture,
+} from "@/test/fixtures/gate-fixtures";
 import { BreedSearch } from "./breed-search";
 
 vi.mock("next/navigation", () => ({
@@ -48,6 +51,8 @@ describe("BreedSearch", () => {
 
     await user.type(screen.getByLabelText("جستجو"), "پرشین");
 
-    await waitFor(() => expect(searchBreeds).toHaveBeenCalledWith("پرشین", undefined));
+    await waitFor(() =>
+      expect(searchBreeds).toHaveBeenCalledWith("پرشین", undefined),
+    );
   });
 });
