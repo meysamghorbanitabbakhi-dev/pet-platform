@@ -37,7 +37,6 @@ Set `NEXT_PUBLIC_API_BASE_URL` to the backend origin. Test-only fixture mode is 
 
 ```bash
 GATE_FIXTURE_MODE=1
-NEXT_PUBLIC_GATE_FIXTURE_MODE=1
 ```
 
 Do not enable fixture mode in production.
