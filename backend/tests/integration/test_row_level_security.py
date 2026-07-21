@@ -19,6 +19,7 @@ from app.modules.households.models import Household, HouseholdAddress, Household
 from app.modules.identity.models import AuthIdentity
 from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit
 from app.modules.journeys.models import JourneyCheckIn, JourneyDefinition, PetJourney
+from app.modules.notifications.models import Notification
 from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderLine
 from app.modules.orders.resolutions import OrderResolution
@@ -831,6 +832,37 @@ async def test_pet_health_records_are_invisible_across_households() -> None:
     assert invisible_measurements == []
     assert invisible_consents == []
     assert invisible_reminders == []
+
+
+async def test_notifications_are_invisible_to_an_unrelated_identity() -> None:
+    seed = await _seed_two_households()
+    async with SessionFactory() as session:
+        notification = Notification(
+            recipient_identity_id=seed.customer_a.id,
+            event_key="catalog.offer_available",
+            source_id=str(uuid.uuid4()),
+            channel="in_app",
+            payload={},
+            status="sent",
+            destination_kind="none",
+        )
+        session.add(notification)
+        await session.commit()
+        notification_id = notification.id
+
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.identity_id', :v, true)"), {"v": str(seed.customer_b.id)}
+        )
+        invisible = list(
+            (
+                await session.scalars(
+                    select(Notification).where(Notification.id == notification_id)
+                )
+            ).all()
+        )
+    assert invisible == []
 
 
 async def test_app_role_is_not_a_superuser_and_cannot_bypass_rls() -> None:
