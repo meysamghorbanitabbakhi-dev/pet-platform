@@ -1,15 +1,16 @@
 # Pet Platform — Gap-Closure Program Continuation: Engineering Handoff
 
-**Branch:** `gap-closure-program` · **Head commit at time of writing:** `c43ee23` · **This
-segment's commits:** 27, on top of `bc97b7a` (the last commit in the prior, already-merged PR #1)
+**Branch:** `gap-closure-program` · **Head commit at time of writing:** `7c26a86` · **This
+segment's commits:** 30 total on top of `bc97b7a` (the last commit in the prior, already-merged
+PR #1) — 16 of them landed after this document's original version at `0dd626c`.
 
-**Update (2026-07-21):** eleven commits landed after this document's original 15-commit version
-(`0dd626c`): three closing the Section 10.3/10.4 gap this document originally listed as "not
-attempted," one fixing the `test_migration_20260717_0025_downgrade.py` fragility this document
-flagged as a CI-pipeline blocker, five building and validating an actual CI pipeline, and two
-partially closing the Section 12/13 pagination gap (see the dedicated update notes near the end for
-all of these). The body below is otherwise unmodified from when it was first written, including the
-acceptance-gate
+**Update (2026-07-21):** those 16 commits break down as: one adding this document itself, three
+closing the Section 10.3/10.4 gap this document originally listed as "not attempted," one fixing the
+`test_migration_20260717_0025_downgrade.py` fragility this document flagged as a CI-pipeline
+blocker, four building and validating an actual CI pipeline, two closing the Section 12/13
+pagination gap, one fixing a real `.env.example` configuration bug, and four commits updating this
+document itself along the way (see the dedicated update notes near the end for all of these). The
+body below is otherwise unmodified from when it was first written, including the acceptance-gate
 table row for 10.3, which is superseded by the dedicated update section near the end rather than
 edited in place, so the history of what was true at each point stays legible.
 
@@ -259,8 +260,24 @@ already-documented, pre-existing order-dependent `test_kpi_reporting.py` flake w
 verification (confirmed passing 10/10 in isolation) — not touched, per this program's standing
 exclusion of commercial-events/KPI-correctness work.
 
-**Still not done**: load testing, recovery rehearsal, and configuration validation (the rest of
-Section 12-13) remain genuinely not attempted this segment.
+**Update (2026-07-21) — configuration validation, commit `7c26a86`.** Found and fixed a real,
+confirmed config bug while looking for exactly this class of gap: `.env.example` documented
+`LATE_COMPENSATION_BASIS_POINTS` and `WALLET_CREDIT_EXPIRY_MONTHS`, neither of which matches a real
+`Settings` field name (the actual fields are `late_credit_basis_points`/`late_credit_expiry_months`,
+expecting `LATE_CREDIT_BASIS_POINTS`/`LATE_CREDIT_EXPIRY_MONTHS`). Confirmed empirically, not
+assumed: setting the documented names had zero effect on `Settings`, which stayed at its Python
+defaults regardless; the actual names worked. Because `Settings.model_config` sets
+`extra="ignore"`, pydantic-settings never rejects or warns about an unmatched key at startup — an
+operator following this file to configure the late-credit policy before ever enabling
+`late_credit_enabled` would silently get the wrong values with no error. Fixed both names, and added
+`tests/unit/test_env_example_matches_settings.py`, which parses every `.env.example` key and asserts
+it matches a real `Settings` field — verified via `git stash` to fail with exactly these two keys
+against the pre-fix file. This closes the whole class of drift, not just today's two instances.
+Also updated `docs/runbooks/launch.md`'s acceptance checks, which still only mentioned the original
+three `/health/ready` checks (database/Redis/storage) and not the four added earlier this segment.
+
+**Still not done**: load testing and a recovery rehearsal against this segment's actual (RLS-bearing,
+now-paginated) schema remain genuinely not attempted this segment.
 
 **CI pipeline (backend + frontend gates):** not built this segment. All verification in this segment
 was performed by direct `docker exec` invocation against a long-lived interactive development
