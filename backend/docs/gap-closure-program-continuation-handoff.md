@@ -1,13 +1,14 @@
 # Pet Platform — Gap-Closure Program Continuation: Engineering Handoff
 
-**Branch:** `gap-closure-program` · **Head commit at time of writing:** `d0cb18f` · **This
-segment's commits:** 20, on top of `bc97b7a` (the last commit in the prior, already-merged PR #1)
+**Branch:** `gap-closure-program` · **Head commit at time of writing:** `18c9153` · **This
+segment's commits:** 25, on top of `bc97b7a` (the last commit in the prior, already-merged PR #1)
 
-**Update (2026-07-21):** four commits landed after this document's original 15-commit version
+**Update (2026-07-21):** nine commits landed after this document's original 15-commit version
 (`0dd626c`): three closing the Section 10.3/10.4 gap this document originally listed as "not
-attempted," and one fixing the `test_migration_20260717_0025_downgrade.py` fragility this document
-flagged as a CI-pipeline blocker (see its own update note in the Known gaps section below). The
-body below is otherwise unmodified from when it was first written, including the acceptance-gate
+attempted," one fixing the `test_migration_20260717_0025_downgrade.py` fragility this document
+flagged as a CI-pipeline blocker, and five building and validating an actual CI pipeline (see its
+own dedicated update note near the end). The body below is otherwise unmodified from when it was
+first written, including the acceptance-gate
 table row for 10.3, which is superseded by the dedicated update section near the end rather than
 edited in place, so the history of what was true at each point stays legible.
 
@@ -355,3 +356,65 @@ was not run before `cd26faa`, found two files it would have reformatted, fixed i
 
 Section 10.3/10.4 acceptance-gate status is now **PASS** (was `NOT ATTEMPTED`), superseding the
 row in the original acceptance-gate table above.
+
+## Update (2026-07-21) — CI pipeline built and validated with real evidence
+
+Supersedes the "CI pipeline (part of Section 2) — NOT ATTEMPTED THIS SEGMENT" row in the original
+acceptance-gate table above. **Correction to that original claim**: a CI workflow
+(`.github/workflows/k10-runtime.yml`) already existed before this segment began — the "not
+attempted" status was about this segment not having built or touched one, which was true at the
+time, but should not be read as "no CI pipeline exists at all." Investigating it properly (per this
+segment's own standing rule to verify rather than assume) surfaced that it was real but broken and
+incomplete, which is the actual finding this update closes out.
+
+**What was found:** the workflow's trigger is `pull_request` and `push: branches: [main]` only —
+never a plain push to a feature branch. Since PR #1 was merged externally and this segment's ~20
+commits sat on `gap-closure-program` with no open PR of its own, **none of this segment's commits
+had ever actually been run through CI**, in either direction — not confirmed passing, not confirmed
+failing. The three most recent real runs on record (`gh run list`) were all from before this
+segment: two failed on the exact `test_outbox_registry_retries_dead_letter_and_audit_only` flakiness
+this segment's very first commit (`0727556`) already root-caused and fixed, confirmed by reading
+those runs' actual logs rather than assuming the failure was still current.
+
+**What was done, in order, each verified before moving to the next:**
+
+1. Opened PR #2 (`gap-closure-program` → `main`, **not merged**, per this program's standing rule)
+   specifically to get the `pull_request` trigger to fire against this branch's real current state
+   — the only way to get genuine CI evidence rather than inference from stale runs.
+2. The resulting real run (`29810837996`) passed the backend (`python`) job outright: ruff, mypy,
+   `alembic upgrade head`, the full 445-test suite, a real `alembic downgrade -1` / `upgrade head`
+   smoke cycle, and the checked OpenAPI-artifact drift test all green on an actual GitHub Actions
+   runner — not a local `docker exec` approximation.
+3. While preparing a frontend CI job, `pnpm run check:contract` failed for real: `backend/
+   release-contract.json` (the manifest `app/cli/verify_release_contract.py` and the frontend's
+   `check-openapi.mjs` both read as their shared source of truth) still recorded the alembic head
+   and OpenAPI sha256 from `20260720_0042` — several migrations and schema changes behind the
+   actual current head, apparently never refreshed for this entire program segment. Fixed via
+   `python -m app.cli.verify_release_contract --write` (commit `66fbb42`); every required
+   operation/schema-property/enum/pattern/constant/policy-default was still compatible throughout —
+   only the two derived facts the `--write` flag recomputes were stale.
+4. `pnpm run format` (prettier) then failed on 33 pre-existing files with real print-width wrapping
+   drift (verified on one file before the bulk fix — not just CRLF/LF noise). Fixed with
+   `pnpm run format:write` (commit `cbf2c28`); typecheck, lint, and the full 250-test frontend suite
+   confirmed still passing afterward.
+5. `pnpm run check:contract` then failed again: `src/generated/openapi.ts` had drifted from
+   `backend/openapi.json` (this segment's route/schema changes were never reflected into it).
+   Regenerated via `pnpm run generate:api` (commit `05f94b8`); `check:contract` then reported clean
+   (`compatible`/`ok` on every one of its four checks).
+6. Added the actual frontend CI job plus a `verify_release_contract.py` step to the backend job
+   (commit `18c9153`) — the latter specifically so this exact class of staleness (found in step 3)
+   fails CI automatically going forward instead of silently drifting for another program segment.
+   Deliberately excluded from this job: `pnpm test:e2e:real-backend`, which needs a live backend +
+   Postgres + Redis + seed data — a heavier addition warranting its own dedicated pass.
+7. Pushed and watched a second real run (`29811470875`): **both jobs green** —
+   `python` (2m42s) and the new `frontend` job (1m7s), all steps passing, on the actual GitHub
+   Actions runner. This is the first time any commit from this entire program segment has been
+   confirmed by real CI, not local `docker exec` runs alone.
+
+**PR #2 status**: left open, unmerged, exactly as opened — its only purpose was triggering these
+real CI runs. Merging it remains a decision for whoever owns that call, same as this document's
+original note about opening a PR at all.
+
+**Still not covered by CI** (honest gap, not silently deferred): real-backend E2E (frontend or
+backend-driven), load testing, and the disaster-recovery rehearsal all remain manual/local-only, as
+documented in Known gaps above.
