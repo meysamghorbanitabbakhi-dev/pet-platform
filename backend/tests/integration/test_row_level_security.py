@@ -12,10 +12,13 @@ from app.common.time import utc_now
 from app.db.session import AppSessionFactory, SessionFactory, app_engine, close_database
 from app.main import create_app
 from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.diary.models import DiaryEntry
 from app.modules.food_estimation.models import FoodEstimate
+from app.modules.garden.models import GardenReward
 from app.modules.households.models import Household, HouseholdAddress, HouseholdMembership
 from app.modules.identity.models import AuthIdentity
 from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit
+from app.modules.journeys.models import JourneyCheckIn, JourneyDefinition, PetJourney
 from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderLine
 from app.modules.orders.resolutions import OrderResolution
@@ -688,6 +691,84 @@ async def test_fulfillment_events_and_resolutions_are_invisible_to_an_unrelated_
         )
     assert invisible_events == []
     assert invisible_resolutions == []
+
+
+async def test_diary_garden_and_journey_rows_are_invisible_across_households() -> None:
+    seed = await _seed_two_households()
+    async with SessionFactory() as session:
+        pet = Pet(household_id=seed.household_a_id, name="Rex", species="dog", status="active")
+        session.add(pet)
+        await session.flush()
+        entry = DiaryEntry(
+            pet_id=pet.id,
+            entry_type="milestone",
+            title_fa="x",
+            happened_at=utc_now(),
+            source_type="manual",
+            source_id=str(uuid.uuid4()),
+        )
+        session.add(entry)
+        await session.flush()
+        reward = GardenReward(
+            pet_id=pet.id,
+            diary_entry_id=entry.id,
+            source_type="owner_milestone",
+            source_id=str(uuid.uuid4()),
+            object_key="leaf",
+        )
+        definition = JourneyDefinition(
+            key=f"rls-journey-{uuid.uuid4().hex[:8]}",
+            version=1,
+            title_fa="x",
+            approval_status="approved",
+            content={},
+        )
+        session.add_all([reward, definition])
+        await session.flush()
+        pet_journey = PetJourney(
+            pet_id=pet.id, definition_id=definition.id, status="active", started_at=utc_now()
+        )
+        session.add(pet_journey)
+        await session.flush()
+        check_in = JourneyCheckIn(
+            journey_id=pet_journey.id,
+            check_in_key="step-1",
+            answer_key="done",
+            submitted_by_identity_id=seed.customer_a.id,
+            submitted_at=utc_now(),
+            idempotency_key=str(uuid.uuid4()),
+        )
+        session.add(check_in)
+        await session.commit()
+        entry_id, reward_id = entry.id, reward.id
+        pet_journey_id, check_in_id = pet_journey.id, check_in.id
+
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.household_ids', :v, true)"),
+            {"v": str(seed.household_b_id)},
+        )
+        invisible_entries = list(
+            (await session.scalars(select(DiaryEntry).where(DiaryEntry.id == entry_id))).all()
+        )
+        invisible_rewards = list(
+            (await session.scalars(select(GardenReward).where(GardenReward.id == reward_id))).all()
+        )
+        invisible_journeys = list(
+            (await session.scalars(select(PetJourney).where(PetJourney.id == pet_journey_id))).all()
+        )
+        invisible_check_ins = list(
+            (
+                await session.scalars(
+                    select(JourneyCheckIn).where(JourneyCheckIn.id == check_in_id)
+                )
+            ).all()
+        )
+    assert invisible_entries == []
+    assert invisible_rewards == []
+    assert invisible_journeys == []
+    assert invisible_check_ins == []
 
 
 async def test_app_role_is_not_a_superuser_and_cannot_bypass_rls() -> None:
