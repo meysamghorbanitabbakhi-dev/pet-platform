@@ -209,3 +209,81 @@ Also out of scope, deliberately: purely operator-facing tables (`purchasing_batc
 children, `trust_*` evidence tables, price-intelligence tables). These have no customer-facing read
 path to defend, and `purchasing_batches` in particular intentionally pools demand across households
 by design — household-scoping it would be a modeling error, not a security fix.
+
+## Amendment (2026-07-21) — gap-closure program, request-context threat model and readiness
+
+Extends the amendment above with the outcome of an explicit adversarial review of the RLS
+session-variable plumbing itself (not the policies it feeds), and the readiness-check gap that
+review surfaced.
+
+### Request-context threat model
+
+The question examined: could anything other than `apply_rls_context`
+(`app/api/dependencies.py`) and its `_apply_rls_context` `after_begin` listener
+(`app/db/session.py`) ever cause `app.is_operator` to be set to `true` for a non-operator
+identity, or cause stale context to leak between requests on a pooled connection?
+
+- **Only two call sites in the entire `app/` tree ever call `set_config` on the RLS GUCs** —
+  confirmed by an exhaustive grep, not assumed. `apply_rls_context` derives `is_operator` purely
+  from the authenticated identity's own `identity_type == "operator"` column, never from
+  client-supplied input (a request cannot ask to be treated as an operator; it can only be one
+  according to `AuthIdentity`, established by whatever authenticated it in the first place).
+- **Cross-request/pooled-connection leakage is already a non-issue, structurally, not by
+  application-level cleanup.** `set_config(..., true)` gives `SET LOCAL` semantics: Postgres
+  itself clears the setting at `COMMIT`/`ROLLBACK`, unconditionally, regardless of connection
+  pooling or which session or engine reuses the underlying connection next. There is no code path
+  that needs to (or could usefully) "reset" this between requests; the transaction boundary does
+  it. `check_rls_request_context` (added below) exists to keep proving this mechanism actually
+  works end-to-end going forward, not because the guarantee itself is in doubt.
+- **No SQL-injection path exists anywhere in `app/` (migrations excluded) that could let the app
+  role forge `app.is_operator`.** A second exhaustive grep for raw/f-string SQL construction with
+  user-controllable input found none; every `text(...)` usage in the runtime app is either a
+  hardcoded, non-user-controllable fragment (partial-index-style literal predicates, `Computed()`
+  column defaults) or parameterized via bind parameters.
+- **The residual, honestly-stated risk**: nothing at the *database* level currently prevents the
+  `database_app_url` role from calling `set_config('app.is_operator', 'true', true)` directly, if
+  it ever gained a way to execute arbitrary SQL (e.g. a future SQL-injection bug). Today's safety
+  rests entirely on "no such path exists," which this review verified but which is an
+  application-code property, not a structural database guarantee. A `SECURITY DEFINER` wrapper
+  function around `set_config` was considered and rejected as a fix for this specific residual
+  risk: a role with genuine arbitrary-SQL-execution capability can call any function it has
+  `EXECUTE` on, including a `SECURITY DEFINER` one, so the wrapper would not actually close the
+  gap it would appear to close — it would just move the same trust boundary one layer down while
+  giving false confidence. Closing this residual risk for real would mean eliminating the
+  conditions that make arbitrary SQL execution possible in the first place (the existing
+  no-injection posture), which is what code review and the parameterized-query discipline already
+  audited here are actually defending. Recorded as an accepted, monitored risk, not a fixed one —
+  a future SQL-injection finding anywhere in the app must re-open this specific question rather
+  than being treated as unrelated to RLS.
+
+### Readiness must verify the RLS chain is actually live, not just that the app booted
+
+`/health/ready` (`app/api/routes/health.py`) previously checked only the superuser database
+connection (`ping_database`), Redis, and storage — none of which would catch a misconfigured or
+un-provisioned `database_app_url` role, a database left behind on an older migration revision than
+the running code expects, or RLS having been silently disabled/bypassed. Four checks were added:
+
+- **`database_app_role`** (`ping_app_database`, `app/db/session.py`) — connects via `app_engine`
+  specifically, distinct from the existing superuser-only check. A credential rotation or missing
+  role would otherwise leave every real customer request failing while readiness still reported
+  healthy.
+- **`migration_head`** (`check_migration_head`, `app/api/routes/health.py`) — compares the live
+  `alembic_version` table against the revision `alembic.script.ScriptDirectory` computes as the
+  code's expected head, the same mechanism `app/cli/verify_release_contract.py` already uses for
+  its own heads check.
+- **`rls_no_bypass`** (`check_app_role_cannot_bypass_rls`, `app/db/session.py`) — the live
+  counterpart to `test_app_role_is_not_a_superuser_and_cannot_bypass_rls`
+  (`tests/integration/test_row_level_security.py`): queries `pg_roles` for the connected role's
+  own `rolsuper`/`rolbypassrls` and fails readiness if either is true, since Postgres superusers
+  and `BYPASSRLS` roles unconditionally bypass every policy regardless of configuration.
+- **`rls_request_context`** (`check_rls_request_context`, `app/db/session.py`) — round-trips a
+  synthetic, non-operator probe identity through `set_config` and back through
+  `app_is_operator()`/`app_identity_id()`/`app_household_ids()` on a real app-role connection,
+  proving the session-variable plumbing this ADR's whole model depends on actually works
+  end-to-end, not merely that the code path is wired up.
+
+Verified by `tests/integration/test_health_readiness.py`: each new check is exercised against the
+real database, and the two checks with meaningful failure logic (`check_migration_head`'s
+comparison, and the pure `_assert_role_is_not_privileged`/`_assert_request_context_round_trip`
+guards) are separately proven to actually reject a bad state, not merely proven to pass on today's
+already-correct environment.
