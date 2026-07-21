@@ -1,15 +1,16 @@
 # Pet Platform — Gap-Closure Program Continuation: Engineering Handoff
 
-**Branch:** `gap-closure-program` · **Head commit at time of writing:** `7c26a86` · **This
-segment's commits:** 30 total on top of `bc97b7a` (the last commit in the prior, already-merged
-PR #1) — 16 of them landed after this document's original version at `0dd626c`.
+**Branch:** `gap-closure-program` · **Head commit at time of writing:** `4f3b820` · **This
+segment's commits:** 32 total on top of `bc97b7a` (the last commit in the prior, already-merged
+PR #1) — 18 of them landed after this document's original version at `0dd626c`.
 
-**Update (2026-07-21):** those 16 commits break down as: one adding this document itself, three
+**Update (2026-07-21):** those 18 commits break down as: one adding this document itself, three
 closing the Section 10.3/10.4 gap this document originally listed as "not attempted," one fixing the
 `test_migration_20260717_0025_downgrade.py` fragility this document flagged as a CI-pipeline
 blocker, four building and validating an actual CI pipeline, two closing the Section 12/13
-pagination gap, one fixing a real `.env.example` configuration bug, and four commits updating this
-document itself along the way (see the dedicated update notes near the end for all of these). The
+pagination gap, two fixing real `.env.example` configuration bugs (backend and frontend), and five
+commits updating this document itself along the way (see the dedicated update notes near the end
+for all of these). The
 body below is otherwise unmodified from when it was first written, including the acceptance-gate
 table row for 10.3, which is superseded by the dedicated update section near the end rather than
 edited in place, so the history of what was true at each point stays legible.
@@ -275,6 +276,19 @@ it matches a real `Settings` field — verified via `git stash` to fail with exa
 against the pre-fix file. This closes the whole class of drift, not just today's two instances.
 Also updated `docs/runbooks/launch.md`'s acceptance checks, which still only mentioned the original
 three `/health/ready` checks (database/Redis/storage) and not the four added earlier this segment.
+
+**Update (2026-07-21) — frontend config validation, commit `4f3b820`.** Applied the same lens to the
+frontend and found two more things, both real: (1) `frontend/pet-platform-frontend/.env.example` was
+never actually version-controlled — the frontend's own `.gitignore` has a blanket `.env*` rule with
+no exception for the example file (unlike the backend's `.gitignore`, which only excludes the
+literal `.env`), so it existed only as an untracked local file; committed it for the first time
+after adding a `!.env.example` exception. (2) `NEXT_PUBLIC_GATE_FIXTURE_MODE` was documented in
+`.env.example`, both `docker-compose.yml` files, and the README, but is never read anywhere in
+`src/` (confirmed by exhaustive grep) — only the non-prefixed `GATE_FIXTURE_MODE` is. Removed it
+from all four locations, and documented `COOKIE_SECURE` (`src/lib/session/server.ts`), a real,
+working knob that had no documentation at all. Added `src/lib/env-example.test.ts`, mirroring the
+backend's own env-example test, verified the same way (temporarily reintroduced the dead key,
+confirmed the test fails, removed it, confirmed it passes). Full frontend suite (251 tests) green.
 
 **Still not done**: load testing and a recovery rehearsal against this segment's actual (RLS-bearing,
 now-paginated) schema remain genuinely not attempted this segment.
