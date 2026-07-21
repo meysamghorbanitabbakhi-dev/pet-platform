@@ -70,6 +70,7 @@ class ModeSeed:
     reserve_offer_id: uuid.UUID
     concierge_only_offer_id: uuid.UUID
     inventory_unit_id: uuid.UUID
+    sku_token: str
 
 
 @pytest.fixture()
@@ -137,6 +138,7 @@ async def mode_seed() -> ModeSeed:
             reserve_offer_id=reserve_offer.id,
             concierge_only_offer_id=concierge_offer.id,
             inventory_unit_id=unit.id,
+            sku_token=token,
         )
 
 
@@ -234,11 +236,21 @@ async def test_offer_detail_excludes_concierge_only_but_allows_reserve(
 async def test_offer_list_and_search_exclude_reserve_and_concierge_only(
     app_and_client: tuple[FastAPI, httpx.AsyncClient], mode_seed: ModeSeed
 ) -> None:
+    """Uses /catalog/offers/search (scoped to this fixture's own unique SKU
+    token) rather than the plain /catalog/offers list: that endpoint is
+    intentionally capped (a gap-closure-program pagination fix -- see
+    test_pagination_caps.py) and orders results alphabetically by title,
+    so on a long-lived shared database with tens of thousands of
+    accumulated offers from repeated test runs, this fixture's own offer
+    is not guaranteed to fall within the first page by title alone. The
+    mode-based exclusion this test actually verifies is identical on both
+    endpoints (orderable_offer_filters), so search proves the same thing
+    deterministically."""
     app, client = app_and_client
 
-    listed = await client.get("/api/v1/catalog/offers")
+    listed = await client.get("/api/v1/catalog/offers/search", params={"q": mode_seed.sku_token})
     assert listed.status_code == 200
-    listed_ids = {item["id"] for item in listed.json()}
+    listed_ids = {item["id"] for item in listed.json()["items"]}
     assert str(mode_seed.full_payment_offer_id) in listed_ids
     assert str(mode_seed.reserve_offer_id) not in listed_ids
     assert str(mode_seed.concierge_only_offer_id) not in listed_ids
