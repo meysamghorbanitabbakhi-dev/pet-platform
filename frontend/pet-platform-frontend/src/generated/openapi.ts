@@ -1573,6 +1573,29 @@ export interface paths {
         patch: operations["adjust_purchase_batch_api_v1_operator_purchase_batches__batch_id__patch"];
         trace?: never;
     };
+    "/api/v1/operator/purchase-batches/{batch_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Purchase Batch
+         * @description Cancels an empty (no active allocations) open batch -- see
+         *     cancel_empty_batch's docstring. Rejects with 409 for a batch that
+         *     still holds active allocations; cancel each of those orders through
+         *     the customer-cancellation path first, which releases its allocation.
+         */
+        post: operations["cancel_purchase_batch_api_v1_operator_purchase_batches__batch_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/purchase-batches/{batch_id}/commit": {
         parameters: {
             query?: never;
@@ -1584,6 +1607,57 @@ export interface paths {
         put?: never;
         /** Commit Purchase Batch */
         post: operations["commit_purchase_batch_api_v1_operator_purchase_batches__batch_id__commit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/replenishment-reservations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Replenishment Reservations */
+        get: operations["list_replenishment_reservations_api_v1_operator_replenishment_reservations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/replenishment-reservations/{reservation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Replenishment Reservation */
+        get: operations["get_replenishment_reservation_api_v1_operator_replenishment_reservations__reservation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/replenishment-reservations/{reservation_id}/invalidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invalidate Replenishment Reservation */
+        post: operations["invalidate_replenishment_reservation_api_v1_operator_replenishment_reservations__reservation_id__invalidate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1988,7 +2062,24 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Payment Callback */
+        /**
+         * Payment Callback
+         * @description Deliberately does not take SessionDependency (the RLS-scoped app-role
+         *     session): the payment gateway calls this endpoint directly, with no
+         *     logged-in customer session to derive RLS context from, so a query
+         *     against orders_orders/payments_attempts here would have
+         *     app.identity_id unset -- the row-level-security policies on those
+         *     tables require customer_identity_id = app_identity_id(), which is
+         *     NULL in that case, so the finalize step's own row-locking SELECT
+         *     would find nothing and every real payment verification would
+         *     silently fail (confirmed directly: a raw UPDATE through the app-role
+         *     session with no RLS context set affects 0 rows). This is the same
+         *     "trusted system code, not scoped to a single identity" case
+         *     app/db/session.py already carves out for schedulers -- the gateway's
+         *     own signed provider_reference is what authorizes this write, not a
+         *     customer session, so it uses SessionFactory (the superuser role)
+         *     directly rather than the per-request dependency.
+         */
         get: operations["payment_callback_api_v1_payments_zarinpal_callback_get"];
         put?: never;
         post?: never;
@@ -3672,6 +3763,8 @@ export interface components {
         };
         /** ConciergeOfferPromoteBody */
         ConciergeOfferPromoteBody: {
+            /** Default Batch Threshold Quantity */
+            default_batch_threshold_quantity: number;
             /** Rationale */
             rationale: string;
         };
@@ -4998,6 +5091,8 @@ export interface components {
             available_from?: string | null;
             /** Available Until */
             available_until?: string | null;
+            /** Default Batch Threshold Quantity */
+            default_batch_threshold_quantity?: number | null;
             /** Max Pending Quantity */
             max_pending_quantity?: number | null;
             /**
@@ -5016,6 +5111,11 @@ export interface components {
             reason: string;
             /** Sku */
             sku: string;
+            /**
+             * Sourcing Route
+             * @default aggregated
+             */
+            sourcing_route: string;
             /**
              * Supplier Id
              * Format: uuid
@@ -6218,6 +6318,11 @@ export interface components {
             /** Quantity */
             quantity: number;
         };
+        /** PurchaseBatchCancelBody */
+        PurchaseBatchCancelBody: {
+            /** Reason */
+            reason: string;
+        };
         /** PurchaseBatchCommitBody */
         PurchaseBatchCommitBody: {
             /** Commitment Reference */
@@ -6567,6 +6672,11 @@ export interface components {
              */
             hours: number;
         };
+        /** ReplenishmentInvalidateBody */
+        ReplenishmentInvalidateBody: {
+            /** Reason */
+            reason: string;
+        };
         /** ReplenishmentReservationApproveBody */
         ReplenishmentReservationApproveBody: {
             /**
@@ -6579,6 +6689,84 @@ export interface components {
         ReplenishmentReservationDeclineBody: {
             /** Reason */
             reason?: string | null;
+        };
+        /** ReplenishmentReservationDetailResponse */
+        ReplenishmentReservationDetailResponse: {
+            /**
+             * Approval Expires At
+             * Format: date-time
+             */
+            approval_expires_at: string;
+            /** Approved At */
+            approved_at?: string | null;
+            /**
+             * Auto Charged
+             * @default false
+             * @constant
+             */
+            auto_charged: false;
+            /** Declined At */
+            declined_at?: string | null;
+            /** Events */
+            events: components["schemas"]["ReplenishmentReservationEventResponse"][];
+            /** Expired At */
+            expired_at?: string | null;
+            /**
+             * Household Id
+             * Format: uuid
+             */
+            household_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invalidated At */
+            invalidated_at?: string | null;
+            /**
+             * Inventory Unit Id
+             * Format: uuid
+             */
+            inventory_unit_id: string;
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+            /** Pet Id */
+            pet_id?: string | null;
+            /** Predicted Depletion High Days */
+            predicted_depletion_high_days: number;
+            /** Predicted Depletion Low Days */
+            predicted_depletion_low_days: number;
+            /**
+             * Product Id
+             * Format: uuid
+             */
+            product_id: string;
+            /** Quantity */
+            quantity: number;
+            /** Resulting Order Id */
+            resulting_order_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending_approval" | "approved" | "declined" | "expired" | "invalidated";
+        };
+        /** ReplenishmentReservationEventResponse */
+        ReplenishmentReservationEventResponse: {
+            /** Event Type */
+            event_type: string;
+            /** Identity Id */
+            identity_id: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Reason */
+            reason: string | null;
         };
         /** ReplenishmentReservationResponse */
         ReplenishmentReservationResponse: {
@@ -10407,6 +10595,41 @@ export interface operations {
             };
         };
     };
+    cancel_purchase_batch_api_v1_operator_purchase_batches__batch_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseBatchCancelBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseBatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     commit_purchase_batch_api_v1_operator_purchase_batches__batch_id__commit_post: {
         parameters: {
             query?: never;
@@ -10429,6 +10652,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseBatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_replenishment_reservations_api_v1_operator_replenishment_reservations_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplenishmentReservationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_replenishment_reservation_api_v1_operator_replenishment_reservations__reservation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplenishmentReservationDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invalidate_replenishment_reservation_api_v1_operator_replenishment_reservations__reservation_id__invalidate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplenishmentInvalidateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplenishmentReservationResponse"];
                 };
             };
             /** @description Validation Error */
