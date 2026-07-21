@@ -80,9 +80,7 @@ def test_assert_request_context_round_trip_rejects_identity_mismatch() -> None:
 def test_assert_request_context_round_trip_rejects_household_mismatch() -> None:
     identity = uuid.uuid4()
     with pytest.raises(RuntimeError, match="app_household_ids"):
-        _assert_request_context_round_trip(
-            False, identity, [uuid.uuid4()], identity, uuid.uuid4()
-        )
+        _assert_request_context_round_trip(False, identity, [uuid.uuid4()], identity, uuid.uuid4())
 
 
 def test_assert_request_context_round_trip_accepts_a_matching_readback() -> None:

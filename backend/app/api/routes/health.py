@@ -91,9 +91,7 @@ def storage_type_guard(storage: object) -> LocalFilesystemStorage:
 async def prometheus_metrics(authorization: MetricsAuthorization = None) -> Response:
     settings: Settings = get_settings()
     expected = settings.metrics_bearer_token
-    valid = expected is None or secrets.compare_digest(
-        authorization or "", f"Bearer {expected}"
-    )
+    valid = expected is None or secrets.compare_digest(authorization or "", f"Bearer {expected}")
     if not valid:
         raise HTTPException(status_code=404, detail="not_found")
     return Response(metrics.render_prometheus(), media_type="text/plain; version=0.0.4")
