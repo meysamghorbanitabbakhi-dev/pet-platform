@@ -12,10 +12,15 @@ from app.common.time import utc_now
 from app.db.session import AppSessionFactory, SessionFactory, app_engine, close_database
 from app.main import create_app
 from app.modules.catalog.models import Offer, Product, Supplier
+from app.modules.food_estimation.models import FoodEstimate
 from app.modules.households.models import Household, HouseholdAddress, HouseholdMembership
 from app.modules.identity.models import AuthIdentity
+from app.modules.inventory.models import ConsumptionAssignment, InventoryUnit
+from app.modules.orders.fulfillment import FulfillmentEvent
 from app.modules.orders.models import Order, OrderLine
+from app.modules.orders.resolutions import OrderResolution
 from app.modules.payments.models import PaymentAttempt
+from app.modules.pets.models import Pet
 from fastapi import FastAPI
 from sqlalchemy import select, text
 
@@ -579,6 +584,110 @@ async def test_order_lines_and_payment_attempts_are_invisible_to_an_unrelated_cu
             (await session.scalars(select(OrderLine).where(OrderLine.id == line_id))).all()
         )
     assert len(visible_lines) == 1
+
+
+# --- 20260721_0047: more tenant-owned child tables --------------------------
+
+
+async def test_food_estimate_and_consumption_assignment_are_invisible_across_households() -> None:
+    seed = await _seed_two_households()
+    async with SessionFactory() as session:
+        unit = InventoryUnit(
+            household_id=seed.household_a_id,
+            source="platform_order",
+            state="opened",
+            label="rls-unit",
+            initial_quantity_grams=1000,
+        )
+        pet = Pet(household_id=seed.household_a_id, name="Rex", species="dog", status="active")
+        session.add_all([unit, pet])
+        await session.flush()
+        estimate = FoodEstimate(
+            inventory_unit_id=unit.id,
+            low_days=1,
+            high_days=2,
+            confidence="low",
+            status="active",
+            calculated_at=utc_now(),
+            basis="unknown_portion",
+        )
+        assignment = ConsumptionAssignment(inventory_unit_id=unit.id, pet_id=pet.id)
+        session.add_all([estimate, assignment])
+        await session.commit()
+        estimate_id, assignment_id = estimate.id, assignment.id
+
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.household_ids', :v, true)"),
+            {"v": str(seed.household_b_id)},
+        )
+        invisible_estimates = list(
+            (
+                await session.scalars(select(FoodEstimate).where(FoodEstimate.id == estimate_id))
+            ).all()
+        )
+        invisible_assignments = list(
+            (
+                await session.scalars(
+                    select(ConsumptionAssignment).where(ConsumptionAssignment.id == assignment_id)
+                )
+            ).all()
+        )
+    assert invisible_estimates == []
+    assert invisible_assignments == []
+
+
+async def test_fulfillment_events_and_resolutions_are_invisible_to_an_unrelated_customer() -> None:
+    seed = await _seed_two_households()
+    async with SessionFactory() as session:
+        operator = AuthIdentity(
+            identity_type="operator", mobile_e164=f"+98929{uuid.uuid4().hex[:7]}", status="active"
+        )
+        session.add(operator)
+        await session.flush()
+        event = FulfillmentEvent(
+            order_id=seed.order_a_id,
+            event_type="sourcing_started",
+            occurred_at=utc_now(),
+            operator_identity_id=operator.id,
+        )
+        resolution = OrderResolution(
+            order_id=seed.order_a_id,
+            resolution_type="refund",
+            requested_by_operator_id=operator.id,
+            reason="x",
+            proposed_facts={},
+        )
+        session.add_all([event, resolution])
+        await session.commit()
+        event_id, resolution_id = event.id, resolution.id
+
+    async with AppSessionFactory() as session:
+        await session.execute(text("SELECT set_config('app.is_operator', 'false', true)"))
+        await session.execute(
+            text("SELECT set_config('app.identity_id', :v, true)"), {"v": str(seed.customer_b.id)}
+        )
+        await session.execute(
+            text("SELECT set_config('app.household_ids', :v, true)"),
+            {"v": str(seed.household_b_id)},
+        )
+        invisible_events = list(
+            (
+                await session.scalars(
+                    select(FulfillmentEvent).where(FulfillmentEvent.id == event_id)
+                )
+            ).all()
+        )
+        invisible_resolutions = list(
+            (
+                await session.scalars(
+                    select(OrderResolution).where(OrderResolution.id == resolution_id)
+                )
+            ).all()
+        )
+    assert invisible_events == []
+    assert invisible_resolutions == []
 
 
 async def test_app_role_is_not_a_superuser_and_cannot_bypass_rls() -> None:
