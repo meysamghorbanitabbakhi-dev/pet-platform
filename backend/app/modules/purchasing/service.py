@@ -119,9 +119,7 @@ async def _find_or_open_batch(session: AsyncSession, *, offer: Offer) -> Purchas
             .with_for_update()
         )
         if winner is None:
-            raise PurchasingError(
-                "batch open race failed and no winner is visible"
-            ) from None
+            raise PurchasingError("batch open race failed and no winner is visible") from None
         return winner
     session.add(_opened_event(candidate.id, now))
     return candidate
@@ -199,22 +197,29 @@ async def commit_batch(
     return batch
 
 
-async def cancel_batch(
+async def cancel_empty_batch(
     session: AsyncSession, *, batch: PurchaseBatch, operator_id: UUID, reason: str
 ) -> PurchaseBatch:
-    """Operator abandons an open batch that will never be committed --
-    e.g. a misconfigured or no-longer-sourceable offer (ADR-006's deferred
+    """Operator abandons an open batch that has no active allocations at
+    all -- e.g. a misconfigured or no-longer-sourceable offer that was
+    opened but never actually collected any demand (ADR-006's deferred
     "future ADR ... if/when a real operational need arises," triggered by
     the gap-closure program). Replay-safe: cancelling an already-cancelled
     batch is a no-op.
 
-    Deliberately conservative: only a batch with no active (un-voided)
-    allocations can be cancelled this way. A batch still holding paid
-    orders' allocations must have each of those orders cancelled through
-    the customer-cancellation path first (which voids its allocation) --
-    Decision 0.12's "must not silently cancel paid orders" means bulk-
-    detaching live orders from their batch is not a decision this function
-    gets to make unilaterally. Caller must have already row-locked `batch`.
+    Deliberately, explicitly scoped to zero-allocation batches only --
+    this is NOT the operation for abandoning a batch that still holds
+    paid orders (e.g. the supplier fell through after collecting real
+    demand): that is a distinct, more consequential operation (cascading
+    to every affected order's cancellation/refund, customer notification,
+    and is not yet implemented -- see the gap-closure handover) with a
+    different name for exactly that reason, not something this function
+    silently expands into. A batch still holding paid orders' allocations
+    must have each of those orders cancelled through the customer-
+    cancellation path first (which voids its allocation) -- Decision
+    0.12's "must not silently cancel paid orders" means bulk-detaching
+    live orders from their batch is not a decision this function gets to
+    make unilaterally. Caller must have already row-locked `batch`.
     """
     if batch.status == "cancelled":
         return batch
@@ -250,9 +255,7 @@ async def is_order_cancellation_eligible(session: AsyncSession, *, order_id: UUI
     """
     committed_line = await session.scalar(
         select(OrderLine.id)
-        .join(
-            PurchaseBatchAllocation, PurchaseBatchAllocation.order_line_id == OrderLine.id
-        )
+        .join(PurchaseBatchAllocation, PurchaseBatchAllocation.order_line_id == OrderLine.id)
         .join(PurchaseBatch, PurchaseBatch.id == PurchaseBatchAllocation.purchase_batch_id)
         .where(OrderLine.order_id == order_id, PurchaseBatch.committed_at.is_not(None))
         .limit(1)
@@ -260,9 +263,7 @@ async def is_order_cancellation_eligible(session: AsyncSession, *, order_id: UUI
     return committed_line is None
 
 
-async def void_allocations_for_cancelled_order(
-    session: AsyncSession, *, order_id: UUID
-) -> None:
+async def void_allocations_for_cancelled_order(session: AsyncSession, *, order_id: UUID) -> None:
     """Release this order's allocations from their batches for a customer
     cancellation (Workstream 2B). Called by orders.cancellation as an
     explicit command rather than writing PurchaseBatch/PurchaseBatchAllocation

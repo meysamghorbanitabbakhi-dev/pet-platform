@@ -106,6 +106,7 @@ async def mode_seed() -> ModeSeed:
             status="active",
             stock_posture="sourced_after_payment",
             sourcing_capacity_status="open",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
         )
         full_payment_offer = Offer(

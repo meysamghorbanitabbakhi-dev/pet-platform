@@ -5420,6 +5420,18 @@
             ],
             "title": "Available Until"
           },
+          "default_batch_threshold_quantity": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Batch Threshold Quantity"
+          },
           "max_pending_quantity": {
             "anyOf": [
               {
@@ -5459,6 +5471,12 @@
             "maxLength": 100,
             "minLength": 1,
             "title": "Sku",
+            "type": "string"
+          },
+          "sourcing_route": {
+            "default": "aggregated",
+            "pattern": "^(aggregated|individual)$",
+            "title": "Sourcing Route",
             "type": "string"
           },
           "supplier_id": {
@@ -16932,6 +16950,7 @@
     },
     "/api/v1/operator/purchase-batches/{batch_id}/cancel": {
       "post": {
+        "description": "Cancels an empty (no active allocations) open batch -- see\ncancel_empty_batch's docstring. Rejects with 409 for a batch that\nstill holds active allocations; cancel each of those orders through\nthe customer-cancellation path first, which releases its allocation.",
         "operationId": "cancel_purchase_batch_api_v1_operator_purchase_batches__batch_id__cancel_post",
         "parameters": [
           {

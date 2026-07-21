@@ -55,6 +55,7 @@ async def search_seed() -> SearchSeed:
             status="active",
             stock_posture="sourced_after_payment",
             sourcing_capacity_status="open",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
         )
         unavailable = Offer(
@@ -67,6 +68,7 @@ async def search_seed() -> SearchSeed:
             status="unavailable",
             stock_posture="unavailable",
             sourcing_capacity_status="open",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
         )
         retired = Offer(
@@ -79,6 +81,7 @@ async def search_seed() -> SearchSeed:
             status="retired",
             stock_posture="sourced_after_payment",
             sourcing_capacity_status="open",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
         )
         session.add_all([available, unavailable, retired])
@@ -225,6 +228,7 @@ async def test_search_like_metacharacters_in_query_are_treated_literally(
             status="active",
             stock_posture="sourced_after_payment",
             sourcing_capacity_status="open",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
         )
         session.add(offer)

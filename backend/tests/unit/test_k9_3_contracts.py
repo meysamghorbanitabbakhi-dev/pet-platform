@@ -169,6 +169,7 @@ async def test_availability_notification_is_once_per_activation_cycle() -> None:
         status="active",
         stock_posture="sourced_after_payment",
         sourcing_capacity_status="open",
+        sourcing_route="individual",
         minimum_shelf_life_months=6,
     )
     subscription = CatalogAvailabilitySubscription(

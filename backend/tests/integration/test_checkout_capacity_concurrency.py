@@ -76,6 +76,7 @@ async def capacity_seed() -> CapacitySeed:
             status="active",
             stock_posture="sourced_after_payment",
             sourcing_capacity_status="open",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
             max_pending_quantity=1,
         )
@@ -187,9 +188,7 @@ async def test_uncommitted_idempotency_race_does_not_destroy_the_callers_other_w
         marker_a = await session.get(Product, marker_a_id)
         marker_b = await session.get(Product, marker_b_id)
         orders = (
-            await session.scalars(
-                select(Order).where(Order.checkout_idempotency_key == shared_key)
-            )
+            await session.scalars(select(Order).where(Order.checkout_idempotency_key == shared_key))
         ).all()
 
     # Both callers' own prior work committed successfully -- neither was

@@ -83,9 +83,7 @@ async def _seed_reservable_offer(
         session.add_all([operator, customer, supplier, product, household])
         await session.flush()
         session.add(
-            HouseholdMembership(
-                household_id=household.id, identity_id=customer.id, role="owner"
-            )
+            HouseholdMembership(household_id=household.id, identity_id=customer.id, role="owner")
         )
         address = HouseholdAddress(
             household_id=household.id,
@@ -107,6 +105,7 @@ async def _seed_reservable_offer(
             status="active",
             stock_posture="sourced_after_payment",
             sourcing_capacity_status="open",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
             mode=mode,
         )
@@ -178,9 +177,7 @@ async def test_request_reservation_is_zero_charge_and_requested() -> None:
     async with SessionFactory() as session:
         order_count = len(
             (
-                await session.scalars(
-                    select(Order).where(Order.household_id == seed.household_id)
-                )
+                await session.scalars(select(Order).where(Order.household_id == seed.household_id))
             ).all()
         )
     assert order_count == 0
@@ -388,9 +385,7 @@ async def test_approve_is_idempotent_and_returns_the_same_order() -> None:
     async with SessionFactory() as session:
         order_count = len(
             (
-                await session.scalars(
-                    select(Order).where(Order.household_id == seed.household_id)
-                )
+                await session.scalars(select(Order).where(Order.household_id == seed.household_id))
             ).all()
         )
     assert order_count == 1
@@ -428,9 +423,7 @@ async def test_approve_rejects_a_reconfirmation_that_says_not_available() -> Non
     async with SessionFactory() as session:
         order_count = len(
             (
-                await session.scalars(
-                    select(Order).where(Order.household_id == seed.household_id)
-                )
+                await session.scalars(select(Order).where(Order.household_id == seed.household_id))
             ).all()
         )
     assert order_count == 0
@@ -620,18 +613,12 @@ async def test_expiry_sweep_expires_stale_requested_and_proposed_reservations() 
     fresh_id = await _request(fresh_seed)
     stale_requested_id = await _request(stale_requested_seed)
     stale_proposed_id = await _request(stale_proposed_seed)
-    await _propose(
-        stale_proposed_seed, stale_proposed_id, reconfirmed_price_irr=8_500_000
-    )
+    await _propose(stale_proposed_seed, stale_proposed_id, reconfirmed_price_irr=8_500_000)
 
     now = utc_now()
     async with SessionFactory() as session:
-        stale_requested = await session.get(
-            Reservation, stale_requested_id, with_for_update=True
-        )
-        stale_proposed = await session.get(
-            Reservation, stale_proposed_id, with_for_update=True
-        )
+        stale_requested = await session.get(Reservation, stale_requested_id, with_for_update=True)
+        stale_proposed = await session.get(Reservation, stale_proposed_id, with_for_update=True)
         assert stale_requested is not None and stale_proposed is not None
         stale_requested.operator_review_by = now - timedelta(hours=1)
         stale_proposed.customer_respond_by = now - timedelta(hours=1)
@@ -721,12 +708,8 @@ async def test_concurrent_approve_and_decline_never_both_succeed() -> None:
 
         give_approve_a_head_start = trial % 2 == 0
         approve_result, decline_result = await asyncio.gather(
-            _race_approve(
-                seed, reservation_id, delay=0.0 if give_approve_a_head_start else 0.05
-            ),
-            _race_decline(
-                seed, reservation_id, delay=0.05 if give_approve_a_head_start else 0.0
-            ),
+            _race_approve(seed, reservation_id, delay=0.0 if give_approve_a_head_start else 0.05),
+            _race_decline(seed, reservation_id, delay=0.05 if give_approve_a_head_start else 0.0),
         )
         outcomes = {approve_result, decline_result}
         assert outcomes in ({"converted", "rejected"}, {"declined", "rejected"})
@@ -770,7 +753,7 @@ async def app_and_client() -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
 
 
 async def test_http_reserve_now_endpoints_are_disabled_by_default(
-    app_and_client: tuple[FastAPI, httpx.AsyncClient]
+    app_and_client: tuple[FastAPI, httpx.AsyncClient],
 ) -> None:
     app, client = app_and_client
     seed = await _seed_reservable_offer()

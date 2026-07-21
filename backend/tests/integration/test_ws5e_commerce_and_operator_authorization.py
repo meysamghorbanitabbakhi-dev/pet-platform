@@ -140,6 +140,7 @@ async def auth_seed() -> AuthSeed:
             price_irr=1_000_000,
             status="active",
             stock_posture="sourced_after_payment",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
         )
         pet = Pet(household_id=household.id, name="Milo", species="cat", status="active")

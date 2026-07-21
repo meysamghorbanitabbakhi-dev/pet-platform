@@ -200,6 +200,7 @@ async def seed() -> Seed:
             price_irr=1_000_000,
             status="unavailable",
             stock_posture="unavailable",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
         )
         pet = Pet(household_id=household.id, name="Milo", species="cat", status="active")

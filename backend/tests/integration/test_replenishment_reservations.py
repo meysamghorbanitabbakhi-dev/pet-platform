@@ -113,6 +113,7 @@ async def _seed_unit_with_estimate(
             status=offer_status,
             stock_posture="sourced_after_payment",
             sourcing_capacity_status="open",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
         )
         unit = InventoryUnit(

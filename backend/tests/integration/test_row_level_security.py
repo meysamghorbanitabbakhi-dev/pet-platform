@@ -517,6 +517,7 @@ async def test_order_lines_and_payment_attempts_are_invisible_to_an_unrelated_cu
             price_irr=1000,
             status="active",
             stock_posture="sourced_after_payment",
+            sourcing_route="individual",
             minimum_shelf_life_months=6,
         )
         session.add(offer)

@@ -223,6 +223,24 @@ class CheckoutService:
                 raise CheckoutError(f"offer {offer.id} is not available yet")
             if offer.available_until is not None and now >= offer.available_until:
                 raise CheckoutError(f"offer {offer.id} availability ended")
+            # Checkout preflight for the aggregated-sourcing invariant: an
+            # offer left on the aggregated route with no
+            # default_batch_threshold_quantity configured cannot actually
+            # open a purchase batch (app.modules.purchasing.service raises
+            # PurchasingError the moment payment verification tries to
+            # allocate into one). Rejecting it here, before the order or
+            # any payment exists, means a misconfigured offer fails
+            # checkout with a clear, actionable error instead of the
+            # customer discovering it only after their payment is
+            # verified.
+            if (
+                offer.sourcing_route == "aggregated"
+                and offer.default_batch_threshold_quantity is None
+            ):
+                raise CheckoutError(
+                    f"offer {offer.id} is on the aggregated sourcing route with no "
+                    "default_batch_threshold_quantity configured"
+                )
             if offer.max_pending_quantity is not None:
                 pending = await session.scalar(
                     select(func.coalesce(func.sum(OrderLine.quantity), 0))
