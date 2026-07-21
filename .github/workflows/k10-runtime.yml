@@ -56,3 +56,22 @@ jobs:
       - run: python -m alembic upgrade head
       - run: python -m app.cli.export_openapi --output docs/api/openapi.json
       - run: python -m pytest tests/api/test_system.py::test_checked_openapi_artifact_matches_application
+      - run: python -m app.cli.verify_release_contract
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/pet-platform-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run lint
+      - run: pnpm run format
+      - run: pnpm run check:contract
+      - run: pnpm run test
