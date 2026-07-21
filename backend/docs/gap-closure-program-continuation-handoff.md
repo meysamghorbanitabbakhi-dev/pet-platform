@@ -1,14 +1,15 @@
 # Pet Platform — Gap-Closure Program Continuation: Engineering Handoff
 
-**Branch:** `gap-closure-program` · **Head commit at time of writing:** `45b9637` · **This
-segment's commits:** 19, on top of `bc97b7a` (the last commit in the prior, already-merged PR #1)
+**Branch:** `gap-closure-program` · **Head commit at time of writing:** `d0cb18f` · **This
+segment's commits:** 20, on top of `bc97b7a` (the last commit in the prior, already-merged PR #1)
 
-**Update (2026-07-21):** three commits landed after this document's original 15-commit version
-(`0dd626c`), closing the Section 10.3/10.4 gap this document originally listed as "not attempted."
-See the dedicated update section near the end for what changed; the body below is otherwise
-unmodified from when it was first written, including the acceptance-gate table row for 10.3, which
-is superseded by that update section rather than edited in place, so the history of what was true
-at each point stays legible.
+**Update (2026-07-21):** four commits landed after this document's original 15-commit version
+(`0dd626c`): three closing the Section 10.3/10.4 gap this document originally listed as "not
+attempted," and one fixing the `test_migration_20260717_0025_downgrade.py` fragility this document
+flagged as a CI-pipeline blocker (see its own update note in the Known gaps section below). The
+body below is otherwise unmodified from when it was first written, including the acceptance-gate
+table row for 10.3, which is superseded by the dedicated update section near the end rather than
+edited in place, so the history of what was true at each point stays legible.
 
 **Important correction to prior status:** PR #1 (`gap-closure-program: WS1-12`,
 https://github.com/meysamghorbanitabbakhi-dev/pet-platform/pull/1) was **already merged to `main`**
@@ -247,6 +248,20 @@ a dedicated look (e.g., isolating that test's schema mutation to its own transac
 running it in a disposable database) before this suite is wired into real CI, where a mid-run
 migration-state collapse would be far harder to diagnose than it was interactively.
 
+**Update (2026-07-21):** fixed, commit `d0cb18f`. `test_migration_20260717_0025_downgrade.py` now
+provisions a uniquely-named scratch database and a matching uniquely-named RLS app role (roles are
+cluster-wide in Postgres, not database-scoped, and this test's downgrade path crosses
+`20260720_0040`, whose downgrade drops that role — isolating by database name alone would not have
+been enough) before every run, and tears both down unconditionally afterward. A failure anywhere in
+this test's migration exercise can now never leave the shared development database in a
+partially-migrated state, regardless of what future migration bug triggers it. Verified: the shared
+database's own role and migration head were confirmed unchanged after repeated runs of this test and
+of the full suite; no leftover scratch database or role was found afterward. This was the
+CI-pipeline-blocking finding this document flagged above — the underlying condition (a future broken
+migration under active development) is no longer capable of corrupting shared test state, which was
+the actual risk worth fixing, rather than something that needed the broken-migration scenario itself
+to be prevented (that remains normal, expected development churn).
+
 ## Disabled feature flags (unchanged this segment)
 
 No flag was enabled or newly disabled this segment. Confirmed still `false` by default in every
@@ -284,8 +299,8 @@ offers to `individual`) documents its own reasoning for why that reclassificatio
 1. Decide whether to open a new pull request for these commits (PR #1 is already merged; this
    branch is currently ahead of `main` with no open PR of its own).
 2. ~~RLS request-context threat model (Section 10.3)~~ — done, see update section below.
-3. The `test_migration_20260717_0025_downgrade.py` fragility noted above, before wiring this suite
-   into real CI.
+3. ~~The `test_migration_20260717_0025_downgrade.py` fragility noted above~~ — fixed, see its own
+   update note in Known gaps below. A CI pipeline itself is still not built.
 4. Reserve-now customer UI, if/when the flag is approved for launch.
 5. Frontend/E2E expansion, load testing, and configuration validation (Sections 11-13) as their own
    dedicated pass.
