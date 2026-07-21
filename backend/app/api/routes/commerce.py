@@ -174,6 +174,7 @@ async def list_offers(
             .join(Product, Product.id == Offer.product_id)
             .where(*orderable_offer_filters(now, allowed_modes=modes))
             .order_by(Offer.title_fa)
+            .limit(500)
         )
     ).all()
     return [_offer_list_item(offer, supplier) for offer, supplier in rows]
